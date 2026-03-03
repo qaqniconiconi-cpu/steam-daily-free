@@ -1,9 +1,9 @@
-name: Update Free Games (Ultimate)
+name: Update Free Games (Fix Epic)
 
 on:
   schedule:
-    - cron: '0 */4 * * *' # 每4小时
-  workflow_dispatch:      # 允许手动运行
+    - cron: '0 */4 * * *'
+  workflow_dispatch:
 
 jobs:
   build:
@@ -21,7 +21,7 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      - name: Fetch, Resolve and Search
+      - name: Run Smart Processor
         run: |
           cat <<EOF > processor.py
           import requests
@@ -30,41 +30,38 @@ jobs:
           import time
           from urllib.parse import quote
 
-          # 模拟浏览器 User-Agent
           HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0'}
 
-          def search_steam_id(game_title):
-              """直接去 Steam 搜游戏名字获取 ID"""
+          def get_clean_title(title):
+              # 去掉 "(Steam) Giveaway", "(Epic Games)" 等后缀
+              title = re.split(r'\(Steam|\(Epic', title, flags=re.IGNORECASE)[0]
+              return title.strip()
+
+          def search_steam_id(title):
+              """Steam 仍然使用搜索 API，因为最准"""
+              clean_title = get_clean_title(title)
               try:
-                  # 1. 清理标题 (去掉无关的后缀，如 "(Steam) Giveaway")
-                  clean_title = re.split(r'\(Steam\)|\(Epic', game_title, flags=re.IGNORECASE)[0].strip()
-                  print(f"    🔍 Searching Steam for: {clean_title}...")
-
-                  # 2. 调用 Steam 搜索 API
-                  search_url = f"https://store.steampowered.com/api/storesearch/?term={quote(clean_title)}&l=english&cc=US"
-                  res = requests.get(search_url, headers=HEADERS, timeout=5)
-                  data = res.json()
-
-                  # 3. 提取第一个结果的 ID
-                  if data.get('total', 0) > 0 and len(data.get('items', [])) > 0:
-                      found_id = data['items'][0]['id']
-                      print(f"    ✅ Found via Search: {found_id}")
-                      return str(found_id)
-              except Exception as e:
-                  print(f"    ❌ Search failed: {e}")
+                  url = f"https://store.steampowered.com/api/storesearch/?term={quote(clean_title)}&l=english&cc=US"
+                  data = requests.get(url, headers=HEADERS, timeout=5).json()
+                  if data.get('total', 0) > 0:
+                      return str(data['items'][0]['id'])
+              except:
+                  pass
               return None
 
-          def resolve_redirect(url):
-              """尝试解析跳转链接"""
-              try:
-                  res = requests.head(url, headers=HEADERS, allow_redirects=True, timeout=10)
-                  return res.url
-              except:
-                  return url
+          def guess_epic_slug(title):
+              """Epic 使用标题转 Slug 策略"""
+              clean_title = get_clean_title(title)
+              # 1. 转小写
+              slug = clean_title.lower()
+              # 2. 替换非字母数字的字符为横杠
+              slug = re.sub(r'[^a-z0-9]+', '-', slug)
+              # 3. 去掉首尾横杠
+              slug = slug.strip('-')
+              return slug
 
           def main():
-              print("Downloading GamerPower data...")
-              # 获取 Steam 和 Epic 数据
+              print("Fetching data...")
               urls = [
                   "https://www.gamerpower.com/api/giveaways?platform=steam&type=game&sort-by=value",
                   "https://www.gamerpower.com/api/giveaways?platform=epic-games-store&type=game&sort-by=value"
@@ -77,47 +74,34 @@ jobs:
                   except: pass
 
               print(f"Total raw items: {len(all_games)}")
-              processed_data = []
+              processed = []
 
               for game in all_games:
                   new_game = game.copy()
                   title = game.get('title', '')
                   platforms = game.get('platforms', '').lower()
-                  original_url = game.get('open_giveaway_url', '')
+                  
+                  # --- 处理 Steam ---
+                  if 'steam' in platforms:
+                      # 既然搜索很准，直接用搜索
+                      sid = search_steam_id(title)
+                      if sid:
+                          new_game['steam_id'] = sid
+                          print(f"✅ Steam ID: {sid} for {title}")
 
-                  print(f"Processing: {title[:30]}...")
-
-                  # --- 策略 1: 处理 Steam ---
-                  if 'steam' in platforms or '(steam)' in title.lower():
-                      # A. 先尝试从跳转链接里提取
-                      final_url = resolve_redirect(original_url)
-                      match = re.search(r'/(app|sub)/(\d+)', final_url)
-                      
-                      if match:
-                          new_game['steam_id'] = match.group(2)
-                          print(f"    ✅ Found via URL: {new_game['steam_id']}")
-                      else:
-                          # B. 链接里没有？启动 Plan B：直接搜名字！
-                          print("    ⚠️ URL resolve failed, trying Search API...")
-                          search_id = search_steam_id(title)
-                          if search_id:
-                              new_game['steam_id'] = search_id
-
-                  # --- 策略 2: 处理 Epic ---
+                  # --- 处理 Epic ---
                   elif 'epic' in platforms:
-                      # Epic 比较简单，直接从链接提取 slug
-                      final_url = resolve_redirect(original_url)
-                      match = re.search(r'/(p|product)/([^\/\?]+)', final_url)
-                      if match:
-                          new_game['epic_slug'] = match.group(2)
-                          print(f"    ✅ Found Epic Slug: {new_game['epic_slug']}")
+                      # 使用猜测策略
+                      slug = guess_epic_slug(title)
+                      if slug:
+                          new_game['epic_slug'] = slug
+                          print(f"✅ Epic Slug: {slug} for {title}")
 
-                  processed_data.append(new_game)
-                  time.sleep(1) # 稍微慢点，防止被封
+                  processed.append(new_game)
+                  time.sleep(0.2)
 
-              # 保存
               with open('games.json', 'w') as f:
-                  json.dump(processed_data, f, indent=2)
+                  json.dump(processed, f, indent=2)
               print("Done!")
 
           if __name__ == "__main__":
@@ -131,4 +115,4 @@ jobs:
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
           git add games.json
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Update games with Search Fallback" && git push)
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update IDs" && git push)
