@@ -1,9 +1,9 @@
-name: Update Free Games
+name: Update Free Games (Smart Resolve)
 
 on:
   schedule:
-    - cron: '0 */4 * * *' # 每4小时运行一次
-  workflow_dispatch:      # 允许手动点击运行
+    - cron: '0 */4 * * *' # 每4小时运行
+  workflow_dispatch:      # 允许手动运行
 
 jobs:
   build:
@@ -13,32 +13,96 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Fetch and Merge Data
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Fetch and Analyze Data
         run: |
-          # 1. 下载 Steam 数据 (保存为临时文件 steam_temp.json)
-          curl -s "https://www.gamerpower.com/api/giveaways?platform=steam&type=game&sort-by=value" -o steam_temp.json
-          
-          # 2. 下载 Epic 数据 (保存为临时文件 epic_temp.json)
-          curl -s "https://www.gamerpower.com/api/giveaways?platform=epic-games-store&type=game&sort-by=value" -o epic_temp.json
-          
-          # 3. 【关键步骤】使用 jq 工具将两个 JSON 数组合并为一个 games.json
-          # 如果某个文件是空的（比如没有免费游戏），在这个命令里可能会报错，所以我们加一个简单的判断逻辑
-          
-          # 初始化 games.json 为空数组
-          echo "[]" > games.json
+          # 创建一个 Python 脚本来处理复杂的链接解析
+          cat <<EOF > resolver.py
+          import requests
+          import json
+          import re
+          import time
 
-          # 尝试合并 (使用 jq -s add 将两个数组相加)
-          # 注意：GitHub Action 的环境里自带 jq 工具
-          jq -s 'add' steam_temp.json epic_temp.json > games.json
+          def get_real_url(url):
+              try:
+                  # 模拟浏览器 User-Agent，防止被拦截
+                  headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
+                  # allow_redirects=True 会自动跟随跳转
+                  r = requests.head(url, headers=headers, allow_redirects=True, timeout=10)
+                  return r.url
+              except:
+                  return url
 
-          # 打印一下文件内容的前几行，方便在日志里检查
-          echo "Merged Data Preview:"
-          head -n 20 games.json
+          def process_games():
+              # 1. 获取原始数据
+              print("Downloading data...")
+              steam_url = "https://www.gamerpower.com/api/giveaways?platform=steam&type=game&sort-by=value"
+              epic_url = "https://www.gamerpower.com/api/giveaways?platform=epic-games-store&type=game&sort-by=value"
+              
+              data = []
+              try:
+                  data += requests.get(steam_url).json()
+              except: pass
+              
+              try:
+                  data += requests.get(epic_url).json()
+              except: pass
+
+              print(f"Found {len(data)} raw items. resolving real IDs...")
+
+              processed_data = []
+              
+              for game in data:
+                  # 复制一份数据
+                  new_game = game.copy()
+                  
+                  # 原始跳转链接
+                  original_url = game.get('open_giveaway_url', '')
+                  
+                  # --- Steam ID 解析 ---
+                  # 如果是 Steam 平台，我们需要解析出 ID
+                  if 'steam' in game.get('platforms', '').lower() or 'steam' in game.get('title', '').lower():
+                      real_url = get_real_url(original_url)
+                      # 正则提取 /app/123456
+                      match = re.search(r'/app/(\d+)', real_url)
+                      if match:
+                          new_game['steam_id'] = match.group(1)
+                          print(f"✅ Steam ID found: {new_game['steam_id']} ({game['title']})")
+                      else:
+                          print(f"⚠️ No Steam ID in: {real_url}")
+
+                  # --- Epic 解析 ---
+                  elif 'epic' in game.get('platforms', '').lower():
+                      # Epic 不需要解析跳转，直接从链接提取 slug 即可，通常 GamerPower 的 Epic 链接还算比较规范
+                      # 如果需要，也可以在这里加解析逻辑
+                      pass
+
+                  processed_data.append(new_game)
+                  # 稍微停顿一下，防止请求太快被封
+                  time.sleep(0.5)
+
+              # 保存结果
+              with open('games.json', 'w') as f:
+                  json.dump(processed_data, f, indent=2)
+              print("Done!")
+
+          if __name__ == "__main__":
+              process_games()
+          EOF
+
+          # 运行上面生成的 Python 脚本
+          python resolver.py
 
       - name: Commit and Push
         run: |
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
           git add games.json
-          # 只有当 games.json 发生变化时才提交
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Update Steam & Epic games" && git push)
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update games with Real IDs" && git push)
