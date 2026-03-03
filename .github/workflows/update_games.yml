@@ -3,7 +3,7 @@ name: Update Free Games
 on:
   schedule:
     - cron: '0 */4 * * *' # 每4小时运行一次
-  workflow_dispatch:      # 允许手动运行
+  workflow_dispatch:      # 允许手动点击运行
 
 jobs:
   build:
@@ -13,18 +13,32 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Fetch Data
+      - name: Fetch and Merge Data
         run: |
-          # 1. 抓取 Steam 数据
-          curl "https://www.gamerpower.com/api/giveaways?platform=steam&type=game&sort-by=value" -o steam.json
+          # 1. 下载 Steam 数据 (保存为临时文件 steam_temp.json)
+          curl -s "https://www.gamerpower.com/api/giveaways?platform=steam&type=game&sort-by=value" -o steam_temp.json
           
-          # 2. 抓取 Epic 数据
-          curl "https://www.gamerpower.com/api/giveaways?platform=epic-games-store&type=game&sort-by=value" -o epic.json
+          # 2. 下载 Epic 数据 (保存为临时文件 epic_temp.json)
+          curl -s "https://www.gamerpower.com/api/giveaways?platform=epic-games-store&type=game&sort-by=value" -o epic_temp.json
+          
+          # 3. 【关键步骤】使用 jq 工具将两个 JSON 数组合并为一个 games.json
+          # 如果某个文件是空的（比如没有免费游戏），在这个命令里可能会报错，所以我们加一个简单的判断逻辑
+          
+          # 初始化 games.json 为空数组
+          echo "[]" > games.json
+
+          # 尝试合并 (使用 jq -s add 将两个数组相加)
+          # 注意：GitHub Action 的环境里自带 jq 工具
+          jq -s 'add' steam_temp.json epic_temp.json > games.json
+
+          # 打印一下文件内容的前几行，方便在日志里检查
+          echo "Merged Data Preview:"
+          head -n 20 games.json
 
       - name: Commit and Push
         run: |
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
-          git add steam.json epic.json
-          # 如果有变化才提交，避免报错
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Update Steam and Epic games" && git push)
+          git add games.json
+          # 只有当 games.json 发生变化时才提交
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update Steam & Epic games" && git push)
