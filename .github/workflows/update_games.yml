@@ -89,13 +89,14 @@ jobs:
 
           def main():
               print("🚀 Starting Sync...")
-              # 1. 获取正在进行的
               active_api = "https://www.gamerpower.com/api/giveaways?sort-by=value"
-              # 分别获取 Steam 和 Epic 避免漏掉
               raw_games = []
+              # 我们只去抓这两个平台的 API
               for p in ['steam', 'epic-games-store']:
                   try:
-                      raw_games += requests.get(f"{active_api}&platform={p}", headers=HEADERS).json()
+                      res = requests.get(f"{active_api}&platform={p}", headers=HEADERS).json()
+                      if isinstance(res, list):
+                          raw_games += res
                   except: pass
 
               processed = []
@@ -105,18 +106,27 @@ jobs:
                   platforms = (game.get('platforms', '') or "").lower()
                   orig_url = game.get('open_giveaway_url', '')
 
+                  # --- 核心过滤逻辑：只处理我们能唤起客户端的平台 ---
                   if 'steam' in platforms:
                       sid = search_steam_id(title)
-                      if sid: new_game['steam_id'] = sid
+                      if sid: 
+                          new_game['steam_id'] = sid
+                          processed.append(new_game) # 只有找到 ID 的才加入
+                      
                   elif 'epic' in platforms:
-                      # 这里调用我们升级后的真实解析函数
                       slug = get_real_epic_slug(orig_url)
                       if slug: 
                           new_game['epic_slug'] = slug
-                          print(f"    ✅ Epic Slug Found: {slug}")
+                          processed.append(new_game) # 只有找到 Slug 的才加入
 
-                  processed.append(new_game)
-                  time.sleep(1) # 礼貌间歇
+              # 最终保存的文件里将只有 Steam 和 Epic 游戏
+              with open('games.json', 'w') as f:
+                  json.dump(processed, f, indent=2)
+              
+              with open('upcoming.json', 'w') as f:
+                  json.dump(fetch_upcoming_epic(), f, indent=2)
+              
+              print(f"🎉 Update Complete! Processed {len(processed)} high-quality games.")
 
               # 2. 保存文件
               with open('games.json', 'w') as f:
