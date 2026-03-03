@@ -12,7 +12,7 @@
     "type": "Game",
     "platforms": "PC, Steam",
     "end_date": "2026-03-04 23:59:00",
-    "users": 11690,
+    "users": 11700,
     "status": "Active",
     "gamerpower_url": "https://www.gamerpower.com/just-move-clean-city-messy-battle-steam-giveaway",
     "open_giveaway": "https://www.gamerpower.com/open/just-move-clean-city-messy-battle-steam-giveaway",
@@ -31,7 +31,7 @@
     "type": "Game",
     "platforms": "PC, Steam",
     "end_date": "2026-03-05 23:59:00",
-    "users": 6210,
+    "users": 6310,
     "status": "Active",
     "gamerpower_url": "https://www.gamerpower.com/world-crafter-td-steam-giveaway",
     "open_giveaway": "https://www.gamerpower.com/open/world-crafter-td-steam-giveaway",
@@ -53,7 +53,8 @@
     "users": 9590,
     "status": "Active",
     "gamerpower_url": "https://www.gamerpower.com/boxes-lost-fragments-epic-games-giveaway",
-    "open_giveaway": "https://www.gamerpower.com/open/boxes-lost-fragments-epic-games-giveaway"
+    "open_giveaway": "https://www.gamerpower.com/open/boxes-lost-fragments-epic-games-giveaway",
+    "epic_slug": "boxes-lost-fragments"
   },
   {
     "id": 3509,
@@ -68,9 +69,10 @@
     "type": "Game",
     "platforms": "PC, Epic Games Store",
     "end_date": "2026-03-05 23:59:00",
-    "users": 8310,
+    "users": 8320,
     "status": "Active",
     "gamerpower_url": "https://www.gamerpower.com/my-night-job-epic-games-giveaway",
-    "open_giveaway": "https://www.gamerpower.com/open/my-night-job-epic-games-giveaway"
+    "open_giveaway": "https://www.gamerpower.com/open/my-night-job-epic-games-giveaway",
+    "epic_slug": "my-night-job"
   }
 ]
