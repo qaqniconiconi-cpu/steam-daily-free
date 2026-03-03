@@ -1,0 +1,26 @@
+name: Update Free Games
+
+on:
+  schedule:
+    - cron: '0 */4 * * *' # 每4小时自动抓取一次
+  workflow_dispatch: # 允许手动点击按钮触发
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Fetch Data from GamerPower
+        # 抓取数据并保存为 games.json，只保留 Steam 平台的
+        run: |
+          curl "https://www.gamerpower.com/api/giveaways?platform=steam&type=game&sort-by=value" -o games.json
+
+      - name: Commit and Push if changed
+        run: |
+          git config --global user.name 'GitHub Action'
+          git config --global user.email 'action@github.com'
+          git add games.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto update games" && git push)
