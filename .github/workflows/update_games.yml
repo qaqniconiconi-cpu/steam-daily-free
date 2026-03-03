@@ -1,31 +1,141 @@
-import requests
-import re
-import json
-import time
+name: Update Games (Epic 404 Fix Edition)
 
-# 使用非常真实的浏览器头，否则 Epic 会拦截请求
-HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-}
+on:
+  schedule:
+    - cron: '0 */4 * * *'
+  workflow_dispatch:
 
-def get_full_epic_slug(url):
-    try:
-        # 必须使用 GET 而不是 HEAD，因为有些中间件只在 GET 时跳转
-        # timeout 增加到 15 秒，Epic 的跳转链有时很慢
-        res = requests.get(url, headers=HEADERS, allow_redirects=True, timeout=15)
-        final_url = res.url
-        
-        # 匹配 /p/ 或 /product/ 后面直到斜杠或问号的所有内容
-        # 这将捕获包含 "-6df09f" 这种后缀的完整 Slug
-        match = re.search(r'/(p|product)/([a-zA-Z0-9\-\%]+)', final_url)
-        if match:
-            slug = match.group(2)
-            print(f"    ✅ 抓取到真实 Slug: {slug}")
-            return slug
-    except Exception as e:
-        print(f"    ❌ 解析失败: {e}")
-    return None
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
 
-# 在你的循环中调用它
-# if 'epic' in platforms:
-#     game['epic_slug'] = get_full_epic_slug(game['open_giveaway_url'])
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run Smart Resolver
+        run: |
+          cat <<EOF > processor.py
+          import requests
+          import json
+          import re
+          import time
+          from urllib.parse import quote
+
+          # 使用 2026 年主流浏览器请求头，防止被 Epic 拦截
+          HEADERS = {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+              'Accept-Language': 'en-US,en;q=0.9'
+          }
+
+          def get_real_epic_slug(url):
+              """核心修复：通过真实访问获取带后缀的完整 Slug"""
+              try:
+                  # 必须用 GET 并允许重定向。Epic 的中间页有时会拦截 HEAD 请求。
+                  # timeout 设为 15 秒，因为跨国跳转可能较慢。
+                  response = requests.get(url, headers=HEADERS, allow_redirects=True, timeout=15)
+                  final_url = response.url
+                  print(f"    🔗 Redirected to: {final_url}")
+                  
+                  # 匹配 /p/ 或 /product/ 后面直到斜杠或参数的完整字符串
+                  match = re.search(r'/(p|product)/([a-zA-Z0-9\-\%]+)', final_url)
+                  if match:
+                      return match.group(2)
+              except Exception as e:
+                  print(f"    ❌ Epic Resolve Error: {e}")
+              return None
+
+          def search_steam_id(title):
+              """Steam 搜索逻辑保持不变"""
+              try:
+                  clean_title = re.split(r'\(Steam|\(Epic', title, flags=re.IGNORECASE)[0].strip()
+                  url = f"https://store.steampowered.com/api/storesearch/?term={quote(clean_title)}&l=english&cc=US"
+                  data = requests.get(url, headers=HEADERS, timeout=5).json()
+                  if data.get('total', 0) > 0:
+                      return str(data['items'][0]['id'])
+              except:
+                  pass
+              return None
+
+          def fetch_upcoming_epic():
+              """抓取 Epic 官方下周预告数据"""
+              try:
+                  url = "https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=CN&allowCountries=CN"
+                  res = requests.get(url, headers=HEADERS).json()
+                  elements = res['data']['Catalog']['searchStore']['elements']
+                  upcoming = []
+                  for item in elements:
+                      promos = item.get('promotions', {})
+                      if promos and promos.get('upcomingPromotionalOffers'):
+                          start_date = promos['upcomingPromotionalOffers'][0]['promotionalOffers'][0]['startDate']
+                          img = item['keyImages'][0]['url'] if item.get('keyImages') else ""
+                          upcoming.append({
+                              "title": item['title'],
+                              "image": img,
+                              "start_date": start_date,
+                              "platform": "Epic Games"
+                          })
+                  return upcoming
+              except:
+                  return []
+
+          def main():
+              print("🚀 Starting Sync...")
+              # 1. 获取正在进行的
+              active_api = "https://www.gamerpower.com/api/giveaways?sort-by=value"
+              # 分别获取 Steam 和 Epic 避免漏掉
+              raw_games = []
+              for p in ['steam', 'epic-games-store']:
+                  try:
+                      raw_games += requests.get(f"{active_api}&platform={p}", headers=HEADERS).json()
+                  except: pass
+
+              processed = []
+              for game in raw_games:
+                  new_game = game.copy()
+                  title = game.get('title', '')
+                  platforms = (game.get('platforms', '') or "").lower()
+                  orig_url = game.get('open_giveaway_url', '')
+
+                  if 'steam' in platforms:
+                      sid = search_steam_id(title)
+                      if sid: new_game['steam_id'] = sid
+                  elif 'epic' in platforms:
+                      # 这里调用我们升级后的真实解析函数
+                      slug = get_real_epic_slug(orig_url)
+                      if slug: 
+                          new_game['epic_slug'] = slug
+                          print(f"    ✅ Epic Slug Found: {slug}")
+
+                  processed.append(new_game)
+                  time.sleep(1) # 礼貌间歇
+
+              # 2. 保存文件
+              with open('games.json', 'w') as f:
+                  json.dump(processed, f, indent=2)
+              
+              with open('upcoming.json', 'w') as f:
+                  json.dump(fetch_upcoming_epic(), indent=2)
+              
+              print("🎉 Update Complete!")
+
+          if __name__ == "__main__":
+              main()
+          EOF
+
+          python processor.py
+
+      - name: Commit and Push
+        run: |
+          git config --global user.name 'GitHub Action'
+          git config --global user.email 'action@github.com'
+          git add games.json upcoming.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Fix Epic 404 slugs" && git push)
