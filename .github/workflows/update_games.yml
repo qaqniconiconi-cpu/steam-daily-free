@@ -2,8 +2,8 @@ name: Update Free Games
 
 on:
   schedule:
-    - cron: '0 */4 * * *' # 每4小时自动抓取一次
-  workflow_dispatch: # 允许手动点击按钮触发
+    - cron: '0 */4 * * *' # 每4小时运行一次
+  workflow_dispatch:      # 允许手动运行
 
 jobs:
   build:
@@ -13,14 +13,18 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Fetch Data from GamerPower
-        # 抓取数据并保存为 games.json，只保留 Steam 平台的
+      - name: Fetch Data
         run: |
-          curl "https://www.gamerpower.com/api/giveaways?platform=steam&type=game&sort-by=value" -o games.json
+          # 1. 抓取 Steam 数据
+          curl "https://www.gamerpower.com/api/giveaways?platform=steam&type=game&sort-by=value" -o steam.json
+          
+          # 2. 抓取 Epic 数据
+          curl "https://www.gamerpower.com/api/giveaways?platform=epic-games-store&type=game&sort-by=value" -o epic.json
 
-      - name: Commit and Push if changed
+      - name: Commit and Push
         run: |
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
-          git add games.json
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto update games" && git push)
+          git add steam.json epic.json
+          # 如果有变化才提交，避免报错
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update Steam and Epic games" && git push)
