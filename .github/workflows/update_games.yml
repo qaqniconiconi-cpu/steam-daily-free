@@ -87,6 +87,20 @@ jobs:
               except:
                   return []
 
+          # --- 新增：上传到公司 API 的函数 ---
+          def upload_to_api(filename, data):
+              url = "https://system.et-api.com/v1/update/steam-daily-free"
+              headers = {
+                  "filename": filename,
+                  "Content-Type": "application/json"
+              }
+              try:
+                  # 使用 POST 方法将数据推送到服务器
+                  res = requests.post(url, headers=headers, json=data, timeout=15)
+                  print(f"📤 API 上传 [{filename}]: 状态码 {res.status_code}")
+              except Exception as e:
+                  print(f"❌ API 上传失败: {e}")
+
           def main():
               print("🚀 Starting Sync (Filtered Edition)...")
               active_api = "https://www.gamerpower.com/api/giveaways?sort-by=value"
@@ -128,9 +142,20 @@ jobs:
                           processed.append(new_game)
                           print(f"    ✅ Added Epic: {title}")
 
-              # 保存正在进行的限免
+              # 1. 本地依然保存一份（用于 GitHub 备份）
               with open('games.json', 'w') as f:
                   json.dump(processed, f, indent=2)
+              
+              upcoming_data = fetch_upcoming_epic()
+              with open('upcoming.json', 'w') as f:
+                  json.dump(upcoming_data, f, indent=2)
+
+              # 2. ⚡ 核心替换：将数据推送到公司 API
+              print("📡 正在同步数据到公司后端...")
+              upload_to_api("games.json", processed)
+              upload_to_api("upcoming.json", upcoming_data)
+              
+              print("🎉 所有同步任务已完成！")
               
               # --- 核心过滤 3：即将到来的 Epic 预告也增加 DLC 判定 ---
               upcoming_raw = fetch_upcoming_epic()
