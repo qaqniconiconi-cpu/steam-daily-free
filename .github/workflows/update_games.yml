@@ -1,8 +1,8 @@
-name: Update Free Games (With ID Resolver)
+name: Update Free Games (Ultimate)
 
 on:
   schedule:
-    - cron: '0 */4 * * *' # 每4小时运行一次
+    - cron: '0 */4 * * *' # 每4小时
   workflow_dispatch:      # 允许手动运行
 
 jobs:
@@ -21,102 +21,114 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      - name: Fetch and Resolve IDs
+      - name: Fetch, Resolve and Search
         run: |
-          # 创建 Python 脚本
-          cat <<EOF > resolver.py
+          cat <<EOF > processor.py
           import requests
           import json
           import re
           import time
+          from urllib.parse import quote
 
-          def resolve_url_and_get_id(game):
-              redirect_url = game.get('open_giveaway_url', '')
-              if not redirect_url:
-                  return game
+          # 模拟浏览器 User-Agent
+          HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0'}
 
+          def search_steam_id(game_title):
+              """直接去 Steam 搜游戏名字获取 ID"""
               try:
-                  # 模拟浏览器头，防止被拦截
-                  headers = {
-                      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-                  }
-                  
-                  # 发起请求，获取重定向后的最终地址 (allow_redirects=True)
-                  # 使用 HEAD 请求比 GET 更快，只获取头信息即可
-                  response = requests.head(redirect_url, headers=headers, allow_redirects=True, timeout=10)
-                  final_url = response.url
-                  
-                  # 打印日志方便调试
-                  print(f"Resolving: {game['title'][:20]}... -> {final_url}")
-                  
-                  # --- 提取 Steam ID ---
-                  # 格式通常是 store.steampowered.com/app/123456
-                  steam_match = re.search(r'/app/(\d+)', final_url)
-                  if steam_match:
-                      game['steam_id'] = steam_match.group(1)
-                      print(f"  -> Found Steam ID: {game['steam_id']}")
+                  # 1. 清理标题 (去掉无关的后缀，如 "(Steam) Giveaway")
+                  clean_title = re.split(r'\(Steam\)|\(Epic', game_title, flags=re.IGNORECASE)[0].strip()
+                  print(f"    🔍 Searching Steam for: {clean_title}...")
 
-                  # --- 提取 Epic Slug ---
-                  # 格式通常是 store.epicgames.com/xx/p/slug-name
-                  epic_match = re.search(r'/p/([^\/\?]+)', final_url)
-                  if epic_match:
-                      game['epic_slug'] = epic_match.group(1)
-                      print(f"  -> Found Epic Slug: {game['epic_slug']}")
-                      
+                  # 2. 调用 Steam 搜索 API
+                  search_url = f"https://store.steampowered.com/api/storesearch/?term={quote(clean_title)}&l=english&cc=US"
+                  res = requests.get(search_url, headers=HEADERS, timeout=5)
+                  data = res.json()
+
+                  # 3. 提取第一个结果的 ID
+                  if data.get('total', 0) > 0 and len(data.get('items', [])) > 0:
+                      found_id = data['items'][0]['id']
+                      print(f"    ✅ Found via Search: {found_id}")
+                      return str(found_id)
               except Exception as e:
-                  print(f"  -> Error resolving {redirect_url}: {e}")
-              
-              return game
+                  print(f"    ❌ Search failed: {e}")
+              return None
+
+          def resolve_redirect(url):
+              """尝试解析跳转链接"""
+              try:
+                  res = requests.head(url, headers=HEADERS, allow_redirects=True, timeout=10)
+                  return res.url
+              except:
+                  return url
 
           def main():
-              print("Starting data fetch...")
-              # 1. 获取原始数据 (Steam + Epic)
-              steam_api = "https://www.gamerpower.com/api/giveaways?platform=steam&type=game&sort-by=value"
-              epic_api = "https://www.gamerpower.com/api/giveaways?platform=epic-games-store&type=game&sort-by=value"
+              print("Downloading GamerPower data...")
+              # 获取 Steam 和 Epic 数据
+              urls = [
+                  "https://www.gamerpower.com/api/giveaways?platform=steam&type=game&sort-by=value",
+                  "https://www.gamerpower.com/api/giveaways?platform=epic-games-store&type=game&sort-by=value"
+              ]
               
               all_games = []
-              
-              try:
-                  print("Fetching Steam data...")
-                  all_games += requests.get(steam_api).json()
-              except: pass
-              
-              try:
-                  print("Fetching Epic data...")
-                  all_games += requests.get(epic_api).json()
-              except: pass
+              for url in urls:
+                  try:
+                      all_games += requests.get(url, headers=HEADERS).json()
+                  except: pass
 
-              print(f"Total raw games: {len(all_games)}")
+              print(f"Total raw items: {len(all_games)}")
+              processed_data = []
 
-              # 2. 遍历每个游戏，解析真实 ID
-              processed_games = []
               for game in all_games:
-                  # 复制一份，避免引用问题
                   new_game = game.copy()
-                  
-                  # 执行解析
-                  new_game = resolve_url_and_get_id(new_game)
-                  
-                  processed_games.append(new_game)
-                  # 稍微停顿，礼貌爬取
-                  time.sleep(0.5)
+                  title = game.get('title', '')
+                  platforms = game.get('platforms', '').lower()
+                  original_url = game.get('open_giveaway_url', '')
 
-              # 3. 保存结果
+                  print(f"Processing: {title[:30]}...")
+
+                  # --- 策略 1: 处理 Steam ---
+                  if 'steam' in platforms or '(steam)' in title.lower():
+                      # A. 先尝试从跳转链接里提取
+                      final_url = resolve_redirect(original_url)
+                      match = re.search(r'/(app|sub)/(\d+)', final_url)
+                      
+                      if match:
+                          new_game['steam_id'] = match.group(2)
+                          print(f"    ✅ Found via URL: {new_game['steam_id']}")
+                      else:
+                          # B. 链接里没有？启动 Plan B：直接搜名字！
+                          print("    ⚠️ URL resolve failed, trying Search API...")
+                          search_id = search_steam_id(title)
+                          if search_id:
+                              new_game['steam_id'] = search_id
+
+                  # --- 策略 2: 处理 Epic ---
+                  elif 'epic' in platforms:
+                      # Epic 比较简单，直接从链接提取 slug
+                      final_url = resolve_redirect(original_url)
+                      match = re.search(r'/(p|product)/([^\/\?]+)', final_url)
+                      if match:
+                          new_game['epic_slug'] = match.group(2)
+                          print(f"    ✅ Found Epic Slug: {new_game['epic_slug']}")
+
+                  processed_data.append(new_game)
+                  time.sleep(1) # 稍微慢点，防止被封
+
+              # 保存
               with open('games.json', 'w') as f:
-                  json.dump(processed_games, f, indent=2)
-              
-              print("Done! games.json updated.")
+                  json.dump(processed_data, f, indent=2)
+              print("Done!")
 
           if __name__ == "__main__":
               main()
           EOF
 
-          # 运行脚本
-          python resolver.py
+          python processor.py
 
       - name: Commit and Push
         run: |
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
           git add games.json
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Update games with resolved IDs" && git push)
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update games with Search Fallback" && git push)
