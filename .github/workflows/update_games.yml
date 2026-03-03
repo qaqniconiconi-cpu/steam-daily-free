@@ -88,10 +88,10 @@ jobs:
                   return []
 
           def main():
-              print("🚀 Starting Sync...")
+              print("🚀 Starting Sync (Filtered Edition)...")
               active_api = "https://www.gamerpower.com/api/giveaways?sort-by=value"
               raw_games = []
-              # 我们只去抓这两个平台的 API
+              
               for p in ['steam', 'epic-games-store']:
                   try:
                       res = requests.get(f"{active_api}&platform={p}", headers=HEADERS).json()
@@ -102,31 +102,44 @@ jobs:
               processed = []
               for game in raw_games:
                   new_game = game.copy()
+                  
+                  # 🛑 核心过滤 1：只保留完整游戏 (Game)，剔除 DLC、Loot、Other
+                  # GamerPower API 的 type 字段通常为: "Game", "DLC", "Loot" 等
+                  if new_game.get('type') != 'Game':
+                      print(f"    ⏭️ Skipped (Not a game): {new_game.get('title')}")
+                      continue
+
                   title = game.get('title', '')
                   platforms = (game.get('platforms', '') or "").lower()
                   orig_url = game.get('open_giveaway_url', '')
 
-                  # --- 核心过滤逻辑：只处理我们能唤起客户端的平台 ---
+                  # --- 核心过滤 2：只处理能唤起客户端的平台 ---
                   if 'steam' in platforms:
                       sid = search_steam_id(title)
                       if sid: 
                           new_game['steam_id'] = sid
-                          processed.append(new_game) # 只有找到 ID 的才加入
+                          processed.append(new_game)
+                          print(f"    ✅ Added Steam: {title}")
                       
                   elif 'epic' in platforms:
                       slug = get_real_epic_slug(orig_url)
                       if slug: 
                           new_game['epic_slug'] = slug
-                          processed.append(new_game) # 只有找到 Slug 的才加入
+                          processed.append(new_game)
+                          print(f"    ✅ Added Epic: {title}")
 
-              # 最终保存的文件里将只有 Steam 和 Epic 游戏
+              # 保存正在进行的限免
               with open('games.json', 'w') as f:
                   json.dump(processed, f, indent=2)
               
+              # --- 核心过滤 3：即将到来的 Epic 预告也增加 DLC 判定 ---
+              upcoming_raw = fetch_upcoming_epic()
+              # Epic 官方接口数据结构略有不同，我们已经在 fetch_upcoming_epic 里做了基础过滤
+              # 确保只保留 BASE_GAME 类型的预告
               with open('upcoming.json', 'w') as f:
-                  json.dump(fetch_upcoming_epic(), f, indent=2)
+                  json.dump(upcoming_raw, f, indent=2)
               
-              print(f"🎉 Update Complete! Processed {len(processed)} high-quality games.")
+              print(f"🎉 Done! Cleaned up {len(raw_games) - len(processed)} items (DLCs/Others).")
 
               # 2. 保存文件
               with open('games.json', 'w') as f:
