@@ -1,8 +1,8 @@
-name: Update Free Games (Smart Resolve)
+name: Update Free Games (With ID Resolver)
 
 on:
   schedule:
-    - cron: '0 */4 * * *' # 每4小时运行
+    - cron: '0 */4 * * *' # 每4小时运行一次
   workflow_dispatch:      # 允许手动运行
 
 jobs:
@@ -21,83 +21,97 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      - name: Fetch and Analyze Data
+      - name: Fetch and Resolve IDs
         run: |
-          # 创建一个 Python 脚本来处理复杂的链接解析
+          # 创建 Python 脚本
           cat <<EOF > resolver.py
           import requests
           import json
           import re
           import time
 
-          def get_real_url(url):
-              try:
-                  # 模拟浏览器 User-Agent，防止被拦截
-                  headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
-                  # allow_redirects=True 会自动跟随跳转
-                  r = requests.head(url, headers=headers, allow_redirects=True, timeout=10)
-                  return r.url
-              except:
-                  return url
+          def resolve_url_and_get_id(game):
+              redirect_url = game.get('open_giveaway_url', '')
+              if not redirect_url:
+                  return game
 
-          def process_games():
-              # 1. 获取原始数据
-              print("Downloading data...")
-              steam_url = "https://www.gamerpower.com/api/giveaways?platform=steam&type=game&sort-by=value"
-              epic_url = "https://www.gamerpower.com/api/giveaways?platform=epic-games-store&type=game&sort-by=value"
-              
-              data = []
               try:
-                  data += requests.get(steam_url).json()
+                  # 模拟浏览器头，防止被拦截
+                  headers = {
+                      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                  }
+                  
+                  # 发起请求，获取重定向后的最终地址 (allow_redirects=True)
+                  # 使用 HEAD 请求比 GET 更快，只获取头信息即可
+                  response = requests.head(redirect_url, headers=headers, allow_redirects=True, timeout=10)
+                  final_url = response.url
+                  
+                  # 打印日志方便调试
+                  print(f"Resolving: {game['title'][:20]}... -> {final_url}")
+                  
+                  # --- 提取 Steam ID ---
+                  # 格式通常是 store.steampowered.com/app/123456
+                  steam_match = re.search(r'/app/(\d+)', final_url)
+                  if steam_match:
+                      game['steam_id'] = steam_match.group(1)
+                      print(f"  -> Found Steam ID: {game['steam_id']}")
+
+                  # --- 提取 Epic Slug ---
+                  # 格式通常是 store.epicgames.com/xx/p/slug-name
+                  epic_match = re.search(r'/p/([^\/\?]+)', final_url)
+                  if epic_match:
+                      game['epic_slug'] = epic_match.group(1)
+                      print(f"  -> Found Epic Slug: {game['epic_slug']}")
+                      
+              except Exception as e:
+                  print(f"  -> Error resolving {redirect_url}: {e}")
+              
+              return game
+
+          def main():
+              print("Starting data fetch...")
+              # 1. 获取原始数据 (Steam + Epic)
+              steam_api = "https://www.gamerpower.com/api/giveaways?platform=steam&type=game&sort-by=value"
+              epic_api = "https://www.gamerpower.com/api/giveaways?platform=epic-games-store&type=game&sort-by=value"
+              
+              all_games = []
+              
+              try:
+                  print("Fetching Steam data...")
+                  all_games += requests.get(steam_api).json()
               except: pass
               
               try:
-                  data += requests.get(epic_url).json()
+                  print("Fetching Epic data...")
+                  all_games += requests.get(epic_api).json()
               except: pass
 
-              print(f"Found {len(data)} raw items. resolving real IDs...")
+              print(f"Total raw games: {len(all_games)}")
 
-              processed_data = []
-              
-              for game in data:
-                  # 复制一份数据
+              # 2. 遍历每个游戏，解析真实 ID
+              processed_games = []
+              for game in all_games:
+                  # 复制一份，避免引用问题
                   new_game = game.copy()
                   
-                  # 原始跳转链接
-                  original_url = game.get('open_giveaway_url', '')
+                  # 执行解析
+                  new_game = resolve_url_and_get_id(new_game)
                   
-                  # --- Steam ID 解析 ---
-                  # 如果是 Steam 平台，我们需要解析出 ID
-                  if 'steam' in game.get('platforms', '').lower() or 'steam' in game.get('title', '').lower():
-                      real_url = get_real_url(original_url)
-                      # 正则提取 /app/123456
-                      match = re.search(r'/app/(\d+)', real_url)
-                      if match:
-                          new_game['steam_id'] = match.group(1)
-                          print(f"✅ Steam ID found: {new_game['steam_id']} ({game['title']})")
-                      else:
-                          print(f"⚠️ No Steam ID in: {real_url}")
-
-                  # --- Epic 解析 ---
-                  elif 'epic' in game.get('platforms', '').lower():
-                      # Epic 不需要解析跳转，直接从链接提取 slug 即可，通常 GamerPower 的 Epic 链接还算比较规范
-                      # 如果需要，也可以在这里加解析逻辑
-                      pass
-
-                  processed_data.append(new_game)
-                  # 稍微停顿一下，防止请求太快被封
+                  processed_games.append(new_game)
+                  # 稍微停顿，礼貌爬取
                   time.sleep(0.5)
 
-              # 保存结果
+              # 3. 保存结果
               with open('games.json', 'w') as f:
-                  json.dump(processed_data, f, indent=2)
-              print("Done!")
+                  json.dump(processed_games, f, indent=2)
+              
+              print("Done! games.json updated.")
 
           if __name__ == "__main__":
-              process_games()
+              main()
           EOF
 
-          # 运行上面生成的 Python 脚本
+          # 运行脚本
           python resolver.py
 
       - name: Commit and Push
@@ -105,4 +119,4 @@ jobs:
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
           git add games.json
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Update games with Real IDs" && git push)
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update games with resolved IDs" && git push)
