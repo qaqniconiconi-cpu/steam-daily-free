@@ -67,6 +67,7 @@ jobs:
 
           def fetch_upcoming_epic():
               try:
+                  # Epic 接口虽然带 locale=zh-CN，但很多游戏标题依然是英文，所以我们手动加一层翻译
                   url = "https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=CN&allowCountries=CN"
                   res = requests.get(url, headers=HEADERS).json()
                   elements = res['data']['Catalog']['searchStore']['elements']
@@ -74,16 +75,25 @@ jobs:
                   for item in elements:
                       promos = item.get('promotions', {})
                       if promos and promos.get('upcomingPromotionalOffers'):
+                          raw_title = item['title']
+                          #对预告游戏的标题也进行翻译
+                          print(f"  📅 正在处理预告: {raw_title}")
+                          zh_title = translate_to_zh(raw_title)
+                          
                           start_date = promos['upcomingPromotionalOffers'][0]['promotionalOffers'][0]['startDate']
                           img = item['keyImages'][0]['url'] if item.get('keyImages') else ""
+                          
                           upcoming.append({
-                              "title": item['title'], # Epic官方接口自带中文，无需翻译
+                              "title": raw_title,       # 原始英文名
+                              "zh_title": zh_title,     # 翻译后的中文名
                               "image": img,
                               "start_date": start_date,
                               "platform": "Epic Games"
                           })
                   return upcoming
-              except: return []
+              except Exception as e:
+                  print(f"  ❌ 抓取 Epic 预告失败: {e}")
+                  return []
 
           def upload_to_api(filename, data):
               url = "https://system.et-api.com/v1/update/steam-daily-free"
