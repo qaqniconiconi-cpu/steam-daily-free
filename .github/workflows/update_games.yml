@@ -80,20 +80,25 @@ jobs:
                       promos = item.get('promotions', {})
                       if promos and promos.get('upcomingPromotionalOffers'):
                           raw_title = item['title']
-                          zh_title, en_title = get_official_zh_name(raw_title) # 预告也自动翻译
+                          
+                          # ⚡ 核心修复：预告游戏也要去 Steam 官方库查中文名
+                          print(f"  📅 正在识别预告: {raw_title}")
+                          zh_title, clean_title = get_official_zh_name(raw_title)
                           
                           start_date = promos['upcomingPromotionalOffers'][0]['promotionalOffers'][0]['startDate']
                           img = item['keyImages'][0]['url'] if item.get('keyImages') else ""
                           upcoming.append({
                               "title": raw_title,
-                              "zh_title": zh_title,
-                              "clean_title": en_title,
+                              "zh_title": zh_title, # 确保存入这个字段
+                              "clean_title": clean_title,
                               "image": img,
                               "start_date": start_date,
                               "platform": "Epic Games"
                           })
                   return upcoming
-              except: return []
+              except Exception as e:
+                  print(f"  ❌ 抓取预告失败: {e}")
+                  return []
           
           def upload_to_api(filename, data):
               url = "https://system.et-api.com/v1/update/steam-daily-free"
