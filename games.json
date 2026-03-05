@@ -1,24 +1,5 @@
 [
   {
-    "id": 3515,
-    "title": "Planet Coaster (Steam) Giveaway",
-    "worth": "$44.99",
-    "thumbnail": "https://www.gamerpower.com/offers/1/69a86f44a53ea.jpg",
-    "image": "https://www.gamerpower.com/offers/1b/69a86f44a53ea.jpg",
-    "description": "Digiphile is giving away Planet Coaster (Steam) for free! Grab it now before it\u00b4s too late! Planet Coaster is a very popular coaster park simulation game. Seriously, don't miss it!",
-    "instructions": "1. Click the button to visit the giveaway page.\n2. Log in to or register to your Digiphile account.\n3. Link your Steam account if you haven\u2019t already.\n4. Click the button to unlock the Steam game.\n5. Go to \"dashboard\" and click on \"games library\" to redeem your Steam game.",
-    "open_giveaway_url": "https://www.gamerpower.com/open/planet-coaster-steam-giveaway",
-    "published_date": "2026-03-04 12:43:32",
-    "type": "Game",
-    "platforms": "PC, Steam",
-    "end_date": "N/A",
-    "users": 19240,
-    "status": "Active",
-    "gamerpower_url": "https://www.gamerpower.com/planet-coaster-steam-giveaway",
-    "open_giveaway": "https://www.gamerpower.com/open/planet-coaster-steam-giveaway",
-    "steam_id": "2688950"
-  },
-  {
     "id": 3512,
     "title": "World Crafter TD (Steam) Giveaway",
     "worth": "$14.99",
@@ -31,11 +12,13 @@
     "type": "Game",
     "platforms": "PC, Steam",
     "end_date": "2026-03-05 23:59:00",
-    "users": 13110,
+    "users": 13200,
     "status": "Active",
     "gamerpower_url": "https://www.gamerpower.com/world-crafter-td-steam-giveaway",
     "open_giveaway": "https://www.gamerpower.com/open/world-crafter-td-steam-giveaway",
-    "steam_id": "3098890"
+    "steam_id": "3098890",
+    "zh_title": "\u4e16\u754c\u5de5\u5320TD",
+    "clean_title": "World Crafter TD"
   },
   {
     "id": 3510,
@@ -50,11 +33,13 @@
     "type": "Game",
     "platforms": "PC, Android, iOS, Epic Games Store",
     "end_date": "2026-03-05 23:59:00",
-    "users": 11200,
+    "users": 11250,
     "status": "Active",
     "gamerpower_url": "https://www.gamerpower.com/boxes-lost-fragments-epic-games-giveaway",
     "open_giveaway": "https://www.gamerpower.com/open/boxes-lost-fragments-epic-games-giveaway",
-    "epic_slug": "boxes-lost-fragments-079041"
+    "epic_slug": "boxes-lost-fragments-079041",
+    "zh_title": "\u76d2\u5b50\uff1a\u4e22\u5931\u7684\u788e\u7247",
+    "clean_title": "Boxes: Lost Fragments"
   },
   {
     "id": 3509,
@@ -69,11 +54,13 @@
     "type": "Game",
     "platforms": "PC, Epic Games Store",
     "end_date": "2026-03-05 23:59:00",
-    "users": 9520,
+    "users": 9570,
     "status": "Active",
     "gamerpower_url": "https://www.gamerpower.com/my-night-job-epic-games-giveaway",
     "open_giveaway": "https://www.gamerpower.com/open/my-night-job-epic-games-giveaway",
-    "epic_slug": "my-night-job-a416a6"
+    "epic_slug": "my-night-job-a416a6",
+    "zh_title": "\u6211\u7684\u591c\u95f4\u5de5\u4f5c",
+    "clean_title": "My Night Job"
   },
   {
     "id": 3514,
@@ -88,10 +75,12 @@
     "type": "Game",
     "platforms": "PC, Epic Games Store",
     "end_date": "2026-03-31 23:59:00",
-    "users": 5820,
+    "users": 5940,
     "status": "Active",
     "gamerpower_url": "https://www.gamerpower.com/brightgunner-epic-games-giveaway",
     "open_giveaway": "https://www.gamerpower.com/open/brightgunner-epic-games-giveaway",
-    "epic_slug": "rockman2000-eb2f84"
+    "epic_slug": "rockman2000-eb2f84",
+    "zh_title": "\u5149\u660e\u67aa\u624b",
+    "clean_title": "BrightGunner"
   }
 ]
