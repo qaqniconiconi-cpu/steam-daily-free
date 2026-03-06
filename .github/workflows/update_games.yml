@@ -31,9 +31,8 @@ jobs:
           from urllib.parse import quote
           from deep_translator import GoogleTranslator
 
-          # 强化伪装，防止被 Reddit 拦截
           HEADERS = {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 ETalienBot/3.0',
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ETalienBot/4.0',
               'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'
           }
 
@@ -50,17 +49,17 @@ jobs:
               try:
                   translated = GoogleTranslator(source='auto', target='zh-CN').translate(clean_name)
                   return translated, clean_name
-              except:
-                  return clean_name, clean_name
+              except: return clean_name, clean_name
 
           def get_steam_details_by_id(app_id):
               try:
                   res = requests.get(f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=schinese", timeout=10).json()
                   if res[str(app_id)]['success']:
                       data = res[str(app_id)]['data']
-                      return data['name'], data['header_image']
+                      # 返回: 游戏名, 封面图, 是否仍是免费状态
+                      return data['name'], data['header_image'], data.get('is_free', False)
               except: pass
-              return None, None
+              return None, None, False
 
           def get_final_url(url):
               try:
@@ -93,8 +92,7 @@ jobs:
                       raw_title = item['title']
                       if any('\u4e00' <= char <= '\u9fff' for char in raw_title):
                           zh_title, clean_title = raw_title, raw_title
-                      else:
-                          zh_title, clean_title = get_official_zh_name(raw_title)
+                      else: zh_title, clean_title = get_official_zh_name(raw_title)
 
                       if promos.get('promotionalOffers'):
                           offers = promos['promotionalOffers'][0]['promotionalOffers']
@@ -118,41 +116,25 @@ jobs:
               print("正在嗅探 Reddit 情报网...")
               to_paid, free_weekend = [], []
               try:
-                  url = "https://www.reddit.com/r/FreeGameFindings/new.json?limit=50"
+                  url = "https://www.reddit.com/r/FreeGameFindings/new.json?limit=100"
                   res = requests.get(url, headers=HEADERS).json()
                   for post in res['data']['children']:
                       title = post['data']['title'].lower()
                       content_str = (post['data']['url'] + " " + post['data'].get('selftext', '')).lower()
                       full_text = title + " " + content_str
-                      
-                      # ⚡ 修复1：提取帖子的 Flair (标签)
                       flair = str(post['data'].get('link_flair_text') or '').lower()
-                      
                       if '[steam]' not in title: continue
 
-                      # ⚡ 修复2：增加对 flair 标签的判定，只要标签里有 to paid 就报警
                       is_to_paid = 'to paid' in flair or any(kw in full_text for kw in ['paid', 'commercial', 'price', 'premium'])
                       is_weekend = 'weekend' in flair or any(kw in full_text for kw in ['weekend', 'play for free', 'free to play'])
 
                       if is_to_paid or is_weekend:
-                          # ⚡ 修复3：放宽正则，只要带有 app/数字 就能抓出来
                           match = re.search(r'app/(\d+)', content_str)
                           if match:
                               app_id = match.group(1)
-                              steam_name, steam_img = get_steam_details_by_id(app_id)
-                              if not steam_name: continue
-
-                              item = {
-                                  "steam_id": app_id, "zh_title": steam_name,
-                                  "clean_title": post['data']['title'], "thumbnail": steam_img
-                              }
-                              if is_to_paid:
-                                  to_paid.append(item)
-                                  print(f"  🚨 [Reddit预警-转付费]: {steam_name}")
-                              elif is_weekend:
-                                  free_weekend.append(item)
-                                  print(f"  🎮 [Reddit预警-试玩]: {steam_name}")
-              except Exception as e: print(f"❌ Reddit Error (已被拦截或解析失败): {e}")
+                              if is_to_paid: to_paid.append(app_id)
+                              elif is_weekend: free_weekend.append(app_id)
+              except Exception as e: print(f"❌ Reddit Error: {e}")
               return to_paid, free_weekend
 
           def fetch_keylol_intel():
@@ -172,35 +154,21 @@ jobs:
                       is_weekend = any(kw in full_text for kw in ['周末免费', '限免试玩', '免费玩', '週末免費'])
                       
                       if is_to_paid or is_weekend:
-                          # ⚡ 修复3：放宽正则匹配，严防漏抓
                           match = re.search(r'app/(\d+)', full_text)
                           if match:
                               app_id = match.group(1)
-                              steam_name, steam_img = get_steam_details_by_id(app_id)
-                              if steam_name:
-                                  game_data = {
-                                      "steam_id": app_id, "zh_title": steam_name,
-                                      "clean_title": title.replace('【', '[').replace('】', ']'),
-                                      "thumbnail": steam_img
-                                  }
-                                  if is_to_paid:
-                                      to_paid.append(game_data)
-                                      print(f"  🚨 [Keylol预警-转付费]: {steam_name}")
-                                  elif is_weekend:
-                                      free_weekend.append(game_data)
-                                      print(f"  🎮 [Keylol预警-试玩]: {steam_name}")
+                              if is_to_paid: to_paid.append(app_id)
+                              elif is_weekend: free_weekend.append(app_id)
               except Exception as e: print(f"❌ Keylol Error: {e}")
               return to_paid, free_weekend
 
-          # ⚡ 这是之前被我不小心漏掉的上传函数 ⚡
           def upload_to_api(filename, data):
               url = "https://system.et-api.com/v1/update/steam-daily-free"
               headers = {"filename": filename, "Content-Type": "application/json"}
               try: 
                   res = requests.post(url, headers=headers, json=data, timeout=15)
                   print(f"📤 API 上传 [{filename}]: {res.status_code}")
-              except Exception as e: 
-                  print(f"❌ API 上传失败 [{filename}]: {e}")
+              except Exception as e: print(f"❌ API 上传失败 [{filename}]: {e}")
 
           def main():
               print("🚀 Starting Sync...")
@@ -230,23 +198,53 @@ jobs:
               final_active_games.extend(epic_active)
               
               print("Fetching Intel (Reddit + Keylol)...")
+              
+              # 1. 获取新情报 ID
               r_paid, r_weekend = fetch_reddit_intel()
               k_paid, k_weekend = fetch_keylol_intel()
               
-              def merge_intel(list1, list2):
-                  merged = list1.copy()
-                  existing_ids = [x['steam_id'] for x in merged]
-                  for item in list2:
-                      if item['steam_id'] not in existing_ids:
-                          merged.append(item)
-                  return merged
+              # ⚡ 弥补被刷走的盲区，强行锁定宠物怪兽的 Steam ID ⚡
+              raw_to_paid_ids = ["2366060"] 
+              raw_weekend_ids = []
+              
+              # 2. ⚡ 读取旧情报 ID (情报记忆功能，防止被信息流刷走) ⚡
+              try:
+                  old_intel = requests.get("https://system.et-api.com/v1/get/steam-daily-free?filename=intel.json", headers=HEADERS, timeout=10).json()
+                  raw_to_paid_ids.extend([x['steam_id'] for x in old_intel.get('to_paid', [])])
+                  raw_weekend_ids.extend([x['steam_id'] for x in old_intel.get('free_weekend', [])])
+              except: pass
 
-              intel_data = {
-                  "to_paid": merge_intel(r_paid, k_paid),
-                  "free_weekend": merge_intel(r_weekend, k_weekend)
-              }
+              raw_to_paid_ids.extend(r_paid + k_paid)
+              raw_weekend_ids.extend(r_weekend + k_weekend)
+              
+              # 3. 去重
+              raw_to_paid_ids = list(set(raw_to_paid_ids))
+              raw_weekend_ids = list(set(raw_weekend_ids))
+              
+              final_to_paid, final_weekend = [], []
+              
+              print("正在验证情报有效性...")
+              for app_id in raw_to_paid_ids:
+                  name, img, is_free = get_steam_details_by_id(app_id)
+                  # ⚡ 如果游戏到了 3 月 17 号真的转为付费了，is_free 会变成 False，自动将其淘汰
+                  if name and is_free: 
+                      final_to_paid.append({
+                          "steam_id": str(app_id), "zh_title": name, 
+                          "clean_title": name, "thumbnail": img
+                      })
+                      print(f"  🚨 [有效预警-转付费]: {name}")
 
-              # ⚡ 现在 upload_to_api 可以正常工作了 ⚡
+              for app_id in raw_weekend_ids:
+                  name, img, _ = get_steam_details_by_id(app_id)
+                  if name:
+                      final_weekend.append({
+                          "steam_id": str(app_id), "zh_title": name, 
+                          "clean_title": name, "thumbnail": img
+                      })
+                      print(f"  🎮 [有效预警-试玩]: {name}")
+
+              intel_data = {"to_paid": final_to_paid, "free_weekend": final_weekend}
+
               upload_to_api("games.json", final_active_games)
               upload_to_api("upcoming.json", epic_upcoming)
               upload_to_api("intel.json", intel_data)
@@ -263,4 +261,4 @@ jobs:
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
           git add *.json || true
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Fix API upload and crawler bugs" && git push)
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Fix temporal blindspot and add memory purge" && git push)
