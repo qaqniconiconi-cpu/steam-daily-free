@@ -1,104 +1,151 @@
-// --- 核心工具函数修复 ---
-    const formatTime = (dateStr) => {
-      if (!dateStr || dateStr === 'N/A') return null; // ⚡ 不显示时间时返回 null
-      const date = new Date(dateStr);
-      if (isNaN(date.getTime()) || date < new Date()) return null;
-      return `${date.getMonth() + 1}月${date.getDate()}日截止`;
-    };
+name: Update Games (Pro Filter & Anti-Block)
 
-    function GameCard({ game, status }) {
-      const isSteam = !!game.steam_id;
-      const clientUrl = isSteam ? `steam://store/${game.steam_id}` : `com.epicgames.launcher://store/p/${game.epic_slug}`;
-      
-      let badgeLabel = "喜加一";
-      if (status === 'to_paid') badgeLabel = "即将转付费";
-      else if (status === 'free_weekend') badgeLabel = "限时免费玩";
+on:
+  schedule:
+    - cron: '0 */4 * * *'
+  workflow_dispatch:
 
-      const timeLabel = formatTime(game.end_date);
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
 
-      return (
-        <div className="premium-card group relative bg-gradient-to-br from-white/[0.04] to-transparent border border-white/5 hover:border-white/20 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row gap-5 md:gap-6 overflow-hidden backdrop-blur-md transition-all duration-500 hover:-translate-y-1 sm:h-44 w-full">
-          <div className="relative shrink-0 rounded-xl overflow-hidden h-40 sm:h-full sm:w-60 bg-[#121215] border border-white/5 z-10">
-            <img src={game.thumbnail} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-            <div className="absolute top-2 left-2 px-2.5 py-1 rounded bg-black/60 backdrop-blur-md border border-white/10 text-[10px] font-bold text-white uppercase tracking-widest">
-                {badgeLabel}
-            </div>
-          </div>
-          <div className="flex-1 flex flex-col justify-between z-10 min-w-0 py-1">
-            <div className="flex flex-col gap-2">
-              {/* ⚡ Hover 显示中英文名称 */}
-              <div 
-                className="text-lg font-bold text-white group-hover:text-amber-500 transition-colors line-clamp-1 cursor-help w-fit"
-                title={`${game.en_title} (${game.zh_title})`}
-              >
-                {game.zh_title || game.title}
-              </div>
-              {/* ⚡ 备注：仅显示游戏信息 */}
-              <div className="text-[0.7rem] text-neutral-400 font-normal line-clamp-2 leading-relaxed">
-                {game.short_description || "暂无详细说明，建议立即入库体验。"}
-              </div>
-              {/* ⚡ 动态显示时间标签：无时间则不显示 */}
-              {timeLabel && (
-                <div className="flex items-center gap-1.5 text-xs text-amber-500/80 mt-2 font-medium bg-amber-500/5 w-fit px-2 py-1 rounded-md border border-amber-500/10">
-                  <Clock className="w-3.5 h-3.5" />
-                  <span>{timeLabel}</span>
-                </div>
-              )}
-            </div>
-            <div className="mt-4 sm:mt-0 flex justify-end">
-              <a href={clientUrl} className="group/btn flex items-center justify-center gap-2 px-5 py-2 rounded-xl font-bold text-sm bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/30 text-neutral-300 hover:text-white transition-all">
-                {isSteam ? <SteamIcon className="w-4 h-4 opacity-70" /> : <EpicIcon className="w-4 h-4 opacity-70" />}
-                <span className="tracking-wider">一键前往</span>
-              </a>
-            </div>
-          </div>
-        </div>
-      );
-    }
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
 
-    // --- App 组件渲染逻辑调整 ---
-    function App() {
-      // ... 之前的 fetchData 逻辑保持不变 ...
+      - name: Install dependencies
+        run: pip install requests deep-translator
 
-      return (
-        <div className="min-h-screen bg-[#0a0a0c] text-neutral-200">
-          <main className="max-w-[1400px] mx-auto px-6 py-12">
-            {/* 1. 喜加一区域 */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-20">
-              <section>
-                <h2 className="text-xl font-bold text-white mb-6 border-b border-white/5 pb-4">Steam 现在可领</h2>
-                <div className="flex flex-col gap-5">
-                   {data.active.filter(g => g.steam_id).map((g, i) => <GameCard key={i} game={g} status="permanent" />)}
-                </div>
-              </section>
-              <section>
-                <h2 className="text-xl font-bold text-white mb-6 border-b border-white/5 pb-4">Epic 现在可领</h2>
-                <div className="flex flex-col gap-5">
-                   {data.active.filter(g => g.epic_slug).map((g, i) => <GameCard key={i} game={g} status="permanent" />)}
-                </div>
-              </section>
-            </div>
+      - name: Run Smart Processor
+        run: |
+          cat <<EOF > processor.py
+          import requests
+          import json
+          import re
+          import time
+          import xml.etree.ElementTree as ET
+          from urllib.parse import quote
+          from datetime import datetime
 
-            {/* 2. ⚡ 新增：特工情报分区 */}
-            {(data.intel.to_paid.length > 0 || data.intel.free_weekend.length > 0) && (
-              <section className="mb-20 bg-white/[0.01] border border-white/5 p-8 rounded-3xl">
-                <h2 className="text-xl font-bold text-white mb-8 text-center flex items-center justify-center gap-3">
-                  <span className="w-8 h-[1px] bg-gradient-to-r from-transparent to-amber-500"></span>
-                  特工情报：转付费 & 限时试玩
-                  <span className="w-8 h-[1px] bg-gradient-to-l from-transparent to-amber-500"></span>
-                </h2>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  {data.intel.to_paid.map((g, i) => <GameCard key={i} game={g} status="to_paid" />)}
-                  {data.intel.free_weekend.map((g, i) => <GameCard key={i} game={g} status="free_weekend" />)}
-                </div>
-              </section>
-            )}
+          HEADERS = {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+              'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'
+          }
 
-            {/* 3. 即将到来区域 */}
-            <section className="mt-20 border-t border-white/5 pt-12">
-               {/* ... Upcoming 渲染逻辑 ... */}
-            </section>
-          </main>
-        </div>
-      );
-    }
+          def get_steam_details(app_id):
+              try:
+                  url_zh = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=schinese&cc=CN"
+                  res_zh = requests.get(url_zh, headers=HEADERS, timeout=10).json()
+                  url_en = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=english"
+                  res_en = requests.get(url_en, headers=HEADERS, timeout=10).json()
+
+                  if str(app_id) in res_zh and res_zh[str(app_id)]['success']:
+                      d = res_zh[str(app_id)]['data']
+                      d_en = res_en[str(app_id)]['data'] if str(app_id) in res_en else {}
+                      
+                      end_date = "N/A"
+                      price_info = d.get('price_overview', {})
+                      expiry_ts = price_info.get('discount_expiration')
+                      if expiry_ts:
+                          end_date = datetime.fromtimestamp(int(expiry_ts)).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+                      raw_desc = d.get('short_description', '')
+                      clean_desc = re.sub('<[^<]+?>', '', raw_desc).replace('\r', '').replace('\n', '').strip()
+                      short_desc = clean_desc.split('。')[0] if '。' in clean_desc else clean_desc
+
+                      return {
+                          "zh_title": d.get('name'),
+                          "en_title": d_en.get('name', d.get('name')),
+                          "thumbnail": d.get('header_image'),
+                          "short_description": short_desc,
+                          "type": d.get('type', 'game'),
+                          "is_free": d.get('is_free', False) or price_info.get('discount_percent') == 100,
+                          "end_date": end_date
+                      }
+              except: pass
+              return None
+
+          def fetch_epic_official():
+              active, upcoming = [], []
+              try:
+                  res = requests.get("https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=CN&allowCountries=CN", headers=HEADERS).json()
+                  for item in res['data']['Catalog']['searchStore']['elements']:
+                      promos = item.get('promotions')
+                      if not promos: continue
+                      img = next((i['url'] for i in item.get('keyImages', []) if i['type'] in ['OfferImageWide', 'Thumbnail']), "")
+                      slug = item.get('productSlug') or (item.get('catalogNs', {}).get('mappings', [{}])[0].get('pageSlug')) or item.get('urlSlug')
+                      if promos.get('promotionalOffers'):
+                          offers = promos['promotionalOffers'][0]['promotionalOffers']
+                          if offers and offers[0].get('discountSetting', {}).get('discountPercentage') == 0:
+                              active.append({"zh_title": item['title'], "en_title": item['title'], "thumbnail": img, "end_date": offers[0]['endDate'], "epic_slug": slug, "short_description": "Epic 平台限免作品"})
+                      elif promos.get('upcomingPromotionalOffers'):
+                          offers = promos['upcomingPromotionalOffers'][0]['promotionalOffers']
+                          if offers:
+                              upcoming.append({"zh_title": item['title'], "image": img, "start_date": offers[0]['startDate'], "platform": "Epic Games", "short_description": "即将开启免费领取"})
+              except: pass
+              return active, upcoming
+
+          def fetch_intel_ids():
+              ids = []
+              sources = ["https://www.reddit.com/r/FreeGameFindings/new.rss", "https://www.reddit.com/r/GameDeals/new.rss", "https://keylol.com/forum.php?mod=rss&fid=319"]
+              for url in sources:
+                  try:
+                      res = requests.get(url, headers=HEADERS, timeout=15)
+                      ids.extend(re.findall(r'app/(\d+)', res.text))
+                  except: pass
+              return list(set(ids))
+
+          def upload_to_api(filename, data):
+              url = "https://system.et-api.com/v1/update/steam-daily-free"
+              headers = {"filename": filename, "Content-Type": "application/json"}
+              try: requests.post(url, headers=headers, json=data, timeout=15)
+              except: pass
+
+          def main():
+              print("🚀 Starting Intelligence Sync...")
+              probe_ids = list(set(fetch_intel_ids() + ["2366060", "255710", "780310", "493340"]))
+              final_to_paid, final_weekend = [], []
+              for app_id in probe_ids:
+                  info = get_steam_details(app_id)
+                  # ⚡ 过滤 DLC 逻辑
+                  if info and info['is_free'] and info['type'] == 'game':
+                      item = {"steam_id": app_id, "zh_title": info['zh_title'], "en_title": info['en_title'], "thumbnail": info['thumbnail'], "short_description": info['short_description'], "end_date": info['end_date']}
+                      if info['end_date'] == "N/A": final_to_paid.append(item)
+                      else: final_weekend.append(item)
+
+              active_games = []
+              try:
+                  gp = requests.get("https://www.gamerpower.com/api/giveaways?platform=steam", headers=HEADERS).json()
+                  for g in gp:
+                      if g.get('type') == 'Game':
+                          m = re.search(r'app/(\d+)', g.get('open_giveaway_url', ''))
+                          if m:
+                              s = get_steam_details(m.group(1))
+                              if s: active_games.append({"steam_id": m.group(1), "zh_title": s['zh_title'], "en_title": s['en_title'], "thumbnail": s['thumbnail'], "end_date": s['end_date'], "short_description": s['short_description'], "open_giveaway_url": g.get('open_giveaway_url')})
+              except: pass
+
+              epic_a, epic_u = fetch_epic_official()
+              active_games.extend(epic_a)
+
+              upload_to_api("games.json", active_games)
+              upload_to_api("upcoming.json", epic_u)
+              upload_to_api("intel.json", {"to_paid": final_to_paid, "free_weekend": final_weekend})
+              print("🎉 Intel Updated!")
+
+          if __name__ == "__main__":
+              main()
+          EOF
+
+          python processor.py
+
+      - name: Commit and Push
+        run: |
+          git config --global user.name 'GitHub Action'
+          git config --global user.email 'action@github.com'
+          git add *.json || true
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Fix Indentation and Filter DLC" && git push)
