@@ -50,13 +50,22 @@ jobs:
                       
                       end_date = "N/A"
                       price_info = d.get('price_overview', {})
+                      # 获取折扣过期时间
                       expiry_ts = price_info.get('discount_expiration')
                       if expiry_ts:
                           end_date = datetime.fromtimestamp(int(expiry_ts)).strftime('%Y-%m-%dT%H:%M:%SZ')
 
+                      # 提取描述
                       raw_desc = d.get('short_description', '')
                       clean_desc = re.sub('<[^<]+?>', '', raw_desc).replace('\r', '').replace('\n', '').strip()
                       short_desc = clean_desc.split('。')[0] if '。' in clean_desc else clean_desc
+
+                      # ⚡ 增强免费判定：增加 final == 0 的检查，覆盖试玩游戏
+                      is_currently_free = (
+                          d.get('is_free', False) or 
+                          price_info.get('discount_percent') == 100 or 
+                          price_info.get('final') == 0
+                      )
 
                       return {
                           "zh_title": d.get('name'),
@@ -64,10 +73,11 @@ jobs:
                           "thumbnail": d.get('header_image'),
                           "short_description": short_desc,
                           "type": d.get('type', 'game'),
-                          "is_free": d.get('is_free', False) or price_info.get('discount_percent') == 100,
+                          "is_free": is_currently_free,
                           "end_date": end_date
                       }
-              except: pass
+              except: 
+                  pass
               return None
 
           def fetch_epic_official():
@@ -87,7 +97,8 @@ jobs:
                           offers = promos['upcomingPromotionalOffers'][0]['promotionalOffers']
                           if offers:
                               upcoming.append({"zh_title": item['title'], "image": img, "start_date": offers[0]['startDate'], "platform": "Epic Games", "short_description": "即将开启免费领取"})
-              except: pass
+              except: 
+                  pass
               return active, upcoming
 
           def fetch_intel_ids():
@@ -97,26 +108,45 @@ jobs:
                   try:
                       res = requests.get(url, headers=HEADERS, timeout=15)
                       ids.extend(re.findall(r'app/(\d+)', res.text))
-                  except: pass
+                  except: 
+                      pass
               return list(set(ids))
 
           def upload_to_api(filename, data):
               url = "https://system.et-api.com/v1/update/steam-daily-free"
               headers = {"filename": filename, "Content-Type": "application/json"}
-              try: requests.post(url, headers=headers, json=data, timeout=15)
-              except: pass
+              try: 
+                  requests.post(url, headers=headers, json=data, timeout=15)
+              except: 
+                  pass
 
           def main():
               print("🚀 Starting Intelligence Sync...")
-              probe_ids = list(set(fetch_intel_ids() + ["2366060", "255710", "780310", "493340"]))
+              # 定义已知分类，辅助脚本判断
+              WEEKEND_IDS = ["255710", "780310", "493340"]
+              TO_PAID_IDS = ["2366060"]
+              
+              probe_ids = list(set(fetch_intel_ids() + TO_PAID_IDS + WEEKEND_IDS))
               final_to_paid, final_weekend = [], []
+              
               for app_id in probe_ids:
                   info = get_steam_details(app_id)
-                  # ⚡ 过滤 DLC 逻辑
+                  # ⚡ 过滤 DLC，仅保留游戏本体
                   if info and info['is_free'] and info['type'] == 'game':
-                      item = {"steam_id": app_id, "zh_title": info['zh_title'], "en_title": info['en_title'], "thumbnail": info['thumbnail'], "short_description": info['short_description'], "end_date": info['end_date']}
-                      if info['end_date'] == "N/A": final_to_paid.append(item)
-                      else: final_weekend.append(item)
+                      item = {
+                          "steam_id": app_id, 
+                          "zh_title": info['zh_title'], 
+                          "en_title": info['en_title'], 
+                          "thumbnail": info['thumbnail'], 
+                          "short_description": info['short_description'], 
+                          "end_date": info['end_date']
+                      }
+                      
+                      # ⚡ 改进分类逻辑：优先匹配已知试玩 ID 或具有截止日期的条目
+                      if app_id in WEEKEND_IDS or info['end_date'] != "N/A":
+                          final_weekend.append(item)
+                      else:
+                          final_to_paid.append(item)
 
               active_games = []
               try:
@@ -126,8 +156,17 @@ jobs:
                           m = re.search(r'app/(\d+)', g.get('open_giveaway_url', ''))
                           if m:
                               s = get_steam_details(m.group(1))
-                              if s: active_games.append({"steam_id": m.group(1), "zh_title": s['zh_title'], "en_title": s['en_title'], "thumbnail": s['thumbnail'], "end_date": s['end_date'], "short_description": s['short_description'], "open_giveaway_url": g.get('open_giveaway_url')})
-              except: pass
+                              if s: active_games.append({
+                                  "steam_id": m.group(1), 
+                                  "zh_title": s['zh_title'], 
+                                  "en_title": s['en_title'], 
+                                  "thumbnail": s['thumbnail'], 
+                                  "end_date": s['end_date'], 
+                                  "short_description": s['short_description'], 
+                                  "open_giveaway_url": g.get('open_giveaway_url')
+                              })
+              except: 
+                  pass
 
               epic_a, epic_u = fetch_epic_official()
               active_games.extend(epic_a)
@@ -148,4 +187,4 @@ jobs:
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
           git add *.json || true
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Fix Indentation and Filter DLC" && git push)
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Restore Free Weekend content and Fix logic" && git push)
