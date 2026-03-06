@@ -53,13 +53,16 @@ jobs:
               except: return clean_name, clean_name
 
           def get_steam_details_by_id(app_id):
+              """通过 Steam API 精准获取官方中文名、高清大图和【短描述】"""
               try:
+                  # l=schinese 获取中文描述
                   res = requests.get(f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=schinese", timeout=10).json()
                   if res[str(app_id)]['success']:
-                      data = res[str(app_id)]['data']
-                      return data['name'], data['header_image']
-              except: pass
-              return None, None
+                       data = res[str(app_id)]['data']
+                       # 这里拿到的 short_description 就是你想要的“超经典城市模拟游戏”这类文案的来源
+                       return data['name'], data['header_image'], data.get('short_description', '')
+               except: pass
+               return None, None, ""
 
           # ⚡ 这里是上次不小心被删掉的 Epic 抓取函数，现在补回来了！⚡
           def fetch_epic_official():
