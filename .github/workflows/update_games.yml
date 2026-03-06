@@ -1,162 +1,150 @@
-name: Update Games (Strict Filter & Translate)
+import requests
+import json
+import re
+import time
+from urllib.parse import quote
+from deep_translator import GoogleTranslator
 
-on:
-  schedule:
-    - cron: '0 */4 * * *'
-  workflow_dispatch:
+HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'
+}
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v3
+def get_official_zh_name(english_title):
+    clean_name = re.split(r'\(Steam|\(Epic|Giveaway|Free|Standard|Edition', english_title, flags=re.IGNORECASE)[0].strip()
+    try:
+        search_url = f"https://store.steampowered.com/api/storesearch/?term={quote(clean_name)}&l=schinese&cc=CN"
+        res = requests.get(search_url, headers=HEADERS, timeout=10).json()
+        if res.get('total', 0) > 0:
+            official_name = res['items'][0]['name']
+            if any('\u4e00' <= char <= '\u9fff' for char in official_name):
+                return official_name, clean_name
+    except: pass
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
+    try:
+        translated = GoogleTranslator(source='auto', target='zh-CN').translate(clean_name)
+        return translated, clean_name
+    except:
+        return clean_name, clean_name
 
-      - name: Install dependencies
-        # ⚡ 增加 deep-translator 用于翻译游戏名
-        run: pip install requests deep-translator
+def get_final_url(url):
+    try:
+        res = requests.get(url, headers=HEADERS, allow_redirects=True, timeout=15)
+        return res.url
+    except: return url
 
-      - name: Run Smart Processor
-        run: |
-          cat <<EOF > processor.py
-          
-          import requests
-          import json
-          import re
-          import time
-          from urllib.parse import quote
-          from deep_translator import GoogleTranslator
-          
-          HEADERS = {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-              'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'
-          }
-          
-          def get_official_zh_name(english_title):
-              """【全自动】优先从 Steam 官方库获取中文名，失败则机翻"""
-              # 1. 预处理：去掉标题里的干扰词，只留核心游戏名
-              clean_name = re.split(r'\(Steam|\(Epic|Giveaway|Free|Standard|Edition', english_title, flags=re.IGNORECASE)[0].strip()
-              
-              try:
-                  # 2. 调用 Steam 搜索接口，指定简中 (schinese) 和中国区 (CN)
-                  search_url = f"https://store.steampowered.com/api/storesearch/?term={quote(clean_name)}&l=schinese&cc=CN"
-                  res = requests.get(search_url, headers=HEADERS, timeout=10).json()
-                  
-                  if res.get('total', 0) > 0:
-                      official_name = res['items'][0]['name']
-                      # 如果名字里包含汉字，说明是正经中文名
-                      if any('\u4e00' <= char <= '\u9fff' for char in official_name):
-                          return official_name, clean_name
-              except:
-                  pass
-          
-              # 3. 兜底方案：机翻
-              try:
-                  translated = GoogleTranslator(source='auto', target='zh-CN').translate(clean_name)
-                  return translated, clean_name
-              except:
-                  return clean_name, clean_name
-          
-          def get_final_url(url):
-              try:
-                  res = requests.get(url, headers=HEADERS, allow_redirects=True, timeout=15)
-                  return res.url
-              except:
-                  return url
-          
-          def fetch_upcoming_epic():
-              try:
-                  url = "https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=CN&allowCountries=CN"
-                  res = requests.get(url, headers=HEADERS).json()
-                  elements = res['data']['Catalog']['searchStore']['elements']
-                  upcoming = []
-                  for item in elements:
-                      promos = item.get('promotions', {})
-                      if promos and promos.get('upcomingPromotionalOffers'):
-                          raw_title = item['title']
-                          
-                          # ⚡ 核心修复：预告游戏也要去 Steam 官方库查中文名
-                          print(f"  📅 正在识别预告: {raw_title}")
-                          zh_title, clean_title = get_official_zh_name(raw_title)
-                          
-                          start_date = promos['upcomingPromotionalOffers'][0]['promotionalOffers'][0]['startDate']
-                          img = item['keyImages'][0]['url'] if item.get('keyImages') else ""
-                          upcoming.append({
-                              "title": raw_title,
-                              "zh_title": zh_title, # 确保存入这个字段
-                              "clean_title": clean_title,
-                              "image": img,
-                              "start_date": start_date,
-                              "platform": "Epic Games"
-                          })
-                  return upcoming
-              except Exception as e:
-                  print(f"  ❌ 抓取预告失败: {e}")
-                  return []
-          
-          def upload_to_api(filename, data):
-              url = "https://system.et-api.com/v1/update/steam-daily-free"
-              headers = {"filename": filename, "Content-Type": "application/json"}
-              try:
-                  res = requests.post(url, headers=headers, json=data, timeout=15)
-                  print(f"📤 API 上传 [{filename}]: {res.status_code}")
-              except: pass
-          
-          def main():
-              print("🚀 启动全自动识别与翻译程序...")
-              active_api = "https://www.gamerpower.com/api/giveaways?sort-by=value"
-              raw_games = []
-              for p in ['steam', 'epic-games-store']:
-                  try:
-                      res = requests.get(f"{active_api}&platform={p}", headers=HEADERS).json()
-                      if isinstance(res, list): raw_games += res
-                  except: pass
-          
-              processed = []
-              for game in raw_games:
-                  if game.get('type') != 'Game': continue
-                  
-                  new_game = game.copy()
-                  raw_title = game.get('title', '')
-                  platforms = (game.get('platforms', '') or "").lower()
-                  orig_url = game.get('open_giveaway_url', '')
-          
-                  # ⚡ 自动获取官中
-                  zh_title, clean_title = get_official_zh_name(raw_title)
-                  new_game['zh_title'] = zh_title
-                  new_game['clean_title'] = clean_title
-          
-                  final_url = get_final_url(orig_url)
-                  if 'steam' in platforms and 'steampowered.com' in final_url:
-                      match = re.search(r'/app/(\d+)', final_url)
-                      if match: 
-                          new_game['steam_id'] = match.group(1)
-                          processed.append(new_game)
-                  elif 'epic' in platforms and 'epicgames.com' in final_url:
-                      match = re.search(r'/(p|product)/([a-zA-Z0-9\-\%]+)', final_url)
-                      if match: 
-                          new_game['epic_slug'] = match.group(2)
-                          processed.append(new_game)
-          
-              upload_to_api("games.json", processed)
-              upload_to_api("upcoming.json", fetch_upcoming_epic())
-              print("🎉 同步完成！")
-          
-          if __name__ == "__main__":
-              main()
-          EOF
+def fetch_epic_official():
+    """⚡ 从 Epic 官方接口同时抓取 Active 和 Upcoming，绝对不会漏"""
+    active_epic = []
+    upcoming_epic = []
+    try:
+        url = "https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=CN&allowCountries=CN"
+        res = requests.get(url, headers=HEADERS).json()
+        elements = res['data']['Catalog']['searchStore']['elements']
+        
+        for item in elements:
+            promos = item.get('promotions')
+            if not promos: continue
+            
+            # 获取图片 (优先拿宽图或缩略图)
+            img = ""
+            for image in item.get('keyImages', []):
+                if image['type'] in ['OfferImageWide', 'Thumbnail', 'DieselStoreFrontWide']:
+                    img = image['url']
+                    break
+            if not img and item.get('keyImages'): img = item['keyImages'][0]['url']
+                
+            # 获取 Epic Slug (Epic 的 slug 位置不固定，做多重匹配兜底)
+            slug = item.get('productSlug')
+            if not slug and item.get('catalogNs', {}).get('mappings'):
+                slug = item['catalogNs']['mappings'][0].get('pageSlug')
+            if not slug: slug = item.get('urlSlug')
 
-          python processor.py
+            raw_title = item['title']
+            # 判断中文：如果 Epic 接口自带中文就不翻译了，没有才去查 Steam 库
+            if any('\u4e00' <= char <= '\u9fff' for char in raw_title):
+                zh_title, clean_title = raw_title, raw_title
+            else:
+                zh_title, clean_title = get_official_zh_name(raw_title)
 
-      - name: Commit and Push
-        run: |
-          git config --global user.name 'GitHub Action'
-          git config --global user.email 'action@github.com'
-          git add games.json upcoming.json
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Update games with translation and strict filters" && git push)
+            # 分拣：正在进行 vs 即将到来
+            if promos.get('promotionalOffers'):
+                offers = promos['promotionalOffers'][0]['promotionalOffers']
+                # 确保是免费游戏 (折扣后价格为0或100% off)
+                if offers and offers[0].get('discountSetting', {}).get('discountPercentage') == 0:
+                    active_epic.append({
+                        "title": raw_title,
+                        "zh_title": zh_title,
+                        "clean_title": clean_title,
+                        "thumbnail": img,
+                        "end_date": offers[0]['endDate'],
+                        "epic_slug": slug,
+                        "open_giveaway_url": f"https://store.epicgames.com/zh-CN/p/{slug}"
+                    })
+                    print(f"  ✅ [Epic Active]: {zh_title}")
+                    
+            elif promos.get('upcomingPromotionalOffers'):
+                offers = promos['upcomingPromotionalOffers'][0]['promotionalOffers']
+                if offers:
+                    upcoming_epic.append({
+                        "title": raw_title,
+                        "zh_title": zh_title,
+                        "clean_title": clean_title,
+                        "image": img,
+                        "start_date": offers[0]['startDate'],
+                        "platform": "Epic Games"
+                    })
+                    print(f"  📅 [Epic Upcoming]: {zh_title}")
+    except Exception as e:
+        print(f"❌ Epic 接口抓取失败: {e}")
+        
+    return active_epic, upcoming_epic
+
+def upload_to_api(filename, data):
+    url = "https://system.et-api.com/v1/update/steam-daily-free"
+    headers = {"filename": filename, "Content-Type": "application/json"}
+    try:
+        requests.post(url, headers=headers, json=data, timeout=15)
+    except: pass
+
+def main():
+    print("🚀 启动数据抓取引擎 (Steam 依赖 GP, Epic 官方直连)...")
+    final_active_games = []
+
+    # 1. 抓取 Steam (来自 GamerPower)
+    print("正在获取 Steam 喜加一...")
+    try:
+        steam_api = "https://www.gamerpower.com/api/giveaways?sort-by=value&platform=steam"
+        raw_steam = requests.get(steam_api, headers=HEADERS).json()
+        for game in raw_steam:
+            if game.get('type') != 'Game': continue
+            
+            raw_title = game.get('title', '')
+            zh_title, clean_title = get_official_zh_name(raw_title)
+            
+            new_game = game.copy()
+            new_game['zh_title'] = zh_title
+            new_game['clean_title'] = clean_title
+            
+            final_url = get_final_url(game.get('open_giveaway_url', ''))
+            if 'steampowered.com' in final_url:
+                match = re.search(r'/app/(\d+)', final_url)
+                if match: 
+                    new_game['steam_id'] = match.group(1)
+                    final_active_games.append(new_game)
+                    print(f"  ✅ [Steam]: {zh_title}")
+    except Exception as e:
+        print(f"❌ Steam 抓取失败: {e}")
+
+    # 2. 抓取 Epic (直连 Epic 官方，100% 准确)
+    print("正在获取 Epic 喜加一 (官方接口)...")
+    epic_active, epic_upcoming = fetch_epic_official()
+    final_active_games.extend(epic_active)
+
+    # 3. 推送到公司 API
+    upload_to_api("games.json", final_active_games)
+    upload_to_api("upcoming.json", epic_upcoming)
+    print("🎉 所有数据同步完成！")
+
+if __name__ == "__main__":
+    main()
