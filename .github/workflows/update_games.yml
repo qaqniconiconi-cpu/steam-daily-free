@@ -31,7 +31,7 @@ jobs:
           from deep_translator import GoogleTranslator
 
           HEADERS = {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ETalienBot/1.0',
               'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'
           }
 
@@ -45,12 +45,21 @@ jobs:
                       if any('\u4e00' <= char <= '\u9fff' for char in official_name):
                           return official_name, clean_name
               except: pass
-
               try:
                   translated = GoogleTranslator(source='auto', target='zh-CN').translate(clean_name)
                   return translated, clean_name
               except:
                   return clean_name, clean_name
+
+          def get_steam_details_by_id(app_id):
+              """通过 Steam ID 精准获取官方中文名和高清大图"""
+              try:
+                  res = requests.get(f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=schinese", timeout=10).json()
+                  if res[str(app_id)]['success']:
+                      data = res[str(app_id)]['data']
+                      return data['name'], data['header_image']
+              except: pass
+              return None, None
 
           def get_final_url(url):
               try:
@@ -65,14 +74,13 @@ jobs:
                   url = "https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=CN&allowCountries=CN"
                   res = requests.get(url, headers=HEADERS).json()
                   elements = res['data']['Catalog']['searchStore']['elements']
-                  
                   for item in elements:
                       promos = item.get('promotions')
                       if not promos: continue
                       
                       img = ""
                       for image in item.get('keyImages', []):
-                          if image['type'] in ['OfferImageWide', 'Thumbnail', 'DieselStoreFrontWide']:
+                          if image['type'] in ['OfferImageWide', 'Thumbnail']:
                               img = image['url']
                               break
                       if not img and item.get('keyImages'): img = item['keyImages'][0]['url']
@@ -92,37 +100,69 @@ jobs:
                           offers = promos['promotionalOffers'][0]['promotionalOffers']
                           if offers and offers[0].get('discountSetting', {}).get('discountPercentage') == 0:
                               active_epic.append({
-                                  "title": raw_title,
-                                  "zh_title": zh_title,
-                                  "clean_title": clean_title,
-                                  "thumbnail": img,
-                                  "end_date": offers[0]['endDate'],
-                                  "epic_slug": slug,
+                                  "title": raw_title, "zh_title": zh_title, "clean_title": clean_title,
+                                  "thumbnail": img, "end_date": offers[0]['endDate'], "epic_slug": slug,
                                   "open_giveaway_url": f"https://store.epicgames.com/zh-CN/p/{slug}"
                               })
-                              print(f"  ✅ [Epic Active]: {zh_title}")
-                              
                       elif promos.get('upcomingPromotionalOffers'):
                           offers = promos['upcomingPromotionalOffers'][0]['promotionalOffers']
                           if offers:
                               upcoming_epic.append({
-                                  "title": raw_title,
-                                  "zh_title": zh_title,
-                                  "clean_title": clean_title,
-                                  "image": img,
-                                  "start_date": offers[0]['startDate'],
-                                  "platform": "Epic Games"
+                                  "title": raw_title, "zh_title": zh_title, "clean_title": clean_title,
+                                  "image": img, "start_date": offers[0]['startDate'], "platform": "Epic Games"
                               })
-                              print(f"  📅 [Epic Upcoming]: {zh_title}")
-              except Exception as e:
-                  print(f"❌ Epic Fetch Error: {e}")
+              except Exception as e: print(f"❌ Epic Error: {e}")
               return active_epic, upcoming_epic
+
+          def fetch_reddit_intel():
+              """📡 核心新增：抓取全球羊毛党社区情报 (转付费 & 免费试玩)"""
+              print("正在嗅探 Reddit 情报网...")
+              to_paid = []
+              free_weekend = []
+              try:
+                  url = "https://www.reddit.com/r/FreeGameFindings/new.json?limit=50"
+                  res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0 ETalienBot/1.0'}).json()
+                  for post in res['data']['children']:
+                      title = post['data']['title'].lower()
+                      content_str = post['data']['url'] + " " + post['data'].get('selftext', '')
+                      
+                      if '[steam]' not in title: continue
+
+                      is_to_paid = 'paid' in title or 'commercial' in title or 'price' in title
+                      is_weekend = 'weekend' in title or 'play for free' in title or 'free to play' in title
+
+                      if is_to_paid or is_weekend:
+                          match = re.search(r'/app/(\d+)', content_str)
+                          if match:
+                              app_id = match.group(1)
+                              # 避免重复
+                              if app_id in [x['steam_id'] for x in to_paid] or app_id in [x['steam_id'] for x in free_weekend]:
+                                  continue
+                              
+                              steam_name, steam_img = get_steam_details_by_id(app_id)
+                              if not steam_name: continue
+
+                              item = {
+                                  "steam_id": app_id,
+                                  "zh_title": steam_name,
+                                  "clean_title": post['data']['title'], # 记录原帖标题，备查
+                                  "thumbnail": steam_img
+                              }
+
+                              if is_to_paid:
+                                  to_paid.append(item)
+                                  print(f"  🚨 [预警-转付费]: {steam_name}")
+                              elif is_weekend:
+                                  free_weekend.append(item)
+                                  print(f"  🎮 [预警-免费试玩]: {steam_name}")
+              except Exception as e:
+                  print(f"❌ Reddit 嗅探失败: {e}")
+              return {"to_paid": to_paid, "free_weekend": free_weekend}
 
           def upload_to_api(filename, data):
               url = "https://system.et-api.com/v1/update/steam-daily-free"
               headers = {"filename": filename, "Content-Type": "application/json"}
-              try:
-                  requests.post(url, headers=headers, json=data, timeout=15)
+              try: requests.post(url, headers=headers, json=data, timeout=15)
               except: pass
 
           def main():
@@ -131,14 +171,11 @@ jobs:
 
               print("Fetching Steam...")
               try:
-                  steam_api = "https://www.gamerpower.com/api/giveaways?sort-by=value&platform=steam"
-                  raw_steam = requests.get(steam_api, headers=HEADERS).json()
+                  raw_steam = requests.get("https://www.gamerpower.com/api/giveaways?sort-by=value&platform=steam", headers=HEADERS).json()
                   for game in raw_steam:
                       if game.get('type') != 'Game': continue
-                      
                       raw_title = game.get('title', '')
                       zh_title, clean_title = get_official_zh_name(raw_title)
-                      
                       new_game = game.copy()
                       new_game['zh_title'] = zh_title
                       new_game['clean_title'] = clean_title
@@ -149,16 +186,18 @@ jobs:
                           if match: 
                               new_game['steam_id'] = match.group(1)
                               final_active_games.append(new_game)
-                              print(f"  ✅ [Steam]: {zh_title}")
-              except Exception as e:
-                  print(f"❌ Steam Error: {e}")
+              except: pass
 
               print("Fetching Epic...")
               epic_active, epic_upcoming = fetch_epic_official()
               final_active_games.extend(epic_active)
+              
+              # 获取 Reddit 情报
+              intel_data = fetch_reddit_intel()
 
               upload_to_api("games.json", final_active_games)
               upload_to_api("upcoming.json", epic_upcoming)
+              upload_to_api("intel.json", intel_data) # ⚡ 上传新文件
               print("🎉 Done!")
 
           if __name__ == "__main__":
@@ -171,5 +210,5 @@ jobs:
         run: |
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
-          git add games.json upcoming.json
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Update games with translation and strict filters" && git push)
+          git add *.json || true
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Add intel tracking" && git push)
