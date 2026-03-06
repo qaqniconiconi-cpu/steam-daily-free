@@ -38,28 +38,28 @@ jobs:
           }
 
           def get_steam_details(app_id):
-              """⚡ 全自动核心：获取名称、图片、描述及【确切截止时间】"""
+              """从 Steam 官方接口抓取：中文名、封面图、以及【简短描述】"""
               try:
+                  # 使用 l=schinese 参数获取中文描述
                   url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=schinese&cc=CN"
                   res = requests.get(url, headers=HEADERS, timeout=10).json()
                   if str(app_id) in res and res[str(app_id)]['success']:
                       data = res[str(app_id)]['data']
+
+                      # 提取简短描述 (UU 加速器文案的来源)
+                      # 过滤掉一些换行符，确保只有一行
                       
-                      # 1. 提取截止时间 (Steam 100%折扣截止时间戳)
-                      end_date = "N/A"
-                      price_info = data.get('price_overview', {})
-                      # discount_expiration 是 Unix 时间戳
-                      expiry_ts = price_info.get('discount_expiration')
-                      if expiry_ts:
-                          dt_obj = datetime.fromtimestamp(int(expiry_ts))
-                          end_date = dt_obj.strftime('%Y-%m-%dT%H:%M:%SZ')
+                      raw_desc = data.get('short_description', '')
+                      clean_desc = raw_desc.replace('\r', '').replace('\n', '').strip()
+                      # 如果描述太长，截取前 30 个字
+                      short_desc = (clean_desc[:30] + '...') if len(clean_desc) > 30 else clean_desc
+
 
                       return {
                           "name": data.get('name'),
                           "image": data.get('header_image'),
-                          "desc": data.get('short_description', '').split('\r')[0].strip(),
-                          "is_free": data.get('is_free', False) or price_info.get('discount_percent') == 100,
-                          "end_date": end_date
+                          "short_description": short_desc, # ⚡ 新增这个字段
+                          "is_free": data.get('is_free', False)
                       }
               except:
                   pass
