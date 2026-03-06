@@ -125,13 +125,18 @@ jobs:
                       content_str = (post['data']['url'] + " " + post['data'].get('selftext', '')).lower()
                       full_text = title + " " + content_str
                       
+                      # ⚡ 修复1：提取帖子的 Flair (标签)
+                      flair = str(post['data'].get('link_flair_text') or '').lower()
+                      
                       if '[steam]' not in title: continue
 
-                      is_to_paid = any(kw in full_text for kw in ['paid', 'commercial', 'price', 'premium'])
-                      is_weekend = any(kw in full_text for kw in ['weekend', 'play for free', 'free to play'])
+                      # ⚡ 修复2：增加对 flair 标签的判定，只要标签里有 to paid 就报警
+                      is_to_paid = 'to paid' in flair or any(kw in full_text for kw in ['paid', 'commercial', 'price', 'premium'])
+                      is_weekend = 'weekend' in flair or any(kw in full_text for kw in ['weekend', 'play for free', 'free to play'])
 
                       if is_to_paid or is_weekend:
-                          match = re.search(r'/app/(\d+)', content_str)
+                          # ⚡ 修复3：放宽正则，只要带有 app/数字 就能抓出来
+                          match = re.search(r'app/(\d+)', content_str)
                           if match:
                               app_id = match.group(1)
                               steam_name, steam_img = get_steam_details_by_id(app_id)
@@ -167,7 +172,8 @@ jobs:
                       is_weekend = any(kw in full_text for kw in ['周末免费', '限免试玩', '免费玩', '週末免費'])
                       
                       if is_to_paid or is_weekend:
-                          match = re.search(r'store\.steampowered\.com/app/(\d+)', full_text)
+                          # ⚡ 修复3：放宽正则匹配，严防漏抓
+                          match = re.search(r'app/(\d+)', full_text)
                           if match:
                               app_id = match.group(1)
                               steam_name, steam_img = get_steam_details_by_id(app_id)
