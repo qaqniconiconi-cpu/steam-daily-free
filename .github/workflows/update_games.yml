@@ -31,8 +31,9 @@ jobs:
           from urllib.parse import quote
           from deep_translator import GoogleTranslator
 
+          # 强化伪装，防止被 Reddit 拦截
           HEADERS = {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ETalienBot/2.0',
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 ETalienBot/3.0',
               'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'
           }
 
@@ -53,7 +54,6 @@ jobs:
                   return clean_name, clean_name
 
           def get_steam_details_by_id(app_id):
-              """通过 Steam ID 精准获取官方中文名和高清大图"""
               try:
                   res = requests.get(f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=schinese", timeout=10).json()
                   if res[str(app_id)]['success']:
@@ -69,8 +69,7 @@ jobs:
               except: return url
 
           def fetch_epic_official():
-              active_epic = []
-              upcoming_epic = []
+              active_epic, upcoming_epic = [], []
               try:
                   url = "https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=CN&allowCountries=CN"
                   res = requests.get(url, headers=HEADERS).json()
@@ -116,21 +115,18 @@ jobs:
               return active_epic, upcoming_epic
 
           def fetch_reddit_intel():
-              """📡 抓取 Reddit 全球羊毛党社区 (增强版)"""
               print("正在嗅探 Reddit 情报网...")
               to_paid, free_weekend = [], []
               try:
                   url = "https://www.reddit.com/r/FreeGameFindings/new.json?limit=50"
-                  res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0 ETalienBot/2.0'}).json()
+                  res = requests.get(url, headers=HEADERS).json()
                   for post in res['data']['children']:
                       title = post['data']['title'].lower()
                       content_str = (post['data']['url'] + " " + post['data'].get('selftext', '')).lower()
-                      # ⚡ 修复1：将标题和正文合并起来一起搜索关键词
                       full_text = title + " " + content_str
                       
                       if '[steam]' not in title: continue
 
-                      # ⚡ 修复2：增加了 premium 等更丰富的关键词
                       is_to_paid = any(kw in full_text for kw in ['paid', 'commercial', 'price', 'premium'])
                       is_weekend = any(kw in full_text for kw in ['weekend', 'play for free', 'free to play'])
 
@@ -151,25 +147,22 @@ jobs:
                               elif is_weekend:
                                   free_weekend.append(item)
                                   print(f"  🎮 [Reddit预警-试玩]: {steam_name}")
-              except Exception as e: print(f"❌ Reddit Error: {e}")
+              except Exception as e: print(f"❌ Reddit Error (已被拦截或解析失败): {e}")
               return to_paid, free_weekend
 
           def fetch_keylol_intel():
-              """📡 抓取 Keylol 国内硬核中文社区 (增强版)"""
               print("正在嗅探 Keylol 中文情报网...")
               to_paid, free_weekend = [], []
               try:
                   url = "https://keylol.com/forum.php?mod=rss&fid=319"
-                  res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0 ETalienBot/2.0'}, timeout=15)
+                  res = requests.get(url, headers=HEADERS, timeout=15)
                   res.encoding = 'utf-8'
                   root = ET.fromstring(res.text)
                   for item in root.findall('.//item'):
                       title = item.find('title').text or ""
                       description = item.find('description').text or ""
-                      # ⚡ 修复1：将标题和正文合并起来搜索
                       full_text = title + " " + description
                       
-                      # ⚡ 修复2：加入了大量繁体字变体，严防漏网之鱼
                       is_to_paid = any(kw in full_text for kw in ['转收费', '转付费', '买断', '转为收费', '轉付費', '轉爲付費', '轉收費'])
                       is_weekend = any(kw in full_text for kw in ['周末免费', '限免试玩', '免费玩', '週末免費'])
                       
@@ -192,6 +185,16 @@ jobs:
                                       print(f"  🎮 [Keylol预警-试玩]: {steam_name}")
               except Exception as e: print(f"❌ Keylol Error: {e}")
               return to_paid, free_weekend
+
+          # ⚡ 这是之前被我不小心漏掉的上传函数 ⚡
+          def upload_to_api(filename, data):
+              url = "https://system.et-api.com/v1/update/steam-daily-free"
+              headers = {"filename": filename, "Content-Type": "application/json"}
+              try: 
+                  res = requests.post(url, headers=headers, json=data, timeout=15)
+                  print(f"📤 API 上传 [{filename}]: {res.status_code}")
+              except Exception as e: 
+                  print(f"❌ API 上传失败 [{filename}]: {e}")
 
           def main():
               print("🚀 Starting Sync...")
@@ -224,7 +227,6 @@ jobs:
               r_paid, r_weekend = fetch_reddit_intel()
               k_paid, k_weekend = fetch_keylol_intel()
               
-              # 融合中英双源数据并去重
               def merge_intel(list1, list2):
                   merged = list1.copy()
                   existing_ids = [x['steam_id'] for x in merged]
@@ -238,6 +240,7 @@ jobs:
                   "free_weekend": merge_intel(r_weekend, k_weekend)
               }
 
+              # ⚡ 现在 upload_to_api 可以正常工作了 ⚡
               upload_to_api("games.json", final_active_games)
               upload_to_api("upcoming.json", epic_upcoming)
               upload_to_api("intel.json", intel_data)
@@ -254,4 +257,4 @@ jobs:
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
           git add *.json || true
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Add dual intel engine & strict fixes" && git push)
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Fix API upload and crawler bugs" && git push)
