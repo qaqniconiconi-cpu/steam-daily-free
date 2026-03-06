@@ -32,9 +32,8 @@ jobs:
           from urllib.parse import quote
           from deep_translator import GoogleTranslator
 
-          # 伪装成普通浏览器
           HEADERS = {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 ETalien/1.0',
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
               'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'
           }
 
@@ -54,7 +53,6 @@ jobs:
               except: return clean_name, clean_name
 
           def get_steam_details_by_id(app_id):
-              """安全调用 Steam API 获取官方信息，不会被墙"""
               try:
                   res = requests.get(f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=schinese", timeout=10).json()
                   if res[str(app_id)]['success']:
@@ -63,35 +61,83 @@ jobs:
               except: pass
               return None, None
 
+          # ⚡ 这里是上次不小心被删掉的 Epic 抓取函数，现在补回来了！⚡
+          def fetch_epic_official():
+              active_epic, upcoming_epic = [], []
+              try:
+                  url = "https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=CN&allowCountries=CN"
+                  res = requests.get(url, headers=HEADERS).json()
+                  elements = res['data']['Catalog']['searchStore']['elements']
+                  for item in elements:
+                      promos = item.get('promotions')
+                      if not promos: continue
+                      
+                      img = ""
+                      for image in item.get('keyImages', []):
+                          if image['type'] in ['OfferImageWide', 'Thumbnail']:
+                              img = image['url']
+                              break
+                      if not img and item.get('keyImages'): img = item['keyImages'][0]['url']
+                          
+                      slug = item.get('productSlug')
+                      if not slug and item.get('catalogNs', {}).get('mappings'):
+                          slug = item['catalogNs']['mappings'][0].get('pageSlug')
+                      if not slug: slug = item.get('urlSlug')
+
+                      raw_title = item['title']
+                      if any('\u4e00' <= char <= '\u9fff' for char in raw_title):
+                          zh_title, clean_title = raw_title, raw_title
+                      else: zh_title, clean_title = get_official_zh_name(raw_title)
+
+                      if promos.get('promotionalOffers'):
+                          offers = promos['promotionalOffers'][0]['promotionalOffers']
+                          if offers and offers[0].get('discountSetting', {}).get('discountPercentage') == 0:
+                              active_epic.append({
+                                  "title": raw_title, "zh_title": zh_title, "clean_title": clean_title,
+                                  "thumbnail": img, "end_date": offers[0]['endDate'], "epic_slug": slug,
+                                  "open_giveaway_url": f"https://store.epicgames.com/zh-CN/p/{slug}"
+                              })
+                      elif promos.get('upcomingPromotionalOffers'):
+                          offers = promos['upcomingPromotionalOffers'][0]['promotionalOffers']
+                          if offers:
+                              upcoming_epic.append({
+                                  "title": raw_title, "zh_title": zh_title, "clean_title": clean_title,
+                                  "image": img, "start_date": offers[0]['startDate'], "platform": "Epic Games"
+                              })
+              except Exception as e: print(f"❌ Epic Error: {e}")
+              return active_epic, upcoming_epic
+
           def fetch_intel_radars():
-              """📡 全网雷达：扫荡 Reddit 和 Keylol 最新数据"""
+              """📡 全网雷达：扫荡 Reddit(使用 RSS 绕过拦截) 和 Keylol"""
               print("正在全网嗅探最新情报...")
               to_paid_ids, weekend_ids = [], []
               
-              # 1. 嗅探 Reddit (新增 GameDeals 区)
+              # 1. 嗅探 Reddit RSS (彻底避开 JSON 拦截)
               reddit_urls = [
-                  "https://www.reddit.com/r/FreeGameFindings/new.json?limit=50",
-                  "https://www.reddit.com/r/GameDeals/new.json?limit=50"
+                  "https://www.reddit.com/r/FreeGameFindings/new.rss",
+                  "https://www.reddit.com/r/GameDeals/new.rss"
               ]
+              ns = {'atom': 'http://www.w3.org/2005/Atom'}
               for url in reddit_urls:
                   try:
-                      res = requests.get(url, headers=HEADERS, timeout=15).json()
-                      for post in res.get('data', {}).get('children', []):
-                          data = post['data']
-                          title = data.get('title', '').lower()
-                          flair = str(data.get('link_flair_text') or '').lower()
-                          content = data.get('url', '') + " " + data.get('selftext', '')
-                          full_text = title + " " + flair + " " + content.lower()
+                      res = requests.get(url, headers=HEADERS, timeout=15)
+                      root = ET.fromstring(res.text)
+                      for entry in root.findall('atom:entry', ns):
+                          title_elem = entry.find('atom:title', ns)
+                          content_elem = entry.find('atom:content', ns)
+                          title = title_elem.text.lower() if title_elem is not None else ""
+                          content = content_elem.text.lower() if content_elem is not None else ""
+                          full_text = title + " " + content
                           
-                          is_to_paid = 'to paid' in flair or any(kw in full_text for kw in ['paid', 'commercial'])
-                          is_weekend = 'weekend' in flair or any(kw in full_text for kw in ['free weekend', 'play for free'])
+                          is_to_paid = any(kw in full_text for kw in ['to paid', 'paid', 'commercial'])
+                          is_weekend = any(kw in full_text for kw in ['free weekend', 'play for free'])
                           
                           if '[steam]' in title or 'steam' in full_text:
-                              match = re.search(r'app/(\d+)', content)
+                              match = re.search(r'app/(\d+)', full_text)
                               if match:
                                   if is_to_paid: to_paid_ids.append(match.group(1))
                                   if is_weekend: weekend_ids.append(match.group(1))
-                  except Exception as e: print(f"Reddit 抓取遇到波动: {e}")
+                  except Exception as e: print(f"Reddit RSS 抓取遇到波动: {e}")
                   
               # 2. 嗅探 Keylol RSS
               try:
@@ -176,8 +222,6 @@ jobs:
               # -------- 2. 处理常规白嫖游戏 --------
               print("获取常规喜加一...")
               final_active_games = []
-              
-              # 抓取 Steam
               try:
                   raw_steam = requests.get("https://www.gamerpower.com/api/giveaways?sort-by=value&platform=steam", headers=HEADERS).json()
                   for game in raw_steam:
@@ -194,14 +238,14 @@ jobs:
                           final_active_games.append(new_game)
               except: pass
 
-              # ⚡ 补回刚才漏掉的 Epic 官方抓取执行 ⚡
+              # ⚡ 终于补齐的 Epic 获取逻辑 ⚡
               print("获取 Epic 官方数据...")
               epic_active, epic_upcoming = fetch_epic_official()
               final_active_games.extend(epic_active)
 
               # 提交所有数据
               upload_to_api("games.json", final_active_games)
-              upload_to_api("upcoming.json", epic_upcoming) # ⚡ 补回了预告数据的上传
+              upload_to_api("upcoming.json", epic_upcoming)
               upload_to_api("intel.json", intel_data)
               print("🎉 Done!")
 
@@ -216,4 +260,4 @@ jobs:
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
           git add *.json || true
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Bypass Steam Block & Add Expiration Cache" && git push)
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Fix missing functions & Bypass Reddit JSON block" && git push)
