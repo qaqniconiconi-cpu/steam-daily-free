@@ -1,4 +1,4 @@
-name: Update Games (Full Auto & Live Time)
+name: Update Games (Full Auto & Live Intel)
 
 on:
   schedule:
@@ -38,28 +38,43 @@ jobs:
           }
 
           def get_steam_details(app_id):
-              """从 Steam 官方接口抓取：中文名、封面图、以及【简短描述】"""
+              """⚡ 全自动核心：抓取名称、大图、UU风格描述及截止时间"""
               try:
-                  # 使用 l=schinese 参数获取中文描述
                   url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=schinese&cc=CN"
                   res = requests.get(url, headers=HEADERS, timeout=10).json()
                   if str(app_id) in res and res[str(app_id)]['success']:
                       data = res[str(app_id)]['data']
-
-                      # 提取简短描述 (UU 加速器文案的来源)
-                      # 过滤掉一些换行符，确保只有一行
                       
-                      raw_desc = data.get('short_description', '')
-                      clean_desc = raw_desc.replace('\r', '').replace('\n', '').strip()
-                      # 如果描述太长，截取前 30 个字
-                      short_desc = (clean_desc[:30] + '...') if len(clean_desc) > 30 else clean_desc
+                      # 1. 自动提取截止时间 (检测折扣或限免到期时间)
+                      end_date = "N/A"
+                      price_info = data.get('price_overview', {})
+                      expiry_ts = price_info.get('discount_expiration')
+                      if expiry_ts:
+                          dt_obj = datetime.fromtimestamp(int(expiry_ts))
+                          end_date = dt_obj.strftime('%Y-%m-%dT%H:%M:%SZ')
 
+                      # 2. 自动提取并清理简述 (UU风格)
+                      raw_desc = data.get('short_description', '')
+                      # 移除 HTML 标签，只取第一句
+                      clean_desc = re.sub('<[^<]+?>', '', raw_desc).replace('\r', '').replace('\n', '').strip()
+                      short_desc = clean_desc.split('。')[0] if '。' in clean_desc else clean_desc
+                      if len(short_desc) > 35: short_desc = short_desc[:32] + "..."
+
+                      # 3. 判断是否为限免或试玩 (F2P/试玩/100%折扣)
+                      is_free = data.get('is_free', False) or price_info.get('discount_percent') == 100
+                      # 检查特殊试玩包
+                      for group in data.get('package_groups', []):
+                          for sub in group.get('subs', []):
+                              if sub.get('is_free_license') is True:
+                                  is_free = True
+                                  break
 
                       return {
                           "name": data.get('name'),
                           "image": data.get('header_image'),
-                          "short_description": short_desc, # ⚡ 新增这个字段
-                          "is_free": data.get('is_free', False)
+                          "short_description": short_desc,
+                          "is_free": is_free,
+                          "end_date": end_date
                       }
               except:
                   pass
@@ -99,17 +114,14 @@ jobs:
 
           def fetch_intel_ids():
               print("正在全网嗅探最新情报...")
-              to_paid_ids, weekend_ids = [], []
+              ids = []
               sources = ["https://www.reddit.com/r/FreeGameFindings/new.rss", "https://keylol.com/forum.php?mod=rss&fid=319"]
               for url in sources:
                   try:
                       res = requests.get(url, headers=HEADERS, timeout=15)
-                      # 简单的正则从 RSS 内容中提取 app/ID
-                      matches = re.findall(r'app/(\d+)', res.text)
-                      to_paid_ids.extend(matches)
-                      weekend_ids.extend(matches)
+                      ids.extend(re.findall(r'app/(\d+)', res.text))
                   except: pass
-              return list(set(to_paid_ids)), list(set(weekend_ids))
+              return list(set(ids))
 
           def upload_to_api(filename, data):
               url = "https://system.et-api.com/v1/update/steam-daily-free"
@@ -121,10 +133,8 @@ jobs:
               print("🚀 Starting Fully Automated Sync...")
               current_time = int(time.time())
               
-              # 1. 处理情报 (自动抓取时间与描述)
-              new_paid_raw, new_weekend_raw = fetch_intel_ids()
-              # 保持一些活跃探测 ID，防止 RSS 更新太快漏抓
-              probe_ids = list(set(new_paid_raw + new_weekend_raw + ["2366060", "255710", "780310", "493340"]))
+              # 1. 获取潜在 ID (自动探测 + 锁定 ID)
+              probe_ids = list(set(fetch_intel_ids() + ["2366060", "255710", "780310", "493340"]))
               
               final_to_paid, final_weekend = [], []
               for app_id in probe_ids:
@@ -132,10 +142,10 @@ jobs:
                   if info and info['is_free']:
                       item = {
                           "steam_id": app_id, "zh_title": info['name'],
-                          "thumbnail": info['image'], "short_description": info['desc'],
+                          "thumbnail": info['image'], "short_description": info['short_description'],
                           "end_date": info['end_date'], "added_at": current_time
                       }
-                      # 区分转付费还是试玩：通常转付费的游戏没有 end_date（长期免费）
+                      # 区分转付费还是试玩
                       if info['end_date'] == "N/A": final_to_paid.append(item)
                       else: final_weekend.append(item)
 
@@ -152,7 +162,7 @@ jobs:
                                   final_active.append({
                                       "steam_id": match.group(1), "zh_title": s_info['name'],
                                       "thumbnail": s_info['image'], "end_date": s_info['end_date'],
-                                      "short_description": s_info['desc'], "open_giveaway_url": g.get('open_giveaway_url')
+                                      "short_description": s_info['short_description'], "open_giveaway_url": g.get('open_giveaway_url')
                                   })
               except: pass
 
@@ -175,4 +185,4 @@ jobs:
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
           git add *.json || true
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Full auto time & desc detection" && git push)
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto sync & desc cleanup" && git push)
