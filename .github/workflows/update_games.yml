@@ -176,6 +176,8 @@ jobs:
               # -------- 2. 处理常规白嫖游戏 --------
               print("获取常规喜加一...")
               final_active_games = []
+              
+              # 抓取 Steam
               try:
                   raw_steam = requests.get("https://www.gamerpower.com/api/giveaways?sort-by=value&platform=steam", headers=HEADERS).json()
                   for game in raw_steam:
@@ -192,8 +194,14 @@ jobs:
                           final_active_games.append(new_game)
               except: pass
 
+              # ⚡ 补回刚才漏掉的 Epic 官方抓取执行 ⚡
+              print("获取 Epic 官方数据...")
+              epic_active, epic_upcoming = fetch_epic_official()
+              final_active_games.extend(epic_active)
+
               # 提交所有数据
               upload_to_api("games.json", final_active_games)
+              upload_to_api("upcoming.json", epic_upcoming) # ⚡ 补回了预告数据的上传
               upload_to_api("intel.json", intel_data)
               print("🎉 Done!")
 
