@@ -1,4 +1,4 @@
-name: Update Games (Strict API & Max Time)
+name: Update Games (Max Time Info & Auto Category)
 
 on:
   schedule:
@@ -35,7 +35,6 @@ jobs:
           }
 
           def get_steam_details(app_id):
-              """完全依靠底层 API 价格指纹，彻底杜绝虚假文案误导"""
               try:
                   url_zh = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=schinese&cc=CN"
                   res_zh = requests.get(url_zh, headers=HEADERS, timeout=10).json()
@@ -47,18 +46,12 @@ jobs:
                       d_en = res_en[str(app_id)]['data'] if str(app_id) in res_en else {}
                       
                       price_info = d.get('price_overview', {})
-                      
-                      # ⚡ 核心指纹 1：100% 折扣 = 永久喜加一
                       is_100_off = price_info.get('discount_percent') == 100
                       is_store_free = d.get('is_free', False)
-                      
-                      # ⚡ 只要当前在商店能白拿或白玩，就算作 Free
                       is_currently_free = is_store_free or is_100_off
                       
-                      # ⚡ 核心指纹 2：能免费玩 (is_store_free)，但买断要钱 (final > 0) = 免费周末试玩
                       is_weekend = is_store_free and bool(price_info) and price_info.get('final', 0) > 0 and not is_100_off
 
-                      # Steam 原生时间抓取
                       end_date = "N/A"
                       expiry_ts = price_info.get('discount_expiration')
                       if expiry_ts:
@@ -103,40 +96,47 @@ jobs:
                   existing_ids.extend([g['steam_id'] for g in old_games if g.get('steam_id')])
               except: pass
 
-              probe_ids = list(set(existing_ids + fetch_intel_ids()))
-              active_games, f_to_paid, f_weekend = [], [], []
-              
-              for app_id in probe_ids:
-                  info = get_steam_details(app_id)
-                  # ⚡ 铁律：只要目前不是免费的，或者不是游戏本体，直接淘汰！战锤40K将被拦截在此。
-                  if info and info['type'] == 'game' and info['is_free']:
-                      item = {"steam_id": app_id, "zh_title": info['zh_title'], "en_title": info['en_title'], "thumbnail": info['thumbnail'], "short_description": info['short_description'], "end_date": info['end_date']}
-                      if info['is_100_off']: active_games.append({**item, "open_giveaway_url": f"https://store.steampowered.com/app/{app_id}"})
-                      elif info['is_weekend']: f_weekend.append(item)
-                      else: f_to_paid.append(item)
-
-              # ⚡ 交叉数据兜底，提取 GamerPower 提供的时间
+              # ⚡ 核心兜底引擎：提前把全球数据库的时间都存下来
+              gp_dict = {}
               try:
                   gp = requests.get("https://www.gamerpower.com/api/giveaways?platform=steam", headers=HEADERS).json()
                   for g in gp:
                       if g.get('type') == 'Game':
                           m = re.search(r'app/(\d+)', g.get('open_giveaway_url', ''))
-                          if m:
-                              app_id = m.group(1)
-                              if not any(x['steam_id'] == app_id for x in active_games):
-                                  s = get_steam_details(app_id)
-                                  if s and s['type'] == 'game' and s['is_free']:
-                                      # 融合第三方时间，尽量不显示 N/A
-                                      gp_end = g.get('end_date', 'N/A')
-                                      if gp_end != 'N/A' and gp_end: gp_end = gp_end.replace(' ', 'T') + 'Z'
-                                      final_end = s['end_date'] if s['end_date'] != 'N/A' else gp_end
-                                      
-                                      active_games.append({
-                                          "steam_id": app_id, "zh_title": s['zh_title'], "en_title": s['en_title'], 
-                                          "thumbnail": s['thumbnail'], "short_description": s['short_description'], 
-                                          "end_date": final_end, "open_giveaway_url": g.get('open_giveaway_url')
-                                      })
+                          if m: gp_dict[m.group(1)] = g
               except: pass
+
+              probe_ids = list(set(existing_ids + fetch_intel_ids()))
+              active_games, f_to_paid, f_weekend = [], [], []
+              
+              for app_id in probe_ids:
+                  info = get_steam_details(app_id)
+                  if info and info['type'] == 'game' and info['is_free']:
+                      
+                      # ⚡ 时间抢救：如果 Steam 没给时间，立刻用第三方数据库兜底
+                      if info['end_date'] == "N/A" and app_id in gp_dict:
+                          gp_end = gp_dict[app_id].get('end_date', 'N/A')
+                          if gp_end != 'N/A' and gp_end:
+                              info['end_date'] = gp_end.replace(' ', 'T') + 'Z'
+
+                      item = {"steam_id": app_id, "zh_title": info['zh_title'], "en_title": info['en_title'], "thumbnail": info['thumbnail'], "short_description": info['short_description'], "end_date": info['end_date']}
+                      if info['is_100_off']: active_games.append({**item, "open_giveaway_url": f"https://store.steampowered.com/app/{app_id}"})
+                      elif info['is_weekend']: f_weekend.append(item)
+                      else: f_to_paid.append(item)
+
+              # 把那些仅存在于第三方数据库的游戏也补进来
+              for app_id, g in gp_dict.items():
+                  if not any(x['steam_id'] == app_id for x in active_games):
+                      s = get_steam_details(app_id)
+                      if s and s['type'] == 'game' and s['is_100_off']:
+                          gp_end = g.get('end_date', 'N/A')
+                          if gp_end != 'N/A' and gp_end:
+                              s['end_date'] = gp_end.replace(' ', 'T') + 'Z'
+                          active_games.append({
+                              "steam_id": app_id, "zh_title": s['zh_title'], "en_title": s['en_title'], 
+                              "thumbnail": s['thumbnail'], "short_description": s['short_description'], 
+                              "end_date": s['end_date'], "open_giveaway_url": g.get('open_giveaway_url')
+                          })
 
               upcoming_list = []
               try:
@@ -173,5 +173,5 @@ jobs:
         run: |
           git config --global user.name 'GitHub Action'
           git add *.json || true
-          git commit -m "Strict API price fingerprint and Max Time preservation" || true
+          git commit -m "Max Time preservation logic" || true
           git push
