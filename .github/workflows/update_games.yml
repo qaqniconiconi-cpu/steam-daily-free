@@ -1,4 +1,4 @@
-name: Update Games (Time Machine & Auto Category)
+name: Update Games (Strict API & Max Time)
 
 on:
   schedule:
@@ -30,11 +30,12 @@ jobs:
           from datetime import datetime
 
           HEADERS = {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
               'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'
           }
 
           def get_steam_details(app_id):
+              """完全依靠底层 API 价格指纹，彻底杜绝虚假文案误导"""
               try:
                   url_zh = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=schinese&cc=CN"
                   res_zh = requests.get(url_zh, headers=HEADERS, timeout=10).json()
@@ -45,19 +46,19 @@ jobs:
                       d = res_zh[str(app_id)]['data']
                       d_en = res_en[str(app_id)]['data'] if str(app_id) in res_en else {}
                       
-                      # ⚡ 自动指纹1：判断免费授权包 (限时免费玩/Free Weekend)
-                      is_free_license = False
-                      for group in d.get('package_groups', []):
-                          for sub in group.get('subs', []):
-                              if sub.get('is_free_license') == True:
-                                  is_free_license = True
-                                  break
-
                       price_info = d.get('price_overview', {})
-                      # ⚡ 自动指纹2：判断 100% 折扣 (限时喜加一)
+                      
+                      # ⚡ 核心指纹 1：100% 折扣 = 永久喜加一
                       is_100_off = price_info.get('discount_percent') == 100
-                      is_currently_free = d.get('is_free', False) or is_100_off or is_free_license
+                      is_store_free = d.get('is_free', False)
+                      
+                      # ⚡ 只要当前在商店能白拿或白玩，就算作 Free
+                      is_currently_free = is_store_free or is_100_off
+                      
+                      # ⚡ 核心指纹 2：能免费玩 (is_store_free)，但买断要钱 (final > 0) = 免费周末试玩
+                      is_weekend = is_store_free and bool(price_info) and price_info.get('final', 0) > 0 and not is_100_off
 
+                      # Steam 原生时间抓取
                       end_date = "N/A"
                       expiry_ts = price_info.get('discount_expiration')
                       if expiry_ts:
@@ -66,31 +67,22 @@ jobs:
                       raw_desc = d.get('short_description', '')
                       clean_desc = re.sub('<[^<]+?>', '', raw_desc).replace('\r', '').replace('\n', '').strip()
                       short_desc = clean_desc.split('。')[0] if '。' in clean_desc else clean_desc
-                      is_weekend_kw = any(kw in clean_desc.lower() for kw in ['免费周末', '免费试玩', 'free weekend'])
 
                       return {
-                          "zh_title": d.get('name'),
-                          "en_title": d_en.get('name', d.get('name')),
-                          "thumbnail": d.get('header_image'),
-                          "short_description": short_desc,
-                          "type": d.get('type', 'game'),
-                          "is_100_off": is_100_off,
-                          "is_weekend": is_free_license or (is_weekend_kw and not is_100_off),
-                          "end_date": end_date,
-                          "is_free": is_currently_free
+                          "zh_title": d.get('name'), "en_title": d_en.get('name', d.get('name')),
+                          "thumbnail": d.get('header_image'), "short_description": short_desc,
+                          "type": d.get('type', 'game'), "is_100_off": is_100_off,
+                          "is_weekend": is_weekend, "end_date": end_date, "is_free": is_currently_free
                       }
               except: pass
               return None
 
           def fetch_intel_ids():
-              print("🚀 正在启动时光机雷达，扫描全网数据源...")
               ids = []
               sources = [
-                  # ⚡ 时光机：强制搜索 Reddit 过去一个月的 转付费/试玩/喜加一 帖子
                   "https://www.reddit.com/r/FreeGameFindings/search.rss?q=flair%3A%22F2P+To+Paid%22+OR+flair%3A%22Free+Weekend%22&restrict_sr=on&sort=new&t=month",
                   "https://www.reddit.com/r/FreeGameFindings/search.rss?q=flair%3A%22Steam%22&restrict_sr=on&sort=new&t=week",
                   "https://www.reddit.com/r/GameDeals/search.rss?q=title%3A%22100%25%22+OR+title%3A%22free%22+OR+title%3A%22weekend%22&restrict_sr=on&sort=new&t=week",
-                  # ⚡ 多渠道补充：Keylol, 澳洲折扣站, Steam官方免游鉴赏家群组
                   "https://keylol.com/forum.php?mod=rss&fid=319",
                   "https://www.ozbargain.com.au/cat/gaming/feed",
                   "https://steamcommunity.com/groups/freegamesfinders/rss",
@@ -98,50 +90,32 @@ jobs:
               ]
               for url in sources:
                   try:
-                      res = requests.get(url, headers=HEADERS, timeout=15).text
-                      ids.extend(re.findall(r'app/(\d+)', res))
+                      ids.extend(re.findall(r'app/(\d+)', requests.get(url, headers=HEADERS, timeout=15).text))
                   except: pass
               return list(set(ids))
 
           def main():
-              # 1. 记忆系统：找回昨天的数据
               existing_ids = []
               try:
                   old_intel = requests.get("https://system.et-api.com/v1/get/steam-daily-free?filename=intel.json", headers=HEADERS, timeout=10).json()
-                  existing_ids.extend([i['steam_id'] for i in old_intel.get('to_paid', [])])
-                  existing_ids.extend([i['steam_id'] for i in old_intel.get('free_weekend', [])])
+                  existing_ids.extend([i['steam_id'] for i in old_intel.get('to_paid', [])] + [i['steam_id'] for i in old_intel.get('free_weekend', [])])
                   old_games = requests.get("https://system.et-api.com/v1/get/steam-daily-free?filename=games.json", headers=HEADERS, timeout=10).json()
                   existing_ids.extend([g['steam_id'] for g in old_games if g.get('steam_id')])
               except: pass
 
-              # 2. 全网扫描：获取深海新数据
-              new_ids = fetch_intel_ids()
-              probe_ids = list(set(existing_ids + new_ids))
-              
+              probe_ids = list(set(existing_ids + fetch_intel_ids()))
               active_games, f_to_paid, f_weekend = [], [], []
               
               for app_id in probe_ids:
                   info = get_steam_details(app_id)
-                  # 必须是游戏本体且目前处于免费状态
+                  # ⚡ 铁律：只要目前不是免费的，或者不是游戏本体，直接淘汰！战锤40K将被拦截在此。
                   if info and info['type'] == 'game' and info['is_free']:
-                      item = {
-                          "steam_id": app_id, "zh_title": info['zh_title'], "en_title": info['en_title'], 
-                          "thumbnail": info['thumbnail'], "short_description": info['short_description'], 
-                          "end_date": info['end_date']
-                      }
-                      
-                      # ⚡ 纯自动化指纹分流：告别错误分类
-                      if info['is_100_off']:
-                          # 100%折扣，自动送入永久喜加一主区 (Crowalt 会来这里)
-                          active_games.append({**item, "open_giveaway_url": f"https://store.steampowered.com/app/{app_id}"})
-                      elif info['is_weekend']:
-                          # 拥有试玩授权包，送入限时试玩 (Parkitect 会来这里)
-                          f_weekend.append(item)
-                      else:
-                          # 其他免费情况，送入转付费预警 (NOTTOLOT, KNOCKOFF 会来这里)
-                          f_to_paid.append(item)
+                      item = {"steam_id": app_id, "zh_title": info['zh_title'], "en_title": info['en_title'], "thumbnail": info['thumbnail'], "short_description": info['short_description'], "end_date": info['end_date']}
+                      if info['is_100_off']: active_games.append({**item, "open_giveaway_url": f"https://store.steampowered.com/app/{app_id}"})
+                      elif info['is_weekend']: f_weekend.append(item)
+                      else: f_to_paid.append(item)
 
-              # GamerPower 常规补漏
+              # ⚡ 交叉数据兜底，提取 GamerPower 提供的时间
               try:
                   gp = requests.get("https://www.gamerpower.com/api/giveaways?platform=steam", headers=HEADERS).json()
                   for g in gp:
@@ -151,15 +125,19 @@ jobs:
                               app_id = m.group(1)
                               if not any(x['steam_id'] == app_id for x in active_games):
                                   s = get_steam_details(app_id)
-                                  if s and s['type'] == 'game' and s['is_100_off']: 
+                                  if s and s['type'] == 'game' and s['is_free']:
+                                      # 融合第三方时间，尽量不显示 N/A
+                                      gp_end = g.get('end_date', 'N/A')
+                                      if gp_end != 'N/A' and gp_end: gp_end = gp_end.replace(' ', 'T') + 'Z'
+                                      final_end = s['end_date'] if s['end_date'] != 'N/A' else gp_end
+                                      
                                       active_games.append({
                                           "steam_id": app_id, "zh_title": s['zh_title'], "en_title": s['en_title'], 
                                           "thumbnail": s['thumbnail'], "short_description": s['short_description'], 
-                                          "end_date": s['end_date'], "open_giveaway_url": g.get('open_giveaway_url')
+                                          "end_date": final_end, "open_giveaway_url": g.get('open_giveaway_url')
                                       })
               except: pass
 
-              # Epic 抓取逻辑
               upcoming_list = []
               try:
                   res = requests.get("https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=CN&allowCountries=CN", headers=HEADERS).json()
@@ -194,7 +172,6 @@ jobs:
       - name: Commit and Push
         run: |
           git config --global user.name 'GitHub Action'
-          git config --global user.email 'action@github.com'
           git add *.json || true
-          git commit -m "Add Time Machine RSS and Full Auto Category" || true
+          git commit -m "Strict API price fingerprint and Max Time preservation" || true
           git push
