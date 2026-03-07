@@ -1,4 +1,4 @@
-name: Update Games (Deep News Analysis)
+name: Update Games (Fix Crowalt & Epic Slugs)
 
 on:
   schedule:
@@ -28,10 +28,10 @@ jobs:
           from datetime import datetime
 
           HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 'Accept-Language': 'en-US,en;q=0.9'}
+          COOKIES = {'birthtime': '283993201', 'wants_mature_content': '1'}
           API_BASE = 'https://system.et-api.com/v1/get/steam-daily-free'
 
           def parse_text_date(text):
-              # ⚡ 增强正则：支持 until, ends, before, on, starting, as of 等更多关键词
               months = {"jan":1, "feb":2, "mar":3, "apr":4, "may":5, "jun":6, "jul":7, "aug":8, "sep":9, "oct":10, "nov":11, "dec":12}
               pattern = r'(?:until|ends|before|exp\.|expires|on|starting|after|as\s+of)\s+([a-zA-Z]{3,})\s+(\d+)'
               match = re.search(pattern, text, re.IGNORECASE)
@@ -47,7 +47,8 @@ jobs:
 
           def get_steam_details(app_id, old_time="N/A"):
               try:
-                  res = requests.get(f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=schinese&cc=CN", headers=HEADERS, timeout=10).json()
+                  url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=schinese&cc=CN"
+                  res = requests.get(url, headers=HEADERS, timeout=10).json()
                   if str(app_id) not in res or not res[str(app_id)]['success']: return None
                   d = res[str(app_id)]['data']
                   if d.get('type') != 'game': return None
@@ -55,15 +56,22 @@ jobs:
                   price = d.get('price_overview', {})
                   is_100_off = price.get('discount_percent') == 100
                   is_store_free = d.get('is_free', False)
-                  
                   if not (is_store_free or is_100_off): return None
 
                   end_date = "N/A"
-                  # 1. 价格字段时间
+                  # 1. API自带时间
                   if price.get('discount_expiration'):
                       end_date = datetime.fromtimestamp(int(price['discount_expiration'])).strftime('%Y-%m-%dT%H:%M:%SZ')
                   
-                  # 2. 深度公告分析：将获取条数从 3 提升到 10，防止重要信息被淹没
+                  # 2. ⚡ 网页 HTML 强行抓取 (解决 Crowalt 等 API 漏掉时间的问题)
+                  if end_date == "N/A" and is_100_off:
+                      try:
+                          h = requests.get(f"https://store.steampowered.com/app/{app_id}?l=english", headers=HEADERS, cookies=COOKIES, timeout=5).text
+                          tm = re.search(r'DiscountEndDate\s*=\s*(\d+)', h) or re.search(r'data-ds-discount-end="(\d+)"', h)
+                          if tm: end_date = datetime.fromtimestamp(int(tm.group(1))).strftime('%Y-%m-%dT%H:%M:%SZ')
+                      except: pass
+
+                  # 3. 新闻公告分析
                   if end_date == "N/A":
                       try:
                           news = requests.get(f"https://api.steampowered.com/ISteamNews/GetNewsForApp/v0002/?appid={app_id}&count=10", timeout=5).json()
@@ -72,9 +80,7 @@ jobs:
                               if d_news != "N/A": end_date = d_news; break
                       except: pass
                   
-                  # 3. 记忆系统：使用之前存过的时间
-                  if end_date == "N/A" and old_time != "N/A":
-                      end_date = old_time
+                  if end_date == "N/A" and old_time != "N/A": end_date = old_time
 
                   return {
                       "steam_id": str(app_id), "zh_title": d.get('name'), "thumbnail": d.get('header_image'),
@@ -85,7 +91,6 @@ jobs:
               except: return None
 
           def main():
-              # 读取记忆... (保留原逻辑)
               memory = {}
               try:
                   for fn in ["games.json", "intel.json"]:
@@ -109,23 +114,38 @@ jobs:
                       elif info['is_weekend']: f_weekend.append(info)
                       else: f_to_paid.append(info)
 
-              # Epic 部分 (保留原逻辑)
+              # ⚡ Epic 深度抓取修复 (含 Upcoming 即将到来)
+              upcoming_list = []
               try:
                   res = requests.get("https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=CN&allowCountries=CN", timeout=15).json()
                   for item in res['data']['Catalog']['searchStore']['elements']:
                       promos = item.get('promotions')
-                      if promos and promos.get('promotionalOffers'):
+                      if not promos: continue
+                      
+                      # ⚡ 精准提取 Epic 真实链接后缀
+                      mappings = item.get('catalogNs', {}).get('mappings', [])
+                      slug = mappings[0].get('pageSlug') if mappings else None
+                      slug = slug or item.get('productSlug') or item.get('urlSlug') or "free-games"
+                      
+                      img = next((i['url'] for i in item.get('keyImages', []) if i['type'] in ['OfferImageWide', 'Thumbnail']), "")
+                      
+                      # 现在可领
+                      if promos.get('promotionalOffers'):
                           offers = promos['promotionalOffers'][0]['promotionalOffers']
                           if offers and offers[0].get('discountSetting', {}).get('discountPercentage') == 0:
-                              img = next((i['url'] for i in item['keyImages'] if i['type'] == 'OfferImageWide'), "")
-                              slug = item.get('productSlug') or item.get('urlSlug')
                               active_games.append({"zh_title": item['title'], "thumbnail": img, "end_date": offers[0]['endDate'], "epic_slug": slug, "short_description": "Epic 平台限时免费领取"})
+                      # 即将到来
+                      elif promos.get('upcomingPromotionalOffers'):
+                          offers = promos['upcomingPromotionalOffers'][0]['promotionalOffers']
+                          if offers:
+                              upcoming_list.append({"zh_title": item['title'], "image": img, "start_date": offers[0]['startDate'], "platform": "Epic Games", "epic_slug": slug, "short_description": "即将开启免费领取"})
               except: pass
 
               def upload(fn, data):
                   requests.post("https://system.et-api.com/v1/update/steam-daily-free", headers={"filename": fn, "Content-Type": "application/json"}, json=data)
 
               upload("games.json", active_games)
+              upload("upcoming.json", upcoming_list)
               upload("intel.json", {"to_paid": f_to_paid, "free_weekend": f_weekend})
           if __name__ == "__main__": main()
           EOF
@@ -134,5 +154,5 @@ jobs:
         run: |
           git config --global user.name 'GitHub Action'
           git add *.json || true
-          git commit -m "Deep News and Memory enhancement" || true
+          git commit -m "Fix Crowalt HTML parsing & Epic upcoming Slugs" || true
           git push
