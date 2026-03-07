@@ -1,4 +1,4 @@
-name: Update Games (Steam Announcement & HTML Time)
+name: Update Games (Steam Official Radar & Deep License)
 
 on:
   schedule:
@@ -30,7 +30,6 @@ jobs:
           from datetime import datetime
           import xml.etree.ElementTree as ET
 
-          # 绕过Steam年龄限制的Cookie
           COOKIES = {'birthtime': '283993201', 'lastagecheckage': '1-0-1980', 'wants_mature_content': '1'}
           HEADERS = {
               'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
@@ -68,17 +67,23 @@ jobs:
                       price_info = d.get('price_overview', {})
                       is_100_off = price_info.get('discount_percent') == 100
                       is_store_free = d.get('is_free', False)
-                      is_currently_free = is_store_free or is_100_off
-                      is_weekend = is_store_free and price_info.get('final', 0) > 0 and not is_100_off
+                      
+                      # 恢复底层免费授权包检测，精准识别周末试玩
+                      is_free_license = False
+                      for group in d.get('package_groups', []):
+                          for sub in group.get('subs', []):
+                              if sub.get('is_free_license') == True:
+                                  is_free_license = True
+                                  break
+
+                      is_currently_free = is_store_free or is_100_off or is_free_license
+                      is_weekend = is_free_license or (is_store_free and price_info.get('final', 0) > 0 and not is_100_off)
 
                       end_date = "N/A"
-                      
-                      # 1. 官方 API 价格时间
                       expiry_ts = price_info.get('discount_expiration')
                       if expiry_ts:
                           end_date = datetime.fromtimestamp(int(expiry_ts)).strftime('%Y-%m-%dT%H:%M:%SZ')
 
-                      # 2. 从商店页面 HTML 直接提取喜加一文本
                       if end_date == "N/A":
                           try:
                               html_res = requests.get(f"https://store.steampowered.com/app/{app_id}?l=english", headers=HEADERS, cookies=COOKIES, timeout=5).text
@@ -91,7 +96,6 @@ jobs:
                                       end_date = parse_text_date("before " + banner_match.group(1))
                           except: pass
 
-                      # 3. 从官方公告 API 提取转付费时间
                       if end_date == "N/A" and not is_100_off:
                           try:
                               news_res = requests.get(f"https://api.steampowered.com/ISteamNews/GetNewsForApp/v0002/?appid={app_id}&count=3&maxlength=500", timeout=5).json()
@@ -115,12 +119,25 @@ jobs:
               except: pass
               return None
 
+          def fetch_steam_official_ids():
+              # 新增：直接读取 Steam 官方首页的“免费周末”专区
+              ids = []
+              try:
+                  res = requests.get("https://store.steampowered.com/api/featuredcategories/?l=english", timeout=10).json()
+                  if 'freeweekend' in res:
+                      for item in res['freeweekend'].get('items', []):
+                          ids.append(str(item.get('id')))
+              except: pass
+              return ids
+
           def fetch_rss_with_nlp_time():
               intel_dict = {}
               sources = [
                   "https://www.reddit.com/r/FreeGameFindings/search.rss?q=flair%3A%22F2P+To+Paid%22+OR+flair%3A%22Free+Weekend%22&restrict_sr=on&sort=new&t=month",
                   "https://www.reddit.com/r/FreeGameFindings/search.rss?q=flair%3A%22Steam%22&restrict_sr=on&sort=new&t=week",
-                  "https://www.reddit.com/r/GameDeals/search.rss?q=title%3A%22100%25%22+OR+title%3A%22free%22+OR+title%3A%22weekend%22&restrict_sr=on&sort=new&t=week"
+                  "https://www.reddit.com/r/GameDeals/search.rss?q=title%3A%22100%25%22+OR+title%3A%22free%22+OR+title%3A%22weekend%22&restrict_sr=on&sort=new&t=week",
+                  "https://www.reddit.com/r/pcgaming/search.rss?q=title%3A%22free+weekend%22&restrict_sr=on&sort=new&t=week",
+                  "https://www.reddit.com/r/Steam/search.rss?q=title%3A%22free+weekend%22&restrict_sr=on&sort=new&t=week"
               ]
               for url in sources:
                   try:
@@ -154,7 +171,10 @@ jobs:
               except: pass
 
               reddit_intel = fetch_rss_with_nlp_time()
-              probe_ids = list(set(existing_ids + list(reddit_intel.keys()) + list(gp_dict.keys())))
+              official_ids = fetch_steam_official_ids()
+              
+              # 合并所有自动探测到的 ID
+              probe_ids = list(set(existing_ids + list(reddit_intel.keys()) + list(gp_dict.keys()) + official_ids))
               
               active_games, f_to_paid, f_weekend = [], [], []
               
@@ -207,5 +227,5 @@ jobs:
         run: |
           git config --global user.name 'GitHub Action'
           git add *.json || true
-          git commit -m "Fetch Time from Steam News and HTML" || true
+          git commit -m "Fetch from Steam Official Featured API and Restore License Check" || true
           git push
