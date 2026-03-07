@@ -1,4 +1,4 @@
-name: Update Games (Epic Fix & Time Memory)
+name: Update Games (Persistent Memory & Epic Fix)
 
 on:
   schedule:
@@ -27,96 +27,99 @@ jobs:
           import re
           from datetime import datetime
 
-          HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Accept-Language': 'zh-CN,zh;q=0.9'}
-          API_GET_URL = 'https://system.et-api.com/v1/get/steam-daily-free'
+          HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 'Accept-Language': 'en-US,en;q=0.9'}
+          API_BASE = 'https://system.et-api.com/v1/get/steam-daily-free'
+
+          def parse_text_date(text):
+              months = {"jan":1, "feb":2, "mar":3, "apr":4, "may":5, "jun":6, "jul":7, "aug":8, "sep":9, "oct":10, "nov":11, "dec":12}
+              match = re.search(r'(?:until|ends|before|exp\.|expires)\s+([a-zA-Z]{3,})\s+(\d+)', text, re.IGNORECASE)
+              if match:
+                  m_str, d_str = match.group(1).lower()[:3], int(match.group(2))
+                  if m_str in months:
+                      now = datetime.utcnow()
+                      y, m = now.year, months[m_str]
+                      if m < now.month - 2: y += 1
+                      try: return datetime(y, m, d_str, 17, 0, 0).strftime('%Y-%m-%dT%H:%M:%SZ')
+                      except: pass
+              return "N/A"
 
           def get_steam_details(app_id, old_time="N/A"):
               try:
-                  res = requests.get(f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=schinese&cc=CN", headers=HEADERS, timeout=10).json()
-                  if str(app_id) in res and res[str(app_id)]['success']:
-                      d = res[str(app_id)]['data']
-                      if d.get('type') != 'game': return None
-                      
-                      price = d.get('price_overview', {})
-                      is_100_off = price.get('discount_percent') == 100
-                      is_store_free = d.get('is_free', False)
-                      
-                      if not (is_store_free or is_100_off): return None
+                  url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=schinese&cc=CN"
+                  res = requests.get(url, headers=HEADERS, timeout=10).json()
+                  if str(app_id) not in res or not res[str(app_id)]['success']: return None
+                  d = res[str(app_id)]['data']
+                  if d.get('type') != 'game': return None
+                  
+                  price = d.get('price_overview', {})
+                  is_100_off = price.get('discount_percent') == 100
+                  is_store_free = d.get('is_free', False)
+                  
+                  if not (is_store_free or is_100_off): return None
 
-                      end_date = "N/A"
-                      if price.get('discount_expiration'):
-                          end_date = datetime.fromtimestamp(int(price['discount_expiration'])).strftime('%Y-%m-%dT%H:%M:%SZ')
-                      
-                      # ⚡ 时间记忆：如果这次没扫到时间，使用服务器记录的老时间
-                      if end_date == "N/A" and old_time != "N/A":
-                          end_date = old_time
+                  end_date = "N/A"
+                  # 1. 尝试从价格对象获取
+                  if price.get('discount_expiration'):
+                      end_date = datetime.fromtimestamp(int(price['discount_expiration'])).strftime('%Y-%m-%dT%H:%M:%SZ')
+                  
+                  # 2. 尝试从公告获取 (针对 Weyrdlets 等转付费游戏)
+                  if end_date == "N/A":
+                      try:
+                          news = requests.get(f"https://api.steampowered.com/ISteamNews/GetNewsForApp/v0002/?appid={app_id}&count=3", timeout=5).json()
+                          for item in news.get('appnews', {}).get('newsitems', []):
+                              d_news = parse_text_date(item.get('title', '') + " " + item.get('contents', ''))
+                              if d_news != "N/A": end_date = d_news; break
+                      except: pass
+                  
+                  # 3. ⚡ 记忆系统：如果这次扫描没拿到时间，保留老时间
+                  if end_date == "N/A" and old_time != "N/A":
+                      end_date = old_time
 
-                      return {
-                          "steam_id": str(app_id),
-                          "zh_title": d.get('name'),
-                          "thumbnail": d.get('header_image'),
-                          "short_description": d.get('short_description', '').strip().split('。')[0],
-                          "is_100_off": is_100_off,
-                          "end_date": end_date
-                      }
-              except: pass
-              return None
+                  return {
+                      "steam_id": str(app_id), "zh_title": d.get('name'), "thumbnail": d.get('header_image'),
+                      "short_description": d.get('short_description', '').strip().split('。')[0],
+                      "is_100_off": is_100_off, "end_date": end_date,
+                      "is_weekend": is_store_free and price.get('final', 0) > 0 and not is_100_off
+                  }
+              except: return None
 
           def main():
-              print("🚀 启动数据修复与记忆引擎...")
-              
-              # 1. 记忆系统：背下老游戏的 ID 和 时间
-              memory_times = {}
+              # 读取记忆
+              memory = {}
               try:
                   for fn in ["games.json", "intel.json"]:
-                      old_data = requests.get(f"{API_GET_URL}?filename={fn}", timeout=10).json()
-                      items = old_data if isinstance(old_data, list) else (old_data.get('to_paid', []) + old_data.get('free_weekend', []))
+                      old = requests.get(f"{API_BASE}?filename={fn}", timeout=10).json()
+                      items = old if isinstance(old, list) else (old.get('to_paid', []) + old.get('free_weekend', []))
                       for i in items:
-                          if i.get('steam_id'): memory_times[i['steam_id']] = i.get('end_date', "N/A")
+                          if i.get('steam_id'): memory[i['steam_id']] = i.get('end_date', "N/A")
               except: pass
 
-              # 2. 探测新情报
-              probe_ids = set(memory_times.keys())
-              sources = ["https://keylol.com/forum.php?mod=rss&fid=319", "https://www.reddit.com/r/FreeGameFindings/new.rss"]
-              for s in sources:
-                  try:
-                      res = requests.get(s, timeout=15).text
-                      probe_ids.update(re.findall(r'app/(\d+)', res))
-                  except: pass
+              ids = set(memory.keys())
+              # 嗅探新 ID
+              try:
+                  res = requests.get("https://keylol.com/forum.php?mod=rss&fid=319", timeout=15).text
+                  ids.update(re.findall(r'app/(\d+)', res))
+              except: pass
 
               active_games, f_to_paid, f_weekend = [], [], []
-
-              for app_id in probe_ids:
-                  info = get_steam_details(app_id, memory_times.get(app_id, "N/A"))
+              for app_id in ids:
+                  info = get_steam_details(app_id, memory.get(app_id, "N/A"))
                   if info:
-                      if info['is_100_off']:
-                          active_games.append({**info, "open_giveaway_url": f"https://store.steampowered.com/app/{app_id}"})
-                      else:
-                          if "试玩" in info['short_description'] or "Weekend" in info['zh_title']:
-                              f_weekend.append(info)
-                          else:
-                              f_to_paid.append(info)
+                      if info['is_100_off']: active_games.append(info)
+                      elif info['is_weekend']: f_weekend.append(info)
+                      else: f_to_paid.append(info)
 
-              # 3. ⚡ Epic 修复：确保 slug 字段抓取完整
+              # Epic 抓取修复
               try:
-                  res = requests.get("https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=CN&allowCountries=CN", headers=HEADERS, timeout=15).json()
+                  res = requests.get("https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=CN&allowCountries=CN", timeout=15).json()
                   for item in res['data']['Catalog']['searchStore']['elements']:
                       promos = item.get('promotions')
-                      if not promos: continue
-                      
-                      img = next((i['url'] for i in item.get('keyImages', []) if i['type'] in ['OfferImageWide', 'Thumbnail']), "")
-                      slug = item.get('catalogNs', {}).get('mappings', [{}])[0].get('pageSlug') or item.get('productSlug') or item.get('urlSlug')
-                      
-                      if promos.get('promotionalOffers'):
+                      if promos and promos.get('promotionalOffers'):
                           offers = promos['promotionalOffers'][0]['promotionalOffers']
                           if offers and offers[0].get('discountSetting', {}).get('discountPercentage') == 0:
-                              active_games.append({
-                                  "zh_title": item['title'], 
-                                  "thumbnail": img, 
-                                  "end_date": offers[0]['endDate'], 
-                                  "epic_slug": slug, 
-                                  "short_description": "Epic 平台限时免费领取"
-                              })
+                              img = next((i['url'] for i in item['keyImages'] if i['type'] == 'OfferImageWide'), "")
+                              slug = item.get('productSlug') or item.get('urlSlug')
+                              active_games.append({"zh_title": item['title'], "thumbnail": img, "end_date": offers[0]['endDate'], "epic_slug": slug, "short_description": "Epic 平台限时免费领取"})
               except: pass
 
               def upload(fn, data):
@@ -124,6 +127,7 @@ jobs:
 
               upload("games.json", active_games)
               upload("intel.json", {"to_paid": f_to_paid, "free_weekend": f_weekend})
+
           if __name__ == "__main__": main()
           EOF
           python processor.py
@@ -131,5 +135,5 @@ jobs:
         run: |
           git config --global user.name 'GitHub Action'
           git add *.json || true
-          git commit -m "Epic fix & Persistent memory" || true
+          git commit -m "Persistent memory & Epic fix" || true
           git push
