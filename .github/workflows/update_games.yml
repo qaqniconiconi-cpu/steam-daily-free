@@ -1,4 +1,4 @@
-name: Update Games (Final Fix & Intel)
+name: Update Games (Smart Memory & Full Auto)
 
 on:
   schedule:
@@ -39,7 +39,6 @@ jobs:
 
           def get_steam_details(app_id):
               try:
-                  # 同时获取中英文信息
                   url_zh = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=schinese&cc=CN"
                   res_zh = requests.get(url_zh, headers=HEADERS, timeout=10).json()
                   url_en = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=english"
@@ -49,7 +48,7 @@ jobs:
                       d = res_zh[str(app_id)]['data']
                       d_en = res_en[str(app_id)]['data'] if str(app_id) in res_en else {}
                       
-                      # ⚡ 核心修复：扫描免费授权包 (Free Weekend 关键)
+                      # ⚡ 核心扫描：免费授权包 (限时试玩) 与 100%折扣 (喜加一)
                       is_free_license = False
                       for group in d.get('package_groups', []):
                           for sub in group.get('subs', []):
@@ -58,7 +57,8 @@ jobs:
                                   break
 
                       price_info = d.get('price_overview', {})
-                      is_currently_free = d.get('is_free', False) or price_info.get('discount_percent') == 100 or is_free_license
+                      is_100_off = price_info.get('discount_percent') == 100
+                      is_currently_free = d.get('is_free', False) or is_100_off or is_free_license
 
                       # 时间抓取
                       end_date = "N/A"
@@ -69,7 +69,7 @@ jobs:
                       # 描述与关键词识别
                       desc = d.get('short_description', '')
                       clean_desc = re.sub('<[^<]+?>', '', desc).replace('\r', '').replace('\n', '').strip()
-                      is_weekend_kw = any(kw in clean_desc for kw in ['免费周末', '免费试玩', 'Free Weekend', '限时试玩'])
+                      is_weekend_kw = any(kw in clean_desc.lower() for kw in ['免费周末', '免费试玩', 'free weekend'])
 
                       return {
                           "zh_title": d.get('name'),
@@ -77,6 +77,7 @@ jobs:
                           "thumbnail": d.get('header_image'),
                           "short_description": clean_desc.split('。')[0] if '。' in clean_desc else clean_desc,
                           "is_free": is_currently_free,
+                          "is_100_off": is_100_off,
                           "is_weekend": is_weekend_kw or is_free_license,
                           "end_date": end_date,
                           "type": d.get('type', 'game')
@@ -84,7 +85,7 @@ jobs:
               except: pass
               return None
 
-          def fetch_intel_ids():
+          def fetch_rss_ids():
               ids = []
               sources = ["https://www.reddit.com/r/FreeGameFindings/new.rss", "https://www.reddit.com/r/GameDeals/new.rss", "https://keylol.com/forum.php?mod=rss&fid=319"]
               for url in sources:
@@ -95,34 +96,63 @@ jobs:
               return list(set(ids))
 
           def main():
-              print("🚀 启动深度情报引擎...")
-              probe_ids = list(set(fetch_intel_ids() + ["2366060", "255710", "780310", "493340"]))
+              print("🚀 启动具有【长期记忆】的深度情报引擎...")
               
-              f_to_paid, f_weekend = [], []
+              # 1. ⚡ 记忆系统：读取旧数据，防止帖子被顶下去导致游戏消失
+              existing_ids = []
+              try:
+                  old_data = requests.get("https://system.et-api.com/v1/get/steam-daily-free?filename=intel.json", headers=HEADERS, timeout=10).json()
+                  existing_ids.extend([i['steam_id'] for i in old_data.get('to_paid', [])])
+                  existing_ids.extend([i['steam_id'] for i in old_data.get('free_weekend', [])])
+              except: pass
+
+              # 2. ⚡ 获取最新 RSS 数据
+              new_ids = fetch_rss_ids()
+              
+              # 合并新老 ID，自动去重（绝不写死任何 ID）
+              probe_ids = list(set(existing_ids + new_ids))
+              probe_ids = [uid for uid in probe_ids if uid]
+              
+              rss_active_games, f_to_paid, f_weekend = [], [], []
               for app_id in probe_ids:
                   info = get_steam_details(app_id)
-                  # 过滤 DLC，只留游戏
+                  # ⚡ 自动淘汰：只保留 Type是Game 且 目前还在免费期的游戏
                   if info and info['is_free'] and info['type'] == 'game':
-                      item = {"steam_id": app_id, "zh_title": info['zh_title'], "en_title": info['en_title'], "thumbnail": info['thumbnail'], "short_description": info['short_description'], "end_date": info['end_date']}
-                      # ⚡ 判定分类
-                      if info['is_weekend'] or info['end_date'] != "N/A":
+                      item = {"steam_id": str(app_id), "zh_title": info['zh_title'], "en_title": info['en_title'], "thumbnail": info['thumbnail'], "short_description": info['short_description'], "end_date": info['end_date']}
+                      
+                      # 智能分流
+                      if info['is_100_off']:
+                          # 100%折扣是真正的喜加一，转入主站区域
+                          rss_active_games.append({**item, "open_giveaway_url": f"https://store.steampowered.com/app/{app_id}"})
+                      elif info['is_weekend']:
                           f_weekend.append(item)
                       else:
                           f_to_paid.append(item)
 
+              # 3. 处理常规 Steam 喜加一
               active_games = []
-              # Steam 常规
+              active_games.extend(rss_active_games)
               try:
                   gp = requests.get("https://www.gamerpower.com/api/giveaways?platform=steam", headers=HEADERS).json()
                   for g in gp:
                       if g.get('type') == 'Game':
                           m = re.search(r'app/(\d+)', g.get('open_giveaway_url', ''))
                           if m:
-                              s = get_steam_details(m.group(1))
-                              if s: active_games.append({**item, "open_giveaway_url": g['open_giveaway_url']})
+                              app_id = m.group(1)
+                              # 去重：如果 RSS 已经抓到了，就不重复添加
+                              if any(x['steam_id'] == app_id for x in active_games): continue
+                              
+                              s = get_steam_details(app_id)
+                              # 修复了之前此处的变量覆盖 Bug
+                              if s and s['type'] == 'game' and s['is_100_off']: 
+                                  active_games.append({
+                                      "steam_id": app_id, "zh_title": s['zh_title'], "en_title": s['en_title'], 
+                                      "thumbnail": s['thumbnail'], "short_description": s['short_description'], 
+                                      "end_date": s['end_date'], "open_giveaway_url": g.get('open_giveaway_url')
+                                  })
               except: pass
 
-              # Epic 官方
+              # 4. Epic 官方数据
               upcoming_list = []
               try:
                   res = requests.get("https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=CN&allowCountries=CN", headers=HEADERS).json()
@@ -134,7 +164,7 @@ jobs:
                       if promos.get('promotionalOffers'):
                           offers = promos['promotionalOffers'][0]['promotionalOffers']
                           if offers and offers[0].get('discountSetting', {}).get('discountPercentage') == 0:
-                              active_games.append({"zh_title": item['title'], "thumbnail": img, "end_date": offers[0]['endDate'], "epic_slug": slug, "short_description": "Epic 平台限时免费领取"})
+                              active_games.append({"zh_title": item['title'], "en_title": item['title'], "thumbnail": img, "end_date": offers[0]['endDate'], "epic_slug": slug, "short_description": "Epic 平台限时免费领取"})
                       elif promos.get('upcomingPromotionalOffers'):
                           offers = promos['upcomingPromotionalOffers'][0]['promotionalOffers']
                           if offers:
@@ -147,7 +177,7 @@ jobs:
               upload("games.json", active_games)
               upload("upcoming.json", upcoming_list)
               upload("intel.json", {"to_paid": f_to_paid, "free_weekend": f_weekend})
-              print("🎉 情报更新完成")
+              print("🎉 系统更新完毕！长久记忆模块已生效！")
 
           if __name__ == "__main__":
               main()
@@ -160,5 +190,5 @@ jobs:
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
           git add *.json || true
-          git commit -m "Fix weekend detection & Category logic" || true
+          git commit -m "Add Memory System & Auto Pruning" || true
           git push
