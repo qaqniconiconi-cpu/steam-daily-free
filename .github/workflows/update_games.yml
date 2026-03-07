@@ -1,4 +1,4 @@
-name: Update Games (Max Time Info & Auto Category)
+name: Update Games (Ultimate Time Engine)
 
 on:
   schedule:
@@ -27,12 +27,24 @@ jobs:
           import requests
           import json
           import re
-          from datetime import datetime
+          import datetime
+          from datetime import timedelta
 
           HEADERS = {
               'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
               'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'
           }
+
+          def get_next_monday_10am_pt():
+              """推算 Steam 免费周末的潜规则结束时间 (UTC 17:00 / 北京周二凌晨 1点)"""
+              now = datetime.datetime.utcnow()
+              # 0=Monday, 1=Tuesday... If today is Mon-Sun, next Monday is days_ahead
+              days_ahead = 0 - now.weekday()
+              if days_ahead <= 0: 
+                  days_ahead += 7
+              next_monday = now + timedelta(days=days_ahead)
+              next_monday = next_monday.replace(hour=17, minute=0, second=0)
+              return next_monday.strftime('%Y-%m-%dT%H:%M:%SZ')
 
           def get_steam_details(app_id):
               try:
@@ -52,10 +64,30 @@ jobs:
                       
                       is_weekend = is_store_free and bool(price_info) and price_info.get('final', 0) > 0 and not is_100_off
 
+                      # ==========================================
+                      # ⚡ 三重时间兜底引擎 ⚡
+                      # ==========================================
                       end_date = "N/A"
+                      
+                      # 第一重：API 常规获取
                       expiry_ts = price_info.get('discount_expiration')
                       if expiry_ts:
-                          end_date = datetime.fromtimestamp(int(expiry_ts)).strftime('%Y-%m-%dT%H:%M:%SZ')
+                          end_date = datetime.datetime.fromtimestamp(int(expiry_ts)).strftime('%Y-%m-%dT%H:%M:%SZ')
+                      
+                      # 第二重：HTML 暴力剥离时间戳 (很多限免时间藏在按钮的 js 代码里)
+                      if end_date == "N/A":
+                          try:
+                              html_res = requests.get(f"https://store.steampowered.com/app/{app_id}", headers=HEADERS, timeout=5).text
+                              # 匹配 Steam 网页倒计时变量或属性
+                              time_match = re.search(r'DiscountEndDate\s*=\s*(\d+)', html_res) or re.search(r'data-ds-discount-end="(\d+)"', html_res)
+                              if time_match:
+                                  end_date = datetime.datetime.fromtimestamp(int(time_match.group(1))).strftime('%Y-%m-%dT%H:%M:%SZ')
+                          except: pass
+                      
+                      # 第三重：针对周末试玩的潜规则推算
+                      if end_date == "N/A" and is_weekend:
+                          end_date = get_next_monday_10am_pt()
+                      # ==========================================
 
                       raw_desc = d.get('short_description', '')
                       clean_desc = re.sub('<[^<]+?>', '', raw_desc).replace('\r', '').replace('\n', '').strip()
@@ -96,7 +128,6 @@ jobs:
                   existing_ids.extend([g['steam_id'] for g in old_games if g.get('steam_id')])
               except: pass
 
-              # ⚡ 核心兜底引擎：提前把全球数据库的时间都存下来
               gp_dict = {}
               try:
                   gp = requests.get("https://www.gamerpower.com/api/giveaways?platform=steam", headers=HEADERS).json()
@@ -113,7 +144,7 @@ jobs:
                   info = get_steam_details(app_id)
                   if info and info['type'] == 'game' and info['is_free']:
                       
-                      # ⚡ 时间抢救：如果 Steam 没给时间，立刻用第三方数据库兜底
+                      # 第四重：GamerPower 第三方数据库时间兜底
                       if info['end_date'] == "N/A" and app_id in gp_dict:
                           gp_end = gp_dict[app_id].get('end_date', 'N/A')
                           if gp_end != 'N/A' and gp_end:
@@ -124,7 +155,6 @@ jobs:
                       elif info['is_weekend']: f_weekend.append(item)
                       else: f_to_paid.append(item)
 
-              # 把那些仅存在于第三方数据库的游戏也补进来
               for app_id, g in gp_dict.items():
                   if not any(x['steam_id'] == app_id for x in active_games):
                       s = get_steam_details(app_id)
@@ -162,7 +192,7 @@ jobs:
               upload("games.json", active_games)
               upload("upcoming.json", upcoming_list)
               upload("intel.json", {"to_paid": f_to_paid, "free_weekend": f_weekend})
-              print("🎉 雷达扫描与数据分类已完成！")
+              print("🎉 终极时间引擎扫描与数据上传完成！")
 
           if __name__ == "__main__":
               main()
@@ -173,5 +203,5 @@ jobs:
         run: |
           git config --global user.name 'GitHub Action'
           git add *.json || true
-          git commit -m "Max Time preservation logic" || true
+          git commit -m "Add Ultimate Time Fallback Engine" || true
           git push
