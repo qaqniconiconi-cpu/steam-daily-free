@@ -1,4 +1,4 @@
-name: Update Games (Ultimate Discovery & Strict Logic)
+name: Update Games (Steam Announcement & HTML Time)
 
 on:
   schedule:
@@ -12,10 +12,12 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v3
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
+
       - name: Install dependencies
         run: pip install requests
 
@@ -28,19 +30,27 @@ jobs:
           from datetime import datetime
           import xml.etree.ElementTree as ET
 
+          # 绕过Steam年龄限制的Cookie
           COOKIES = {'birthtime': '283993201', 'lastagecheckage': '1-0-1980', 'wants_mature_content': '1'}
-          HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 'Accept-Language': 'en-US,en;q=0.9'}
+          HEADERS = {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+              'Accept-Language': 'en-US,en;q=0.9'
+          }
 
           def parse_text_date(text):
               months = {"jan":1, "feb":2, "mar":3, "apr":4, "may":5, "jun":6, "jul":7, "aug":8, "sep":9, "oct":10, "nov":11, "dec":12}
               match = re.search(r'(?:until|ends|before|exp\.|expires)\s+([a-zA-Z]{3,})\s+(\d+)', text, re.IGNORECASE)
               if match:
-                  m_str, d_str = match.group(1).lower()[:3], int(match.group(2))
+                  m_str = match.group(1).lower()[:3]
+                  d_str = int(match.group(2))
                   if m_str in months:
                       now = datetime.utcnow()
-                      y, m = now.year, months[m_str]
+                      y = now.year
+                      m = months[m_str]
                       if m < now.month - 2: y += 1
-                      try: return datetime(y, m, d_str, 17, 0, 0).strftime('%Y-%m-%dT%H:%M:%SZ')
+                      try:
+                          dt = datetime(y, m, d_str, 17, 0, 0)
+                          return dt.strftime('%Y-%m-%dT%H:%M:%SZ')
                       except: pass
               return "N/A"
 
@@ -48,95 +58,154 @@ jobs:
               try:
                   url_zh = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=schinese&cc=CN"
                   res_zh = requests.get(url_zh, headers=HEADERS, timeout=10).json()
-                  if str(app_id) not in res_zh or not res_zh[str(app_id)]['success']: return None
-                  d = res_zh[str(app_id)]['data']
-                  price = d.get('price_overview', {})
-                  is_100_off = price.get('discount_percent') == 100
-                  is_store_free = d.get('is_free', False)
-                  
-                  # 核心判定：试玩必须是“能玩但买断要钱”
-                  is_weekend = is_store_free and price.get('final', 0) > 0 and not is_100_off
-                  
-                  end_date = "N/A"
-                  if price.get('discount_expiration'):
-                      end_date = datetime.fromtimestamp(int(price['discount_expiration'])).strftime('%Y-%m-%dT%H:%M:%SZ')
-                  
-                  # 深度时间抓取：HTML 及 公告
-                  if end_date == "N/A":
-                      try:
-                          h = requests.get(f"https://store.steampowered.com/app/{app_id}?l=english", headers=HEADERS, cookies=COOKIES, timeout=5).text
-                          tm = re.search(r'DiscountEndDate\s*=\s*(\d+)', h) or re.search(r'data-ds-discount-end="(\d+)"', h)
-                          if tm: end_date = datetime.fromtimestamp(int(tm.group(1))).strftime('%Y-%m-%dT%H:%M:%SZ')
-                          else: end_date = parse_text_date(h)
-                      except: pass
-                      
-                  if end_date == "N/A":
-                      try:
-                          news = requests.get(f"https://api.steampowered.com/ISteamNews/GetNewsForApp/v0002/?appid={app_id}&count=3", timeout=5).json()
-                          for item in news.get('appnews', {}).get('newsitems', []):
-                              d_news = parse_text_date(item.get('title', '') + " " + item.get('contents', ''))
-                              if d_news != "N/A": end_date = d_news; break
-                      except: pass
+                  url_en = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=english"
+                  res_en = requests.get(url_en, headers=HEADERS, timeout=10).json()
 
-                  return {
-                      "zh_title": d.get('name'), "thumbnail": d.get('header_image'), "short_description": d.get('short_description', '').strip().split('。')[0],
-                      "type": d.get('type', 'game'), "is_100_off": is_100_off, "is_weekend": is_weekend, "end_date": end_date, "is_free": is_store_free or is_100_off
-                  }
-              except: return None
+                  if str(app_id) in res_zh and res_zh[str(app_id)]['success']:
+                      d = res_zh[str(app_id)]['data']
+                      d_en = res_en[str(app_id)]['data'] if str(app_id) in res_en else {}
+                      
+                      price_info = d.get('price_overview', {})
+                      is_100_off = price_info.get('discount_percent') == 100
+                      is_store_free = d.get('is_free', False)
+                      is_currently_free = is_store_free or is_100_off
+                      is_weekend = is_store_free and price_info.get('final', 0) > 0 and not is_100_off
+
+                      end_date = "N/A"
+                      
+                      # 1. 官方 API 价格时间
+                      expiry_ts = price_info.get('discount_expiration')
+                      if expiry_ts:
+                          end_date = datetime.fromtimestamp(int(expiry_ts)).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+                      # 2. 从商店页面 HTML 直接提取喜加一文本
+                      if end_date == "N/A":
+                          try:
+                              html_res = requests.get(f"https://store.steampowered.com/app/{app_id}?l=english", headers=HEADERS, cookies=COOKIES, timeout=5).text
+                              time_match = re.search(r'DiscountEndDate\s*=\s*(\d+)', html_res) or re.search(r'data-ds-discount-end="(\d+)"', html_res)
+                              if time_match:
+                                  end_date = datetime.fromtimestamp(int(time_match.group(1))).strftime('%Y-%m-%dT%H:%M:%SZ')
+                              else:
+                                  banner_match = re.search(r'before\s+([A-Za-z]{3,}\s+\d+)', html_res, re.IGNORECASE)
+                                  if banner_match:
+                                      end_date = parse_text_date("before " + banner_match.group(1))
+                          except: pass
+
+                      # 3. 从官方公告 API 提取转付费时间
+                      if end_date == "N/A" and not is_100_off:
+                          try:
+                              news_res = requests.get(f"https://api.steampowered.com/ISteamNews/GetNewsForApp/v0002/?appid={app_id}&count=3&maxlength=500", timeout=5).json()
+                              for item in news_res.get('appnews', {}).get('newsitems', []):
+                                  d_news = parse_text_date(item.get('title', '') + " " + item.get('contents', ''))
+                                  if d_news != "N/A":
+                                      end_date = d_news
+                                      break
+                          except: pass
+
+                      desc = d.get('short_description', '')
+                      clean_desc = re.sub('<[^<]+?>', '', desc).replace('\r', '').replace('\n', '').strip()
+                      short_desc = clean_desc.split('。')[0] if '。' in clean_desc else clean_desc
+
+                      return {
+                          "zh_title": d.get('name'), "en_title": d_en.get('name', d.get('name')),
+                          "thumbnail": d.get('header_image'), "short_description": short_desc,
+                          "type": d.get('type', 'game'), "is_100_off": is_100_off,
+                          "is_weekend": is_weekend, "end_date": end_date, "is_free": is_currently_free
+                      }
+              except: pass
+              return None
+
+          def fetch_rss_with_nlp_time():
+              intel_dict = {}
+              sources = [
+                  "https://www.reddit.com/r/FreeGameFindings/search.rss?q=flair%3A%22F2P+To+Paid%22+OR+flair%3A%22Free+Weekend%22&restrict_sr=on&sort=new&t=month",
+                  "https://www.reddit.com/r/FreeGameFindings/search.rss?q=flair%3A%22Steam%22&restrict_sr=on&sort=new&t=week",
+                  "https://www.reddit.com/r/GameDeals/search.rss?q=title%3A%22100%25%22+OR+title%3A%22free%22+OR+title%3A%22weekend%22&restrict_sr=on&sort=new&t=week"
+              ]
+              for url in sources:
+                  try:
+                      res = requests.get(url, headers=HEADERS, timeout=15)
+                      root = ET.fromstring(res.content)
+                      for item in root.findall('.//item'):
+                          title = item.find('title').text or ""
+                          desc = item.find('description').text or ""
+                          for m in re.findall(r'app/(\d+)', desc):
+                              if m not in intel_dict or intel_dict[m] == "N/A":
+                                  intel_dict[m] = parse_text_date(title)
+                  except: pass
+              return intel_dict
 
           def main():
-              ids = []
-              # 1. 记忆系统
+              existing_ids = []
               try:
-                  for fn in ["games.json", "intel.json"]:
-                      old = requests.get(f"https://system.et-api.com/v1/get/steam-daily-free?filename={fn}", timeout=10).json()
-                      if isinstance(old, list): ids.extend([g.get('steam_id') for g in old if g.get('steam_id')])
-                      else: 
-                          ids.extend([i['steam_id'] for i in old.get('to_paid', [])])
-                          ids.extend([i['steam_id'] for i in old.get('free_weekend', [])])
+                  old_intel = requests.get("https://system.et-api.com/v1/get/steam-daily-free?filename=intel.json", headers=HEADERS, timeout=10).json()
+                  existing_ids.extend([i['steam_id'] for i in old_intel.get('to_paid', [])] + [i['steam_id'] for i in old_intel.get('free_weekend', [])])
+                  old_games = requests.get("https://system.et-api.com/v1/get/steam-daily-free?filename=games.json", headers=HEADERS, timeout=10).json()
+                  existing_ids.extend([g['steam_id'] for g in old_games if g.get('steam_id')])
               except: pass
 
-              # 2. 深度搜索雷达 (Reddit 过去一月)
-              srcs = [
-                  "https://www.reddit.com/r/FreeGameFindings/search.rss?q=flair%3A%22F2P+To+Paid%22+OR+flair%3A%22Free+Weekend%22+OR+flair%3A%22Steam%22&restrict_sr=on&sort=new&t=month",
-                  "https://keylol.com/forum.php?mod=rss&fid=319",
-                  "https://store.steampowered.com/api/featuredcategories/?l=english"
-              ]
-              for s in srcs:
-                  try:
-                      res = requests.get(s, timeout=15).text
-                      ids.extend(re.findall(r'app/(\d+)', res) or re.findall(r'"id":(\d+)', res))
-                  except: pass
+              gp_dict = {}
+              try:
+                  gp = requests.get("https://www.gamerpower.com/api/giveaways?platform=steam", headers=HEADERS).json()
+                  for g in gp:
+                      if g.get('type') == 'Game':
+                          m = re.search(r'app/(\d+)', g.get('open_giveaway_url', ''))
+                          if m: gp_dict[m.group(1)] = g.get('end_date', 'N/A')
+              except: pass
 
+              reddit_intel = fetch_rss_with_nlp_time()
+              probe_ids = list(set(existing_ids + list(reddit_intel.keys()) + list(gp_dict.keys())))
+              
               active_games, f_to_paid, f_weekend = [], [], []
-              for app_id in set([i for i in ids if i]):
+              
+              for app_id in probe_ids:
                   info = get_steam_details(app_id)
                   if info and info['type'] == 'game' and info['is_free']:
-                      item = {"steam_id": app_id, "zh_title": info['zh_title'], "thumbnail": info['thumbnail'], "short_description": info['short_description'], "end_date": info['end_date']}
-                      if info['is_100_off']: active_games.append(item)
+                      
+                      if info['end_date'] == "N/A":
+                          if reddit_intel.get(app_id, "N/A") != "N/A":
+                              info['end_date'] = reddit_intel[app_id]
+                          elif gp_dict.get(app_id, "N/A") != "N/A":
+                              info['end_date'] = gp_dict[app_id].replace(' ', 'T') + 'Z' if ' ' in gp_dict[app_id] else gp_dict[app_id]
+
+                      item = {"steam_id": app_id, "zh_title": info['zh_title'], "en_title": info['en_title'], "thumbnail": info['thumbnail'], "short_description": info['short_description'], "end_date": info['end_date']}
+                      if info['is_100_off']: active_games.append({**item, "open_giveaway_url": f"https://store.steampowered.com/app/{app_id}"})
                       elif info['is_weekend']: f_weekend.append(item)
                       else: f_to_paid.append(item)
 
-              # Epic 官方
+              upcoming_list = []
               try:
-                  res = requests.get("https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN", timeout=10).json()
+                  res = requests.get("https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=CN&allowCountries=CN", headers=HEADERS).json()
                   for item in res['data']['Catalog']['searchStore']['elements']:
                       promos = item.get('promotions')
-                      if promos and promos.get('promotionalOffers'):
+                      if not promos: continue
+                      img = next((i['url'] for i in item.get('keyImages', []) if i['type'] in ['OfferImageWide', 'Thumbnail']), "")
+                      slug = item.get('productSlug') or item.get('urlSlug')
+                      if promos.get('promotionalOffers'):
                           offers = promos['promotionalOffers'][0]['promotionalOffers']
                           if offers and offers[0].get('discountSetting', {}).get('discountPercentage') == 0:
-                              active_games.append({"zh_title": item['title'], "thumbnail": next(i['url'] for i in item['keyImages'] if i['type'] == 'OfferImageWide'), "end_date": offers[0]['endDate'], "epic_slug": item.get('productSlug') or item.get('urlSlug')})
+                              active_games.append({"zh_title": item['title'], "en_title": item['title'], "thumbnail": img, "end_date": offers[0]['endDate'], "epic_slug": slug, "short_description": "Epic 平台限时免费领取"})
+                      elif promos.get('upcomingPromotionalOffers'):
+                          offers = promos['upcomingPromotionalOffers'][0]['promotionalOffers']
+                          if offers:
+                              upcoming_list.append({"zh_title": item['title'], "image": img, "start_date": offers[0]['startDate'], "platform": "Epic Games", "short_description": "即将开启免费领取"})
               except: pass
 
-              requests.post("https://system.et-api.com/v1/update/steam-daily-free", headers={"filename": "games.json", "Content-Type": "application/json"}, json=active_games)
-              requests.post("https://system.et-api.com/v1/update/steam-daily-free", headers={"filename": "intel.json", "Content-Type": "application/json"}, json={"to_paid": f_to_paid, "free_weekend": f_weekend})
+              def upload(fn, data):
+                  requests.post("https://system.et-api.com/v1/update/steam-daily-free", headers={"filename": fn, "Content-Type": "application/json"}, json=data, timeout=15)
 
-          if __name__ == "__main__": main()
+              upload("games.json", active_games)
+              upload("upcoming.json", upcoming_list)
+              upload("intel.json", {"to_paid": f_to_paid, "free_weekend": f_weekend})
+
+          if __name__ == "__main__":
+              main()
           EOF
           python processor.py
+
       - name: Commit and Push
         run: |
           git config --global user.name 'GitHub Action'
           git add *.json || true
-          git commit -m "Deep discovery restore" || true
+          git commit -m "Fetch Time from Steam News and HTML" || true
           git push
