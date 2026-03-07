@@ -1,4 +1,4 @@
-name: Update Games (NLP Reddit Time Parsing)
+name: Update Games (Fast Regex Time Engine)
 
 on:
   schedule:
@@ -19,8 +19,8 @@ jobs:
           python-version: '3.9'
 
       - name: Install dependencies
-        # ⚡ 新增 dateparser 库，用于让程序看懂 Reddit 上的英文时间
-        run: pip install requests deep-translator dateparser
+        # ⚡ 移除了容易报错的重型库，只保留基础网络库
+        run: pip install requests deep-translator
 
       - name: Run Smart Processor
         run: |
@@ -28,7 +28,7 @@ jobs:
           import requests
           import json
           import re
-          import datetime
+          from datetime import datetime
           import xml.etree.ElementTree as ET
 
           HEADERS = {
@@ -56,14 +56,14 @@ jobs:
                       end_date = "N/A"
                       expiry_ts = price_info.get('discount_expiration')
                       if expiry_ts:
-                          end_date = datetime.datetime.fromtimestamp(int(expiry_ts)).strftime('%Y-%m-%dT%H:%M:%SZ')
+                          end_date = datetime.fromtimestamp(int(expiry_ts)).strftime('%Y-%m-%dT%H:%M:%SZ')
 
                       if end_date == "N/A":
                           try:
                               html_res = requests.get(f"https://store.steampowered.com/app/{app_id}", headers=HEADERS, timeout=5).text
                               time_match = re.search(r'DiscountEndDate\s*=\s*(\d+)', html_res) or re.search(r'data-ds-discount-end="(\d+)"', html_res)
                               if time_match:
-                                  end_date = datetime.datetime.fromtimestamp(int(time_match.group(1))).strftime('%Y-%m-%dT%H:%M:%SZ')
+                                  end_date = datetime.fromtimestamp(int(time_match.group(1))).strftime('%Y-%m-%dT%H:%M:%SZ')
                           except: pass
 
                       raw_desc = d.get('short_description', '')
@@ -79,11 +79,29 @@ jobs:
               except: pass
               return None
 
+          def parse_reddit_date(title):
+              """⚡ 纯手写正则解析器，提取人类语言时间，秒速运行永不崩溃"""
+              months = {"jan":1, "feb":2, "mar":3, "apr":4, "may":5, "jun":6, "jul":7, "aug":8, "sep":9, "oct":10, "nov":11, "dec":12}
+              match = re.search(r'(?:until|ends|exp\.|expires)\s+([a-zA-Z]{3,})\s+(\d+)', title, re.IGNORECASE)
+              if match:
+                  m_str = match.group(1).lower()[:3]
+                  d_str = int(match.group(2))
+                  if m_str in months:
+                      now = datetime.utcnow()
+                      y = now.year
+                      m = months[m_str]
+                      # 跨年处理：如果是12月贴子写了1月，自动加一年
+                      if m < now.month - 2: y += 1
+                      try:
+                          # 默认换算为 UTC 17:00 结束
+                          dt = datetime(y, m, d_str, 17, 0, 0)
+                          return dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+                      except: pass
+              return "N/A"
+
           def fetch_rss_with_nlp_time():
-              """⚡ 你的天才想法：解析 Reddit RSS，使用 NLP 提取人类编写的截止时间"""
-              import dateparser
-              print("🚀 启动 NLP 语义分析引擎，阅读论坛标题...")
-              intel_dict = {} # { app_id: parsed_end_date }
+              print("🚀 启动轻量级 NLP 语义分析引擎...")
+              intel_dict = {}
               sources = [
                   "https://www.reddit.com/r/FreeGameFindings/search.rss?q=flair%3A%22F2P+To+Paid%22+OR+flair%3A%22Free+Weekend%22&restrict_sr=on&sort=new&t=month",
                   "https://www.reddit.com/r/FreeGameFindings/search.rss?q=flair%3A%22Steam%22&restrict_sr=on&sort=new&t=week",
@@ -96,24 +114,11 @@ jobs:
                       for item in root.findall('.//item'):
                           title = item.find('title').text or ""
                           desc = item.find('description').text or ""
-                          
-                          # 找 App ID
                           app_matches = re.findall(r'app/(\d+)', desc)
                           if not app_matches: continue
-                          app_id = app_matches[0]
                           
-                          # ⚡ 正则提取标题中的时间描述，例如 "until Oct 25", "ends Nov 1st"
-                          date_match = re.search(r'(?:until|ends|exp\.|expires)\s+([A-Za-z0-9\s\,]+)', title, re.IGNORECASE)
-                          parsed_str = "N/A"
-                          if date_match:
-                              raw_date_text = date_match.group(1).split(')')[0].split(']')[0].strip()
-                              try:
-                                  parsed = dateparser.parse(raw_date_text, settings={'TIMEZONE': 'UTC', 'PREFER_DATES_FROM': 'future'})
-                                  if parsed:
-                                      # 如果论坛没写具体几点，Steam 通常在 UTC 17:00 更新，做个标准补全
-                                      if parsed.hour == 0: parsed = parsed.replace(hour=17)
-                                      parsed_str = parsed.strftime('%Y-%m-%dT%H:%M:%SZ')
-                              except: pass
+                          app_id = app_matches[0]
+                          parsed_str = parse_reddit_date(title)
                           
                           if app_id not in intel_dict or intel_dict[app_id] == "N/A":
                               intel_dict[app_id] = parsed_str
@@ -121,7 +126,6 @@ jobs:
               return intel_dict
 
           def main():
-              # 获取旧记忆
               existing_ids = []
               try:
                   old_intel = requests.get("https://system.et-api.com/v1/get/steam-daily-free?filename=intel.json", headers=HEADERS, timeout=10).json()
@@ -130,7 +134,6 @@ jobs:
                   existing_ids.extend([g['steam_id'] for g in old_games if g.get('steam_id')])
               except: pass
 
-              # 获取第三方兜底时间
               gp_dict = {}
               try:
                   gp = requests.get("https://www.gamerpower.com/api/giveaways?platform=steam", headers=HEADERS).json()
@@ -140,7 +143,6 @@ jobs:
                           if m: gp_dict[m.group(1)] = g.get('end_date', 'N/A')
               except: pass
 
-              # 获取 Reddit 最新情报和 NLP 解析的时间
               reddit_intel = fetch_rss_with_nlp_time()
               probe_ids = list(set(existing_ids + list(reddit_intel.keys())))
               
@@ -150,12 +152,13 @@ jobs:
                   info = get_steam_details(app_id)
                   if info and info['type'] == 'game' and info['is_free']:
                       
-                      # ⚡ 时间决断：官方API > 网页HTML > Reddit解析 > GamerPower > N/A (绝不瞎猜)
+                      # ⚡ 智能时间判定序列：官方API > HTML提取 > Reddit解析 > 第三方兜底
                       if info['end_date'] == "N/A":
                           if reddit_intel.get(app_id, "N/A") != "N/A":
                               info['end_date'] = reddit_intel[app_id]
                           elif gp_dict.get(app_id, "N/A") != "N/A":
-                              info['end_date'] = gp_dict[app_id].replace(' ', 'T') + 'Z'
+                              gp_date = gp_dict[app_id]
+                              info['end_date'] = gp_date.replace(' ', 'T') + 'Z' if ' ' in gp_date else gp_date
 
                       item = {"steam_id": app_id, "zh_title": info['zh_title'], "en_title": info['en_title'], "thumbnail": info['thumbnail'], "short_description": info['short_description'], "end_date": info['end_date']}
                       if info['is_100_off']: active_games.append({**item, "open_giveaway_url": f"https://store.steampowered.com/app/{app_id}"})
@@ -167,7 +170,7 @@ jobs:
                       s = get_steam_details(app_id)
                       if s and s['type'] == 'game' and s['is_100_off']:
                           if s['end_date'] == "N/A" and gp_end != "N/A":
-                              s['end_date'] = gp_end.replace(' ', 'T') + 'Z'
+                              s['end_date'] = gp_end.replace(' ', 'T') + 'Z' if ' ' in gp_end else gp_end
                           active_games.append({
                               "steam_id": app_id, "zh_title": s['zh_title'], "en_title": s['en_title'], 
                               "thumbnail": s['thumbnail'], "short_description": s['short_description'], 
@@ -198,7 +201,7 @@ jobs:
               upload("games.json", active_games)
               upload("upcoming.json", upcoming_list)
               upload("intel.json", {"to_paid": f_to_paid, "free_weekend": f_weekend})
-              print("🎉 NLP 论坛时间提取与智能分流完成！")
+              print("🎉 纯净版解析已完成，时间数据已全部上传！")
 
           if __name__ == "__main__":
               main()
@@ -209,5 +212,5 @@ jobs:
         run: |
           git config --global user.name 'GitHub Action'
           git add *.json || true
-          git commit -m "Implement Reddit NLP Time Extraction" || true
+          git commit -m "Fix CI Crash with Lightweight Time Parser" || true
           git push
