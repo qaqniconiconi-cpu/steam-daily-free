@@ -1,4 +1,4 @@
-name: Update Games (Fix Crowalt & Epic Slugs)
+name: Update Games (Fix Crowalt Date Format)
 
 on:
   schedule:
@@ -33,16 +33,24 @@ jobs:
 
           def parse_text_date(text):
               months = {"jan":1, "feb":2, "mar":3, "apr":4, "may":5, "jun":6, "jul":7, "aug":8, "sep":9, "oct":10, "nov":11, "dec":12}
-              pattern = r'(?:until|ends|before|exp\.|expires|on|starting|after|as\s+of)\s+([a-zA-Z]{3,})\s+(\d+)'
-              match = re.search(pattern, text, re.IGNORECASE)
-              if match:
-                  m_str, d_str = match.group(1).lower()[:3], int(match.group(2))
-                  if m_str in months:
-                      now = datetime.utcnow()
-                      y, m = now.year, months[m_str]
-                      if m < now.month - 2: y += 1
-                      try: return datetime(y, m, d_str, 17, 0, 0).strftime('%Y-%m-%dT%H:%M:%SZ')
-                      except: pass
+              
+              # ⚡ 核心修复：同时支持 "Oct 24" 和 Steam 专用的 "24 Oct" 格式
+              m1 = re.search(r'(?:until|ends|before|exp\.|expires|on|starting|after|as\s+of)\s+([a-zA-Z]{3,})\s+(\d+)', text, re.IGNORECASE)
+              m2 = re.search(r'(?:until|ends|before|exp\.|expires|on|starting|after|as\s+of)\s+(\d+)\s+([a-zA-Z]{3,})', text, re.IGNORECASE)
+              
+              if m1:
+                  m_str, d_str = m1.group(1).lower()[:3], int(m1.group(2))
+              elif m2:
+                  d_str, m_str = int(m2.group(1)), m2.group(2).lower()[:3]
+              else:
+                  return "N/A"
+                  
+              if m_str in months:
+                  now = datetime.utcnow()
+                  y, m = now.year, months[m_str]
+                  if m < now.month - 2: y += 1
+                  try: return datetime(y, m, d_str, 17, 0, 0).strftime('%Y-%m-%dT%H:%M:%SZ')
+                  except: pass
               return "N/A"
 
           def get_steam_details(app_id, old_time="N/A"):
@@ -59,19 +67,30 @@ jobs:
                   if not (is_store_free or is_100_off): return None
 
                   end_date = "N/A"
-                  # 1. API自带时间
                   if price.get('discount_expiration'):
                       end_date = datetime.fromtimestamp(int(price['discount_expiration'])).strftime('%Y-%m-%dT%H:%M:%SZ')
                   
-                  # 2. ⚡ 网页 HTML 强行抓取 (解决 Crowalt 等 API 漏掉时间的问题)
-                  if end_date == "N/A" and is_100_off:
+                  # ⚡ 网页强行刮削：无条件对所有未获取到时间的免费游戏查网页
+                  if end_date == "N/A":
                       try:
                           h = requests.get(f"https://store.steampowered.com/app/{app_id}?l=english", headers=HEADERS, cookies=COOKIES, timeout=5).text
+                          
+                          # 如果网页有保留字眼，强制归为“现在可领”(喜加一)
+                          if "Free to keep" in h or "100% off" in h:
+                              is_100_off = True
+                              
                           tm = re.search(r'DiscountEndDate\s*=\s*(\d+)', h) or re.search(r'data-ds-discount-end="(\d+)"', h)
-                          if tm: end_date = datetime.fromtimestamp(int(tm.group(1))).strftime('%Y-%m-%dT%H:%M:%SZ')
+                          if tm: 
+                              end_date = datetime.fromtimestamp(int(tm.group(1))).strftime('%Y-%m-%dT%H:%M:%SZ')
+                          else:
+                              # 从 HTML 横幅暴力提取日期 (解决 Crowalt 问题)
+                              ban = re.search(r'game_purchase_discount_countdown[^>]*>([^<]+)<', h)
+                              if ban: end_date = parse_text_date(ban.group(1))
+                              if end_date == "N/A":
+                                  ftk = re.search(r'Free to keep when you get it before([^<]+)', h, re.IGNORECASE)
+                                  if ftk: end_date = parse_text_date("before " + ftk.group(1))
                       except: pass
 
-                  # 3. 新闻公告分析
                   if end_date == "N/A":
                       try:
                           news = requests.get(f"https://api.steampowered.com/ISteamNews/GetNewsForApp/v0002/?appid={app_id}&count=10", timeout=5).json()
@@ -114,7 +133,6 @@ jobs:
                       elif info['is_weekend']: f_weekend.append(info)
                       else: f_to_paid.append(info)
 
-              # ⚡ Epic 深度抓取修复 (含 Upcoming 即将到来)
               upcoming_list = []
               try:
                   res = requests.get("https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=CN&allowCountries=CN", timeout=15).json()
@@ -122,19 +140,16 @@ jobs:
                       promos = item.get('promotions')
                       if not promos: continue
                       
-                      # ⚡ 精准提取 Epic 真实链接后缀
                       mappings = item.get('catalogNs', {}).get('mappings', [])
                       slug = mappings[0].get('pageSlug') if mappings else None
                       slug = slug or item.get('productSlug') or item.get('urlSlug') or "free-games"
                       
                       img = next((i['url'] for i in item.get('keyImages', []) if i['type'] in ['OfferImageWide', 'Thumbnail']), "")
                       
-                      # 现在可领
                       if promos.get('promotionalOffers'):
                           offers = promos['promotionalOffers'][0]['promotionalOffers']
                           if offers and offers[0].get('discountSetting', {}).get('discountPercentage') == 0:
                               active_games.append({"zh_title": item['title'], "thumbnail": img, "end_date": offers[0]['endDate'], "epic_slug": slug, "short_description": "Epic 平台限时免费领取"})
-                      # 即将到来
                       elif promos.get('upcomingPromotionalOffers'):
                           offers = promos['upcomingPromotionalOffers'][0]['promotionalOffers']
                           if offers:
@@ -154,5 +169,5 @@ jobs:
         run: |
           git config --global user.name 'GitHub Action'
           git add *.json || true
-          git commit -m "Fix Crowalt HTML parsing & Epic upcoming Slugs" || true
+          git commit -m "Fix Crowalt Date Format & Scrape Logic" || true
           git push
