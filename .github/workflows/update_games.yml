@@ -1,4 +1,4 @@
-name: Update Games (Persistent Memory & Garbage Filter)
+name: Update Games (Epic Fix & Time Memory)
 
 on:
   schedule:
@@ -30,24 +30,26 @@ jobs:
           HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Accept-Language': 'zh-CN,zh;q=0.9'}
           API_GET_URL = 'https://system.et-api.com/v1/get/steam-daily-free'
 
-          def get_steam_details(app_id):
+          def get_steam_details(app_id, old_time="N/A"):
               try:
                   res = requests.get(f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=schinese&cc=CN", headers=HEADERS, timeout=10).json()
                   if str(app_id) in res and res[str(app_id)]['success']:
                       d = res[str(app_id)]['data']
-                      # ⚡ 垃圾过滤：只保留游戏本体 (Game)，排除 DLC、Music、Video
                       if d.get('type') != 'game': return None
                       
                       price = d.get('price_overview', {})
                       is_100_off = price.get('discount_percent') == 100
                       is_store_free = d.get('is_free', False)
                       
-                      # 判定：当前是否真的免费
                       if not (is_store_free or is_100_off): return None
 
                       end_date = "N/A"
                       if price.get('discount_expiration'):
                           end_date = datetime.fromtimestamp(int(price['discount_expiration'])).strftime('%Y-%m-%dT%H:%M:%SZ')
+                      
+                      # ⚡ 时间记忆：如果这次没扫到时间，使用服务器记录的老时间
+                      if end_date == "N/A" and old_time != "N/A":
+                          end_date = old_time
 
                       return {
                           "steam_id": str(app_id),
@@ -61,56 +63,67 @@ jobs:
               return None
 
           def main():
-              print("🚀 启动具有【持久记忆】的探测引擎...")
+              print("🚀 启动数据修复与记忆引擎...")
               
-              # 1. ⚡ 记忆功能：先下载服务器现有的 ID，防止因论坛刷新而消失
-              existing_ids = set()
+              # 1. 记忆系统：背下老游戏的 ID 和 时间
+              memory_times = {}
               try:
                   for fn in ["games.json", "intel.json"]:
-                      old = requests.get(f"{API_GET_URL}?filename={fn}", timeout=10).json()
-                      if isinstance(old, list): # games.json
-                          existing_ids.update([g['steam_id'] for g in old if g.get('steam_id')])
-                      else: # intel.json
-                          existing_ids.update([i['steam_id'] for i in old.get('to_paid', [])])
-                          existing_ids.update([i['steam_id'] for i in old.get('free_weekend', [])])
+                      old_data = requests.get(f"{API_GET_URL}?filename={fn}", timeout=10).json()
+                      items = old_data if isinstance(old_data, list) else (old_data.get('to_paid', []) + old_data.get('free_weekend', []))
+                      for i in items:
+                          if i.get('steam_id'): memory_times[i['steam_id']] = i.get('end_date', "N/A")
               except: pass
 
-              # 2. 抓取 RSS 新 ID
-              new_ids = set()
+              # 2. 探测新情报
+              probe_ids = set(memory_times.keys())
               sources = ["https://keylol.com/forum.php?mod=rss&fid=319", "https://www.reddit.com/r/FreeGameFindings/new.rss"]
               for s in sources:
                   try:
                       res = requests.get(s, timeout=15).text
-                      new_ids.update(re.findall(r'app/(\d+)', res))
+                      probe_ids.update(re.findall(r'app/(\d+)', res))
                   except: pass
 
-              # 3. 汇总并校验 (记忆 + 新增)
-              all_ids = existing_ids.union(new_ids)
               active_games, f_to_paid, f_weekend = [], [], []
 
-              for app_id in all_ids:
-                  info = get_steam_details(app_id)
+              for app_id in probe_ids:
+                  info = get_steam_details(app_id, memory_times.get(app_id, "N/A"))
                   if info:
-                      # ⚡ 精准分类：100%折扣(Crowalt等)进喜加一，其余进情报区
                       if info['is_100_off']:
                           active_games.append({**info, "open_giveaway_url": f"https://store.steampowered.com/app/{app_id}"})
                       else:
-                          # 简单通过描述或价格信息判定是否为试玩
                           if "试玩" in info['short_description'] or "Weekend" in info['zh_title']:
                               f_weekend.append(info)
                           else:
                               f_to_paid.append(info)
 
-              # Epic 抓取逻辑保持不变...
-              # (此处逻辑略，保持你现有的 Epic 抓取即可)
+              # 3. ⚡ Epic 修复：确保 slug 字段抓取完整
+              try:
+                  res = requests.get("https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=CN&allowCountries=CN", headers=HEADERS, timeout=15).json()
+                  for item in res['data']['Catalog']['searchStore']['elements']:
+                      promos = item.get('promotions')
+                      if not promos: continue
+                      
+                      img = next((i['url'] for i in item.get('keyImages', []) if i['type'] in ['OfferImageWide', 'Thumbnail']), "")
+                      slug = item.get('catalogNs', {}).get('mappings', [{}])[0].get('pageSlug') or item.get('productSlug') or item.get('urlSlug')
+                      
+                      if promos.get('promotionalOffers'):
+                          offers = promos['promotionalOffers'][0]['promotionalOffers']
+                          if offers and offers[0].get('discountSetting', {}).get('discountPercentage') == 0:
+                              active_games.append({
+                                  "zh_title": item['title'], 
+                                  "thumbnail": img, 
+                                  "end_date": offers[0]['endDate'], 
+                                  "epic_slug": slug, 
+                                  "short_description": "Epic 平台限时免费领取"
+                              })
+              except: pass
 
               def upload(fn, data):
                   requests.post("https://system.et-api.com/v1/update/steam-daily-free", headers={"filename": fn, "Content-Type": "application/json"}, json=data)
 
               upload("games.json", active_games)
               upload("intel.json", {"to_paid": f_to_paid, "free_weekend": f_weekend})
-              print(f"🎉 处理完成，共保留 {len(active_games) + len(f_to_paid) + len(f_weekend)} 款有效游戏")
-
           if __name__ == "__main__": main()
           EOF
           python processor.py
@@ -118,5 +131,5 @@ jobs:
         run: |
           git config --global user.name 'GitHub Action'
           git add *.json || true
-          git commit -m "Persistent memory & Garbage filter" || true
+          git commit -m "Epic fix & Persistent memory" || true
           git push
