@@ -1,4 +1,4 @@
-name: Update Games (Fast Regex Time Engine)
+name: Update Games (Max Auto Time)
 
 on:
   schedule:
@@ -19,8 +19,7 @@ jobs:
           python-version: '3.9'
 
       - name: Install dependencies
-        # ⚡ 移除了容易报错的重型库，只保留基础网络库
-        run: pip install requests deep-translator
+        run: pip install requests
 
       - name: Run Smart Processor
         run: |
@@ -51,13 +50,16 @@ jobs:
                       is_100_off = price_info.get('discount_percent') == 100
                       is_store_free = d.get('is_free', False)
                       is_currently_free = is_store_free or is_100_off
-                      is_weekend = is_store_free and bool(price_info) and price_info.get('final', 0) > 0 and not is_100_off
+                      is_weekend = is_store_free and price_info.get('final', 0) > 0 and not is_100_off
 
                       end_date = "N/A"
+                      
+                      # 1. 官方 API 时间
                       expiry_ts = price_info.get('discount_expiration')
                       if expiry_ts:
                           end_date = datetime.fromtimestamp(int(expiry_ts)).strftime('%Y-%m-%dT%H:%M:%SZ')
 
+                      # 2. 网页源码暴力提取时间
                       if end_date == "N/A":
                           try:
                               html_res = requests.get(f"https://store.steampowered.com/app/{app_id}", headers=HEADERS, timeout=5).text
@@ -66,8 +68,8 @@ jobs:
                                   end_date = datetime.fromtimestamp(int(time_match.group(1))).strftime('%Y-%m-%dT%H:%M:%SZ')
                           except: pass
 
-                      raw_desc = d.get('short_description', '')
-                      clean_desc = re.sub('<[^<]+?>', '', raw_desc).replace('\r', '').replace('\n', '').strip()
+                      desc = d.get('short_description', '')
+                      clean_desc = re.sub('<[^<]+?>', '', desc).replace('\r', '').replace('\n', '').strip()
                       short_desc = clean_desc.split('。')[0] if '。' in clean_desc else clean_desc
 
                       return {
@@ -80,7 +82,6 @@ jobs:
               return None
 
           def parse_reddit_date(title):
-              """⚡ 纯手写正则解析器，提取人类语言时间，秒速运行永不崩溃"""
               months = {"jan":1, "feb":2, "mar":3, "apr":4, "may":5, "jun":6, "jul":7, "aug":8, "sep":9, "oct":10, "nov":11, "dec":12}
               match = re.search(r'(?:until|ends|exp\.|expires)\s+([a-zA-Z]{3,})\s+(\d+)', title, re.IGNORECASE)
               if match:
@@ -90,17 +91,14 @@ jobs:
                       now = datetime.utcnow()
                       y = now.year
                       m = months[m_str]
-                      # 跨年处理：如果是12月贴子写了1月，自动加一年
                       if m < now.month - 2: y += 1
                       try:
-                          # 默认换算为 UTC 17:00 结束
                           dt = datetime(y, m, d_str, 17, 0, 0)
                           return dt.strftime('%Y-%m-%dT%H:%M:%SZ')
                       except: pass
               return "N/A"
 
           def fetch_rss_with_nlp_time():
-              print("🚀 启动轻量级 NLP 语义分析引擎...")
               intel_dict = {}
               sources = [
                   "https://www.reddit.com/r/FreeGameFindings/search.rss?q=flair%3A%22F2P+To+Paid%22+OR+flair%3A%22Free+Weekend%22&restrict_sr=on&sort=new&t=month",
@@ -114,14 +112,9 @@ jobs:
                       for item in root.findall('.//item'):
                           title = item.find('title').text or ""
                           desc = item.find('description').text or ""
-                          app_matches = re.findall(r'app/(\d+)', desc)
-                          if not app_matches: continue
-                          
-                          app_id = app_matches[0]
-                          parsed_str = parse_reddit_date(title)
-                          
-                          if app_id not in intel_dict or intel_dict[app_id] == "N/A":
-                              intel_dict[app_id] = parsed_str
+                          for m in re.findall(r'app/(\d+)', desc):
+                              if m not in intel_dict or intel_dict[m] == "N/A":
+                                  intel_dict[m] = parse_reddit_date(title)
                   except: pass
               return intel_dict
 
@@ -144,7 +137,7 @@ jobs:
               except: pass
 
               reddit_intel = fetch_rss_with_nlp_time()
-              probe_ids = list(set(existing_ids + list(reddit_intel.keys())))
+              probe_ids = list(set(existing_ids + list(reddit_intel.keys()) + list(gp_dict.keys())))
               
               active_games, f_to_paid, f_weekend = [], [], []
               
@@ -152,30 +145,17 @@ jobs:
                   info = get_steam_details(app_id)
                   if info and info['type'] == 'game' and info['is_free']:
                       
-                      # ⚡ 智能时间判定序列：官方API > HTML提取 > Reddit解析 > 第三方兜底
+                      # 3. 三方数据时间兜底
                       if info['end_date'] == "N/A":
                           if reddit_intel.get(app_id, "N/A") != "N/A":
                               info['end_date'] = reddit_intel[app_id]
                           elif gp_dict.get(app_id, "N/A") != "N/A":
-                              gp_date = gp_dict[app_id]
-                              info['end_date'] = gp_date.replace(' ', 'T') + 'Z' if ' ' in gp_date else gp_date
+                              info['end_date'] = gp_dict[app_id].replace(' ', 'T') + 'Z' if ' ' in gp_dict[app_id] else gp_dict[app_id]
 
                       item = {"steam_id": app_id, "zh_title": info['zh_title'], "en_title": info['en_title'], "thumbnail": info['thumbnail'], "short_description": info['short_description'], "end_date": info['end_date']}
                       if info['is_100_off']: active_games.append({**item, "open_giveaway_url": f"https://store.steampowered.com/app/{app_id}"})
                       elif info['is_weekend']: f_weekend.append(item)
                       else: f_to_paid.append(item)
-
-              for app_id, gp_end in gp_dict.items():
-                  if not any(x['steam_id'] == app_id for x in active_games):
-                      s = get_steam_details(app_id)
-                      if s and s['type'] == 'game' and s['is_100_off']:
-                          if s['end_date'] == "N/A" and gp_end != "N/A":
-                              s['end_date'] = gp_end.replace(' ', 'T') + 'Z' if ' ' in gp_end else gp_end
-                          active_games.append({
-                              "steam_id": app_id, "zh_title": s['zh_title'], "en_title": s['en_title'], 
-                              "thumbnail": s['thumbnail'], "short_description": s['short_description'], 
-                              "end_date": s['end_date'], "open_giveaway_url": f"https://store.steampowered.com/app/{app_id}"
-                          })
 
               upcoming_list = []
               try:
@@ -201,7 +181,6 @@ jobs:
               upload("games.json", active_games)
               upload("upcoming.json", upcoming_list)
               upload("intel.json", {"to_paid": f_to_paid, "free_weekend": f_weekend})
-              print("🎉 纯净版解析已完成，时间数据已全部上传！")
 
           if __name__ == "__main__":
               main()
@@ -212,5 +191,5 @@ jobs:
         run: |
           git config --global user.name 'GitHub Action'
           git add *.json || true
-          git commit -m "Fix CI Crash with Lightweight Time Parser" || true
+          git commit -m "Max Auto Time Config" || true
           git push
