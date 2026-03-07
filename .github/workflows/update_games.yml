@@ -1,4 +1,4 @@
-name: Update Games (Persistent Memory & Epic Fix)
+name: Update Games (Deep News Analysis)
 
 on:
   schedule:
@@ -31,8 +31,10 @@ jobs:
           API_BASE = 'https://system.et-api.com/v1/get/steam-daily-free'
 
           def parse_text_date(text):
+              # ⚡ 增强正则：支持 until, ends, before, on, starting, as of 等更多关键词
               months = {"jan":1, "feb":2, "mar":3, "apr":4, "may":5, "jun":6, "jul":7, "aug":8, "sep":9, "oct":10, "nov":11, "dec":12}
-              match = re.search(r'(?:until|ends|before|exp\.|expires)\s+([a-zA-Z]{3,})\s+(\d+)', text, re.IGNORECASE)
+              pattern = r'(?:until|ends|before|exp\.|expires|on|starting|after|as\s+of)\s+([a-zA-Z]{3,})\s+(\d+)'
+              match = re.search(pattern, text, re.IGNORECASE)
               if match:
                   m_str, d_str = match.group(1).lower()[:3], int(match.group(2))
                   if m_str in months:
@@ -45,8 +47,7 @@ jobs:
 
           def get_steam_details(app_id, old_time="N/A"):
               try:
-                  url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=schinese&cc=CN"
-                  res = requests.get(url, headers=HEADERS, timeout=10).json()
+                  res = requests.get(f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=schinese&cc=CN", headers=HEADERS, timeout=10).json()
                   if str(app_id) not in res or not res[str(app_id)]['success']: return None
                   d = res[str(app_id)]['data']
                   if d.get('type') != 'game': return None
@@ -58,20 +59,20 @@ jobs:
                   if not (is_store_free or is_100_off): return None
 
                   end_date = "N/A"
-                  # 1. 尝试从价格对象获取
+                  # 1. 价格字段时间
                   if price.get('discount_expiration'):
                       end_date = datetime.fromtimestamp(int(price['discount_expiration'])).strftime('%Y-%m-%dT%H:%M:%SZ')
                   
-                  # 2. 尝试从公告获取 (针对 Weyrdlets 等转付费游戏)
+                  # 2. 深度公告分析：将获取条数从 3 提升到 10，防止重要信息被淹没
                   if end_date == "N/A":
                       try:
-                          news = requests.get(f"https://api.steampowered.com/ISteamNews/GetNewsForApp/v0002/?appid={app_id}&count=3", timeout=5).json()
+                          news = requests.get(f"https://api.steampowered.com/ISteamNews/GetNewsForApp/v0002/?appid={app_id}&count=10", timeout=5).json()
                           for item in news.get('appnews', {}).get('newsitems', []):
                               d_news = parse_text_date(item.get('title', '') + " " + item.get('contents', ''))
                               if d_news != "N/A": end_date = d_news; break
                       except: pass
                   
-                  # 3. ⚡ 记忆系统：如果这次扫描没拿到时间，保留老时间
+                  # 3. 记忆系统：使用之前存过的时间
                   if end_date == "N/A" and old_time != "N/A":
                       end_date = old_time
 
@@ -84,7 +85,7 @@ jobs:
               except: return None
 
           def main():
-              # 读取记忆
+              # 读取记忆... (保留原逻辑)
               memory = {}
               try:
                   for fn in ["games.json", "intel.json"]:
@@ -95,7 +96,6 @@ jobs:
               except: pass
 
               ids = set(memory.keys())
-              # 嗅探新 ID
               try:
                   res = requests.get("https://keylol.com/forum.php?mod=rss&fid=319", timeout=15).text
                   ids.update(re.findall(r'app/(\d+)', res))
@@ -109,7 +109,7 @@ jobs:
                       elif info['is_weekend']: f_weekend.append(info)
                       else: f_to_paid.append(info)
 
-              # Epic 抓取修复
+              # Epic 部分 (保留原逻辑)
               try:
                   res = requests.get("https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=CN&allowCountries=CN", timeout=15).json()
                   for item in res['data']['Catalog']['searchStore']['elements']:
@@ -127,7 +127,6 @@ jobs:
 
               upload("games.json", active_games)
               upload("intel.json", {"to_paid": f_to_paid, "free_weekend": f_weekend})
-
           if __name__ == "__main__": main()
           EOF
           python processor.py
@@ -135,5 +134,5 @@ jobs:
         run: |
           git config --global user.name 'GitHub Action'
           git add *.json || true
-          git commit -m "Persistent memory & Epic fix" || true
+          git commit -m "Deep News and Memory enhancement" || true
           git push
