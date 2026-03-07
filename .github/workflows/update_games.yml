@@ -1,4 +1,4 @@
-name: Update Games (Max Auto Time)
+name: Update Games (Steam Announcement & HTML Time)
 
 on:
   schedule:
@@ -30,10 +30,29 @@ jobs:
           from datetime import datetime
           import xml.etree.ElementTree as ET
 
+          # 绕过Steam年龄限制的Cookie
+          COOKIES = {'birthtime': '283993201', 'lastagecheckage': '1-0-1980', 'wants_mature_content': '1'}
           HEADERS = {
               'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-              'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'
+              'Accept-Language': 'en-US,en;q=0.9'
           }
+
+          def parse_text_date(text):
+              months = {"jan":1, "feb":2, "mar":3, "apr":4, "may":5, "jun":6, "jul":7, "aug":8, "sep":9, "oct":10, "nov":11, "dec":12}
+              match = re.search(r'(?:until|ends|before|exp\.|expires)\s+([a-zA-Z]{3,})\s+(\d+)', text, re.IGNORECASE)
+              if match:
+                  m_str = match.group(1).lower()[:3]
+                  d_str = int(match.group(2))
+                  if m_str in months:
+                      now = datetime.utcnow()
+                      y = now.year
+                      m = months[m_str]
+                      if m < now.month - 2: y += 1
+                      try:
+                          dt = datetime(y, m, d_str, 17, 0, 0)
+                          return dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+                      except: pass
+              return "N/A"
 
           def get_steam_details(app_id):
               try:
@@ -54,18 +73,33 @@ jobs:
 
                       end_date = "N/A"
                       
-                      # 1. 官方 API 时间
+                      # 1. 官方 API 价格时间
                       expiry_ts = price_info.get('discount_expiration')
                       if expiry_ts:
                           end_date = datetime.fromtimestamp(int(expiry_ts)).strftime('%Y-%m-%dT%H:%M:%SZ')
 
-                      # 2. 网页源码暴力提取时间
+                      # 2. 从商店页面 HTML 直接提取喜加一文本
                       if end_date == "N/A":
                           try:
-                              html_res = requests.get(f"https://store.steampowered.com/app/{app_id}", headers=HEADERS, timeout=5).text
+                              html_res = requests.get(f"https://store.steampowered.com/app/{app_id}?l=english", headers=HEADERS, cookies=COOKIES, timeout=5).text
                               time_match = re.search(r'DiscountEndDate\s*=\s*(\d+)', html_res) or re.search(r'data-ds-discount-end="(\d+)"', html_res)
                               if time_match:
                                   end_date = datetime.fromtimestamp(int(time_match.group(1))).strftime('%Y-%m-%dT%H:%M:%SZ')
+                              else:
+                                  banner_match = re.search(r'before\s+([A-Za-z]{3,}\s+\d+)', html_res, re.IGNORECASE)
+                                  if banner_match:
+                                      end_date = parse_text_date("before " + banner_match.group(1))
+                          except: pass
+
+                      # 3. 从官方公告 API 提取转付费时间
+                      if end_date == "N/A" and not is_100_off:
+                          try:
+                              news_res = requests.get(f"https://api.steampowered.com/ISteamNews/GetNewsForApp/v0002/?appid={app_id}&count=3&maxlength=500", timeout=5).json()
+                              for item in news_res.get('appnews', {}).get('newsitems', []):
+                                  d_news = parse_text_date(item.get('title', '') + " " + item.get('contents', ''))
+                                  if d_news != "N/A":
+                                      end_date = d_news
+                                      break
                           except: pass
 
                       desc = d.get('short_description', '')
@@ -80,23 +114,6 @@ jobs:
                       }
               except: pass
               return None
-
-          def parse_reddit_date(title):
-              months = {"jan":1, "feb":2, "mar":3, "apr":4, "may":5, "jun":6, "jul":7, "aug":8, "sep":9, "oct":10, "nov":11, "dec":12}
-              match = re.search(r'(?:until|ends|exp\.|expires)\s+([a-zA-Z]{3,})\s+(\d+)', title, re.IGNORECASE)
-              if match:
-                  m_str = match.group(1).lower()[:3]
-                  d_str = int(match.group(2))
-                  if m_str in months:
-                      now = datetime.utcnow()
-                      y = now.year
-                      m = months[m_str]
-                      if m < now.month - 2: y += 1
-                      try:
-                          dt = datetime(y, m, d_str, 17, 0, 0)
-                          return dt.strftime('%Y-%m-%dT%H:%M:%SZ')
-                      except: pass
-              return "N/A"
 
           def fetch_rss_with_nlp_time():
               intel_dict = {}
@@ -114,7 +131,7 @@ jobs:
                           desc = item.find('description').text or ""
                           for m in re.findall(r'app/(\d+)', desc):
                               if m not in intel_dict or intel_dict[m] == "N/A":
-                                  intel_dict[m] = parse_reddit_date(title)
+                                  intel_dict[m] = parse_text_date(title)
                   except: pass
               return intel_dict
 
@@ -145,7 +162,6 @@ jobs:
                   info = get_steam_details(app_id)
                   if info and info['type'] == 'game' and info['is_free']:
                       
-                      # 3. 三方数据时间兜底
                       if info['end_date'] == "N/A":
                           if reddit_intel.get(app_id, "N/A") != "N/A":
                               info['end_date'] = reddit_intel[app_id]
@@ -191,5 +207,5 @@ jobs:
         run: |
           git config --global user.name 'GitHub Action'
           git add *.json || true
-          git commit -m "Max Auto Time Config" || true
+          git commit -m "Fetch Time from Steam News and HTML" || true
           git push
