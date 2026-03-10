@@ -1,4 +1,4 @@
-name: Update Games (Deponia & Epic Final Fix)
+name: Update Games (Deponia & Epic Restored)
 
 on:
   schedule:
@@ -34,7 +34,7 @@ jobs:
           def parse_text_date(text):
               months = {"jan":1, "feb":2, "mar":3, "apr":4, "may":5, "jun":6, "jul":7, "aug":8, "sep":9, "oct":10, "nov":11, "dec":12}
               m1 = re.search(r'(?:until|ends|before|exp\.|expires|on|starting|after|as\s+of)\s+([a-zA-Z]{3,})\s+(\d+)', text, re.IGNORECASE)
-              m2 = re.search(r'(?:until|ends|before)\s+(\d+)\s+([a-zA-Z]{3,})', text, re.IGNORECASE)
+              m2 = re.search(r'(?:until|ends|before|exp\.|expires|on|starting|after|as\s+of)\s+(\d+)\s+([a-zA-Z]{3,})', text, re.IGNORECASE)
               if m1: m_str, d_str = m1.group(1).lower()[:3], int(m1.group(2))
               elif m2: d_str, m_str = int(m2.group(1)), m2.group(2).lower()[:3]
               else: return "N/A"
@@ -58,7 +58,7 @@ jobs:
                   is_100_off = price.get('discount_percent') == 100
                   is_store_free = d.get('is_free', False)
                   
-                  # ⚡ 深度检测授权包 (Deponia 等喜加一的关键)
+                  # ⚡ 深度扫描授权包：解决 Deponia 这种通过 SubID 发放的喜加一
                   has_free_license = False
                   for group in d.get('package_groups', []):
                       for sub in group.get('subs', []):
@@ -84,13 +84,15 @@ jobs:
                       except: pass
 
                   if end_date == "N/A" and old_time != "N/A": end_date = old_time
-                  
+
+                  print(f"✅ Found Game: {d.get('name')} ({app_id}) | Free: {is_100_off or has_free_license}")
+
                   return {
                       "steam_id": str(app_id), "zh_title": d.get('name'), "thumbnail": d.get('header_image'),
                       "short_description": d.get('short_description', '').strip().split('。')[0],
                       "is_100_off": is_100_off or (has_free_license and price.get('final', 0) == 0),
                       "end_date": end_date,
-                      "is_weekend": has_free_license and not is_100_off and price.get('final', 0) > 0
+                      "is_weekend": has_free_license and not (is_100_off or price.get('final', 0) == 0)
                   }
               except: return None
 
@@ -106,18 +108,16 @@ jobs:
 
               ids = set(memory.keys())
               
-              # ⚡ 扩展探测源：加入多重 Reddit 嗅探
-              srcs = [
-                  "https://www.reddit.com/r/FreeGameFindings/search.rss?q=flair%3A%22Steam%22&restrict_sr=on&sort=new&t=week",
-                  "https://www.reddit.com/r/GameDeals/search.rss?q=title%3A%22100%25%22+OR+title%3A%22free%22&restrict_sr=on&sort=new&t=week",
-                  "https://keylol.com/forum.php?mod=rss&fid=319",
-                  "https://www.gamerpower.com/api/giveaways?platform=steam"
+              # ⚡ 拓宽发现渠道：Reddit + GamerPower + Keylol
+              extra_sources = [
+                  "https://www.reddit.com/r/FreeGameFindings/new.rss",
+                  "https://www.gamerpower.com/api/giveaways?platform=steam",
+                  "https://keylol.com/forum.php?mod=rss&fid=319"
               ]
-              for s in srcs:
+              for src in extra_sources:
                   try:
-                      res = requests.get(s, headers=HEADERS, timeout=15).text
-                      ids.update(re.findall(r'app/(\d+)', res))
-                      ids.update(re.findall(r'sub/(\d+)', res)) # 支持 SubID 探测
+                      text = requests.get(src, timeout=15).text
+                      ids.update(re.findall(r'app/(\d+)', text))
                   except: pass
 
               active_games, f_to_paid, f_weekend = [], [], []
@@ -128,32 +128,26 @@ jobs:
                       elif info['is_weekend']: f_weekend.append(info)
                       else: f_to_paid.append(info)
 
-              # ⚡ Epic 区域：使用多重域名尝试，确保数据必得
+              # ⚡ 完全恢复 Epic 抓取逻辑
               upcoming_list = []
-              epic_urls = [
-                  "https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=CN&allowCountries=CN",
-                  "https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN"
-              ]
-              for e_url in epic_urls:
-                  try:
-                      res = requests.get(e_url, timeout=10).json()
-                      for item in res['data']['Catalog']['searchStore']['elements']:
-                          promos = item.get('promotions')
-                          if not promos: continue
-                          mappings = item.get('catalogNs', {}).get('mappings', [])
-                          slug = mappings[0].get('pageSlug') if mappings else (item.get('productSlug') or item.get('urlSlug') or "free-games")
-                          img = next((i['url'] for i in item.get('keyImages', []) if i['type'] in ['OfferImageWide', 'Thumbnail']), "")
-                          
-                          if promos.get('promotionalOffers'):
-                              offers = promos['promotionalOffers'][0]['promotionalOffers']
-                              if offers and offers[0].get('discountSetting', {}).get('discountPercentage') == 0:
-                                  active_games.append({"zh_title": item['title'], "thumbnail": img, "end_date": offers[0]['endDate'], "epic_slug": slug, "short_description": "Epic 平台限时免费领取"})
-                          elif promos.get('upcomingPromotionalOffers'):
-                              offers = promos['upcomingPromotionalOffers'][0]['promotionalOffers']
-                              if offers:
-                                  upcoming_list.append({"zh_title": item['title'], "image": img, "start_date": offers[0]['startDate'], "platform": "Epic Games", "epic_slug": slug, "short_description": "即将开启免费领取"})
-                      if active_games: break # 成功获取则停止尝试其他 URL
-                  except: continue
+              try:
+                  res = requests.get("https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=CN&allowCountries=CN", timeout=15).json()
+                  for item in res['data']['Catalog']['searchStore']['elements']:
+                      promos = item.get('promotions')
+                      if not promos: continue
+                      mappings = item.get('catalogNs', {}).get('mappings', [])
+                      slug = mappings[0].get('pageSlug') if mappings else None
+                      slug = slug or item.get('productSlug') or item.get('urlSlug') or "free-games"
+                      img = next((i['url'] for i in item.get('keyImages', []) if i['type'] in ['OfferImageWide', 'Thumbnail']), "")
+                      if promos.get('promotionalOffers'):
+                          offers = promos['promotionalOffers'][0]['promotionalOffers']
+                          if offers and offers[0].get('discountSetting', {}).get('discountPercentage') == 0:
+                              active_games.append({"zh_title": item['title'], "thumbnail": img, "end_date": offers[0]['endDate'], "epic_slug": slug, "short_description": "Epic 平台限时免费领取"})
+                      elif promos.get('upcomingPromotionalOffers'):
+                          offers = promos['upcomingPromotionalOffers'][0]['promotionalOffers']
+                          if offers:
+                              upcoming_list.append({"zh_title": item['title'], "image": img, "start_date": offers[0]['startDate'], "platform": "Epic Games", "epic_slug": slug, "short_description": "即将开启免费领取"})
+              except: pass
 
               def upload(fn, data):
                   requests.post("https://system.et-api.com/v1/update/steam-daily-free", headers={"filename": fn, "Content-Type": "application/json"}, json=data)
@@ -169,5 +163,5 @@ jobs:
         run: |
           git config --global user.name 'GitHub Action'
           git add *.json || true
-          git commit -m "Final Fix for Deponia & Epic Logic" || true
+          git commit -m "Discovery Fix: Deep scan for Deponia & Restored Epic" || true
           git push
