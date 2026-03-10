@@ -1,4 +1,4 @@
-name: Update Games (Deponia & Epic Restored)
+name: Update Games (Global Radar & SubID Support)
 
 on:
   schedule:
@@ -34,7 +34,7 @@ jobs:
           def parse_text_date(text):
               months = {"jan":1, "feb":2, "mar":3, "apr":4, "may":5, "jun":6, "jul":7, "aug":8, "sep":9, "oct":10, "nov":11, "dec":12}
               m1 = re.search(r'(?:until|ends|before|exp\.|expires|on|starting|after|as\s+of)\s+([a-zA-Z]{3,})\s+(\d+)', text, re.IGNORECASE)
-              m2 = re.search(r'(?:until|ends|before|exp\.|expires|on|starting|after|as\s+of)\s+(\d+)\s+([a-zA-Z]{3,})', text, re.IGNORECASE)
+              m2 = re.search(r'(?:until|ends|before)\s+(\d+)\s+([a-zA-Z]{3,})', text, re.IGNORECASE)
               if m1: m_str, d_str = m1.group(1).lower()[:3], int(m1.group(2))
               elif m2: d_str, m_str = int(m2.group(1)), m2.group(2).lower()[:3]
               else: return "N/A"
@@ -58,7 +58,6 @@ jobs:
                   is_100_off = price.get('discount_percent') == 100
                   is_store_free = d.get('is_free', False)
                   
-                  # ⚡ 深度扫描授权包：解决 Deponia 这种通过 SubID 发放的喜加一
                   has_free_license = False
                   for group in d.get('package_groups', []):
                       for sub in group.get('subs', []):
@@ -85,7 +84,8 @@ jobs:
 
                   if end_date == "N/A" and old_time != "N/A": end_date = old_time
 
-                  print(f"✅ Found Game: {d.get('name')} ({app_id}) | Free: {is_100_off or has_free_license}")
+                  # 日志输出，方便调试查看哪些游戏被抓到了
+                  print(f"✅ Scanning: {d.get('name')} ({app_id}) | 100% Off: {is_100_off} | Free Pkg: {has_free_license}")
 
                   return {
                       "steam_id": str(app_id), "zh_title": d.get('name'), "thumbnail": d.get('header_image'),
@@ -108,7 +108,20 @@ jobs:
 
               ids = set(memory.keys())
               
-              # ⚡ 拓宽发现渠道：Reddit + GamerPower + Keylol
+              # ⚡ 新增：Steam 官方特惠与焦点雷达 (Deponia 类游戏必进此 API)
+              official_sources = [
+                  "https://store.steampowered.com/api/featuredcategories/",
+                  "https://store.steampowered.com/api/featuredcategories/?cc=CN&l=schinese"
+              ]
+              for url in official_sources:
+                  try:
+                      res = requests.get(url, timeout=10).json()
+                      for cat in res.values():
+                          if 'items' in cat:
+                              ids.update([str(item['id']) for item in cat['items']])
+                  except: pass
+
+              # ⚡ 拓宽情报雷达 (Reddit / GamerPower / Keylol)
               extra_sources = [
                   "https://www.reddit.com/r/FreeGameFindings/new.rss",
                   "https://www.gamerpower.com/api/giveaways?platform=steam",
@@ -128,7 +141,7 @@ jobs:
                       elif info['is_weekend']: f_weekend.append(info)
                       else: f_to_paid.append(info)
 
-              # ⚡ 完全恢复 Epic 抓取逻辑
+              # Epic 抓取逻辑 (保持不变)
               upcoming_list = []
               try:
                   res = requests.get("https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=CN&allowCountries=CN", timeout=15).json()
@@ -163,5 +176,5 @@ jobs:
         run: |
           git config --global user.name 'GitHub Action'
           git add *.json || true
-          git commit -m "Discovery Fix: Deep scan for Deponia & Restored Epic" || true
+          git commit -m "Add Steam Featured API Radar & Package Scan" || true
           git push
