@@ -1,4 +1,4 @@
-name: Update Games (Description Scanner & Date Fix)
+name: Update Games (Epic Hidden Radar & Final Fix)
 
 on:
   schedule:
@@ -34,8 +34,6 @@ jobs:
           def parse_date_smart(text):
               months = {"jan":1, "feb":2, "mar":3, "apr":4, "may":5, "jun":6, "jul":7, "aug":8, "sep":9, "oct":10, "nov":11, "dec":12}
               best_dt = None
-              
-              # ⚡ 1. 终极中文日期正则：匹配"2026年6月1日"、"6月1号"甚至"6月1"
               cn_dates = re.findall(r'(?:(\d{4})年)?(\d{1,2})月(\d{1,2})[日号]?', text)
               if cn_dates:
                   now = datetime.utcnow()
@@ -47,11 +45,8 @@ jobs:
                           dt = datetime(y, m, d, 17, 0, 0)
                           if not best_dt or dt > best_dt: best_dt = dt
                       except: pass
-
-              # ⚡ 2. 英文日期正则
               m1 = re.findall(r'(?:until|ends|before|exp|on|starting|after|as\s+of)\s+([a-zA-Z]{3,})\s+(\d+)', text, re.IGNORECASE)
               m2 = re.findall(r'(?:until|ends|before)\s+(\d+)\s+([a-zA-Z]{3,})', text, re.IGNORECASE)
-              
               for m_str, d_str in m1:
                   m_s = m_str.lower()[:3]
                   if m_s in months:
@@ -72,7 +67,6 @@ jobs:
                           dt = datetime(y, m, d, 17, 0, 0)
                           if not best_dt or dt > best_dt: best_dt = dt
                       except: pass
-                          
               return best_dt.strftime('%Y-%m-%dT%H:%M:%SZ') if best_dt else "N/A"
 
           def get_steam_details(app_id, old_time="N/A"):
@@ -88,11 +82,9 @@ jobs:
                   has_free_license = any(sub.get('is_free_license') for group in d.get('package_groups', []) for sub in group.get('subs', []))
 
                   end_date = "N/A"
-                  # 1. 官方价格接口
                   if price.get('discount_expiration'):
                       end_date = datetime.fromtimestamp(int(price['discount_expiration'])).strftime('%Y-%m-%dT%H:%M:%SZ')
                   
-                  # 2. 网页源码横幅扫描
                   if end_date == "N/A":
                       try:
                           h = requests.get(f"https://store.steampowered.com/app/{app_id}?l=english", headers=HEADERS, cookies=COOKIES, timeout=5).text
@@ -108,19 +100,16 @@ jobs:
                                   if dt != "N/A": end_date = dt
                       except: pass
 
-                  # 必须满足免费条件
                   if not (is_free or is_100_off or has_free_license): return None
 
                   keywords = ["转付费", "收费", "开始收费", "结束免费", "价格调整", "paid", "pricing", "限免", "免费领取", "免费入库", "free to keep", "恢复原价"]
                   
-                  # ⚡ 3. 核心修复：扫描游戏详细介绍 (解决国产独立开发者不发新闻的问题)
                   if end_date == "N/A":
                       desc_text = d.get('detailed_description', '') + " " + d.get('short_description', '')
                       if any(k in desc_text.lower() for k in keywords):
                           dt = parse_date_smart(desc_text)
                           if dt != "N/A": end_date = dt
 
-                  # 4. 扫描游戏新闻公告
                   if end_date == "N/A":
                       try:
                           news_url = f"https://api.steampowered.com/ISteamNews/GetNewsForApp/v0002/?appid={app_id}&count=10"
@@ -134,7 +123,6 @@ jobs:
 
                   if end_date == "N/A" and old_time != "N/A": end_date = old_time
                   
-                  print(f"✅ Scanned: {d.get('name')} | Date: {end_date}")
                   return {
                       "steam_id": str(app_id), "zh_title": d.get('name'), "thumbnail": d.get('header_image'),
                       "short_description": d.get('short_description', '').strip().split('。')[0],
@@ -178,6 +166,7 @@ jobs:
                       elif info['is_weekend']: f_weekend.append(info)
                       else: f_to_paid.append(info)
 
+              # ⚡ 第一步：获取 Epic 官方钦定的每周免费大作
               upcoming_list = []
               epic_urls = ["https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=CN&allowCountries=CN", "https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN"]
               for e_url in epic_urls:
@@ -192,13 +181,51 @@ jobs:
                           if promos.get('promotionalOffers'):
                               offers = promos['promotionalOffers'][0]['promotionalOffers']
                               if offers and offers[0].get('discountSetting', {}).get('discountPercentage') == 0:
-                                  active_games.append({"zh_title": item['title'], "thumbnail": img, "end_date": offers[0]['endDate'], "epic_slug": slug, "short_description": "Epic 平台限时免费领取"})
+                                  active_games.append({"zh_title": item['title'], "thumbnail": img, "end_date": offers[0]['endDate'], "epic_slug": slug, "short_description": "Epic 官方限时免费"})
                           elif promos.get('upcomingPromotionalOffers'):
                               offers = promos['upcomingPromotionalOffers'][0]['promotionalOffers']
                               if offers:
                                   upcoming_list.append({"zh_title": item['title'], "image": img, "start_date": offers[0]['startDate'], "platform": "Epic Games", "epic_slug": slug, "short_description": "即将开启免费领取"})
                       if active_games: break
                   except: continue
+
+              # ⚡ 第二步：启动 Epic 隐藏雷达 (抓取类似 The Assault: Survivor 的野生喜加一)
+              official_epic_slugs = {g.get('epic_slug') for g in active_games if g.get('epic_slug')}
+              try:
+                  gp_epic = requests.get("https://www.gamerpower.com/api/giveaways?platform=epic-games-store", timeout=15).json()
+                  for g in gp_epic:
+                      title = g.get('title', '')
+                      if "mystery" in title.lower(): continue # 过滤官方的神秘占位符
+                      
+                      # 顺藤摸瓜：跟随重定向获取最真实的 Epic 商店 URL
+                      gp_url = g.get('open_giveaway_url')
+                      if not gp_url: continue
+                      try:
+                          # 强行解析最终跳转网址提取 slug
+                          actual_url = requests.get(gp_url, timeout=10).url
+                          m = re.search(r'store\.epicgames\.com/(?:[a-z]{2}-[a-zA-Z]{2}/)?p/([^/?#]+)', actual_url)
+                          if m:
+                              slug = m.group(1)
+                              # 去重：如果官方限免里已经有了，就不重复添加
+                              if slug in official_epic_slugs: continue
+                              
+                              img = g.get('thumbnail')
+                              end_str = g.get('end_date')
+                              end_date = "N/A"
+                              if end_str and end_str != "N/A":
+                                  try: end_date = datetime.strptime(end_str, "%Y-%m-%d %H:%M:%S").strftime('%Y-%m-%dT%H:%M:%SZ')
+                                  except: pass
+                              
+                              print(f"✅ Found Hidden Epic Game: {title} ({slug})")
+                              active_games.append({
+                                  "zh_title": title,
+                                  "thumbnail": img,
+                                  "end_date": end_date,
+                                  "epic_slug": slug,
+                                  "short_description": "Epic 独立隐藏限免 / 额外赠送"
+                              })
+                      except: pass
+              except: pass
 
               requests.post("https://system.et-api.com/v1/update/steam-daily-free", headers={"filename": "games.json", "Content-Type": "application/json"}, json=active_games)
               requests.post("https://system.et-api.com/v1/update/steam-daily-free", headers={"filename": "upcoming.json", "Content-Type": "application/json"}, json=upcoming_list)
@@ -211,5 +238,5 @@ jobs:
         run: |
           git config --global user.name 'GitHub Action'
           git add *.json || true
-          git commit -m "Add Detailed Description Scanner for Indie F2P" || true
+          git commit -m "Add Epic Hidden Freebie Radar" || true
           git push
