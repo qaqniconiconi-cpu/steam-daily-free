@@ -21,15 +21,37 @@ jobs:
 
       - name: Run Smart Processor
         run: |
-          cat <<EOF > processor.py
+          cat <<'EOF' > processor.py
           import requests
           import json
           import re
+          import hashlib
+          import time
+          import random
+          import string
           from datetime import datetime
 
+          HOST = 'system.et-api.com'
           HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'}
           COOKIES = {'birthtime': '283993201', 'wants_mature_content': '1'}
-          API_BASE = 'https://system.et-api.com/v1/get/steam-daily-free'
+
+          # ⚡ 核心突破：让爬虫自带验签算法，突破后端的 403 封锁
+          def get_signed_headers(method, path):
+              ver = "1773281024"
+              nonce = ''.join(random.choices(string.ascii_letters + string.digits, k=32))
+              ts = str(int(time.time()))
+              ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+              
+              sign_string = f"{method}{HOST}{path}?ver={ver}&nonce={nonce}&ts={ts}&ua={ua}"
+              sig = hashlib.sha256(sign_string.encode('utf-8')).hexdigest()
+              
+              return {
+                  'User-Agent': ua,
+                  'sig': sig,
+                  'ts': ts,
+                  'nonce': nonce,
+                  'ver': ver
+              }
 
           def parse_date_smart(text):
               months = {"jan":1, "feb":2, "mar":3, "apr":4, "may":5, "jun":6, "jul":7, "aug":8, "sep":9, "oct":10, "nov":11, "dec":12}
@@ -136,10 +158,14 @@ jobs:
               memory = {}
               try:
                   for fn in ["games.json", "intel.json"]:
-                      old = requests.get(f"{API_BASE}?filename={fn}", timeout=10).json()
-                      items = old if isinstance(old, list) else (old.get('to_paid', []) + old.get('free_weekend', []))
-                      for i in items:
-                          if i.get('steam_id'): memory[i['steam_id']] = i.get('end_date', "N/A")
+                      headers = get_signed_headers('GET', '/v1/get/steam-daily-free')
+                      url = f"https://{HOST}/v1/get/steam-daily-free?filename={fn}"
+                      res = requests.get(url, headers=headers, timeout=10)
+                      if res.status_code == 200:
+                          old = res.json()
+                          items = old if isinstance(old, list) else (old.get('to_paid', []) + old.get('free_weekend', []))
+                          for i in items:
+                              if i.get('steam_id'): memory[i['steam_id']] = i.get('end_date', "N/A")
               except: pass
 
               ids = set(memory.keys())
@@ -166,7 +192,7 @@ jobs:
                       elif info['is_weekend']: f_weekend.append(info)
                       else: f_to_paid.append(info)
 
-              # ⚡ 第一步：获取 Epic 官方钦定的每周免费大作
+              # ⚡ 修复：全节点提取Epic官方游戏（不放过任何预告和现免）
               upcoming_list = []
               epic_urls = ["https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=CN&allowCountries=CN", "https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN"]
               for e_url in epic_urls:
@@ -179,14 +205,14 @@ jobs:
                           slug = mappings[0].get('pageSlug') if mappings else (item.get('productSlug') or item.get('urlSlug') or "free-games")
                           img = next((i['url'] for i in item.get('keyImages', []) if i['type'] in ['OfferImageWide', 'Thumbnail']), "")
                           
-                          # 1. 安全遍历当前限免 (去除了原有的 if/elif 互斥与 [0] 硬编码，完整提取伊松佐河、和睦森林)
+                          # 提取限免
                           for active_nodes in promos.get('promotionalOffers', []):
                               for offer in active_nodes.get('promotionalOffers', []):
                                   if offer.get('discountSetting', {}).get('discountPercentage') == 0:
                                       active_games.append({"zh_title": item['title'], "thumbnail": img, "end_date": offer['endDate'], "platform": "Epic Games", "epic_slug": slug, "short_description": "Epic 官方限时免费"})
                                       break
 
-                          # 2. 安全遍历即将到来 (战舰世界、电工模拟器等将在此被完整捕获)
+                          # 提取预告
                           for upcoming_nodes in promos.get('upcomingPromotionalOffers', []):
                               for offer in upcoming_nodes.get('promotionalOffers', []):
                                   upcoming_list.append({"zh_title": item['title'], "image": img, "start_date": offer['startDate'], "end_date": offer['endDate'], "platform": "Epic Games", "epic_slug": slug, "short_description": "即将开启免费领取"})
@@ -194,8 +220,7 @@ jobs:
                       if active_games: break
                   except: continue
 
-              # ⚡ 第二步：启动 Epic 隐藏雷达 (抓取类似 光明斗士 的野生喜加一)
-              # 增加 upcoming_list 去重，防止官方预告与第三方重复
+              # ⚡ 修复：隐藏雷达严格过滤
               official_epic_slugs = {g.get('epic_slug') for g in active_games + upcoming_list if g.get('epic_slug')}
               try:
                   gp_epic = requests.get("https://www.gamerpower.com/api/giveaways?platform=epic-games-store", timeout=15).json()
@@ -216,23 +241,16 @@ jobs:
                               end_str = g.get('end_date')
                               end_date = "N/A"
                               
-                              # 修复：更强大的日期格式降级容错，确保《光明斗士》这类无时分秒的数据不被误杀
                               if end_str and end_str != "N/A":
-                                  try: 
-                                      end_date = datetime.strptime(end_str, "%Y-%m-%d %H:%M:%S").strftime('%Y-%m-%dT%H:%M:%SZ')
-                                  except: 
-                                      try: 
-                                          # 降级匹配纯日期格式，并默认补齐至当晚 23:59:59
-                                          end_date = datetime.strptime(end_str.split(' ')[0], "%Y-%m-%d").strftime('%Y-%m-%dT23:59:59Z')
+                                  try: end_date = datetime.strptime(end_str, "%Y-%m-%d %H:%M:%S").strftime('%Y-%m-%dT%H:%M:%SZ')
+                                  except:
+                                      try: end_date = datetime.strptime(end_str.split(' ')[0], "%Y-%m-%d").strftime('%Y-%m-%dT23:59:59Z')
                                       except: pass
                               
-                              # 核心防御：剔除幽灵数据与常驻免费 (纪念碑谷、Idle Champions等)
+                              # 🚨 严格过滤常驻免费和幽灵数据
                               if end_date == "N/A": continue
-                              
-                              # 核心防御：剔除已过期游戏
                               try:
-                                  if datetime.strptime(end_date, '%Y-%m-%dT%H:%M:%SZ') < datetime.utcnow():
-                                      continue
+                                  if datetime.strptime(end_date, '%Y-%m-%dT%H:%M:%SZ') < datetime.utcnow(): continue
                               except: pass
 
                               print(f"✅ Found Hidden Epic Game: {title} ({slug})")
@@ -247,9 +265,17 @@ jobs:
                       except: pass
               except: pass
 
-              requests.post("https://system.et-api.com/v1/update/steam-daily-free", headers={"filename": "games.json", "Content-Type": "application/json"}, json=active_games)
-              requests.post("https://system.et-api.com/v1/update/steam-daily-free", headers={"filename": "upcoming.json", "Content-Type": "application/json"}, json=upcoming_list)
-              requests.post("https://system.et-api.com/v1/update/steam-daily-free", headers={"filename": "intel.json", "Content-Type": "application/json"}, json={"to_paid": f_to_paid, "free_weekend": f_weekend})
+              # ⚡ 核心突破：带着刚生成的签名去突破后端 403 封锁
+              for fn, data in [("games.json", active_games), ("upcoming.json", upcoming_list), ("intel.json", {"to_paid": f_to_paid, "free_weekend": f_weekend})]:
+                  try:
+                      headers = get_signed_headers('POST', '/v1/update/steam-daily-free')
+                      headers['filename'] = fn
+                      headers['Content-Type'] = 'application/json'
+                      url = f"https://{HOST}/v1/update/steam-daily-free"
+                      res = requests.post(url, headers=headers, json=data)
+                      print(f"Update {fn}: {res.status_code}")
+                  except Exception as e:
+                      print(f"Failed to update {fn}: {e}")
 
           if __name__ == "__main__": main()
           EOF
@@ -258,5 +284,5 @@ jobs:
         run: |
           git config --global user.name 'GitHub Action'
           git add *.json || true
-          git commit -m "Add Epic Hidden Freebie Radar" || true
+          git commit -m "Add Epic Final Radar & API Signature" || true
           git push
