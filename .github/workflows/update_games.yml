@@ -174,13 +174,6 @@ jobs:
                   try:
                       res = requests.get(url, timeout=10).json()
                       for cat in res.values():
-                          # 自动扫描 Steam 全局 100% 折扣游戏（不依赖精选推荐）
-                  try:
-                      search_url = "https://store.steampowered.com/api/search/?term=&specials=1&cc=CN&l=schinese"
-                      search_res = requests.get(search_url, timeout=10).json()
-                      # 匹配所有 100% off 的 AppID
-                      ids.update(re.findall(r'data-ds-appid="(\d+)"[^>]*?discount_block[^>]*?100%', search_res.get('results_html', '')))
-                  except: pass
                           if 'items' in cat: ids.update([str(item['id']) for item in cat['items']])
                   except: pass
 
