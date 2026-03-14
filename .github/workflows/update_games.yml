@@ -35,7 +35,6 @@ jobs:
           COOKIES = {'birthtime': '283993201', 'wants_mature_content': '1'}
           API_BASE = 'system.et-api.com'
 
-          # ⚡ 新增：Python 版生成签名请求 (对齐前端验签逻辑)
           def fetch_old_data_with_sign(filename):
               method = 'GET'
               path = '/v1/get/steam-daily-free'
@@ -103,7 +102,7 @@ jobs:
                   res_raw = requests.get(url, headers=HEADERS, timeout=10)
                   
                   if res_raw.status_code == 429:
-                      print(f"🚨 Steam API 速率限制 (429)! AppID: {app_id}")
+                      print(f"🚨 Steam API 限流 (429)! AppID: {app_id}")
                       return None
                       
                   res = res_raw.json()
@@ -181,23 +180,32 @@ jobs:
                       if i.get('steam_id'): memory[i['steam_id']] = i.get('end_date', "N/A")
 
               ids = set(memory.keys())
+              print(f"📦 从记忆中恢复了 {len(ids)} 个 Steam 游戏")
               
+              # ⚡ 修复 1：加上 headers 防止被 Steam 屏蔽
               for url in ["https://store.steampowered.com/api/featuredcategories/", "https://store.steampowered.com/api/featuredcategories/?cc=CN&l=schinese"]:
                   try:
-                      res = requests.get(url, timeout=10).json()
-                      for cat in res.values():
-                          if 'items' in cat: ids.update([str(item['id']) for item in cat['items']])
-                  except: pass
+                      res = requests.get(url, headers=HEADERS, timeout=10)
+                      if res.status_code == 200:
+                          for cat in res.json().values():
+                              if 'items' in cat: ids.update([str(item['id']) for item in cat['items']])
+                  except Exception as e: 
+                      print(f"⚠️ 获取 Steam 推荐页异常: {e}")
 
+              # ⚡ 修复 2：加上 headers 防止被 Reddit/第三方 屏蔽
               sources = ["https://keylol.com/forum.php?mod=rss&fid=319", "https://www.gamerpower.com/api/giveaways?platform=steam", "https://www.reddit.com/r/FreeGameFindings/new.rss"]
               for s in sources:
                   try:
-                      res = requests.get(s, timeout=15).text
-                      ids.update(re.findall(r'app/(\d+)', res))
-                  except: pass
+                      res = requests.get(s, headers=HEADERS, timeout=15)
+                      if res.status_code == 200:
+                          found = re.findall(r'app/(\d+)', res.text)
+                          ids.update(found)
+                          print(f"📡 从 {s.split('/')[2]} 获取到 {len(found)} 个 ID")
+                  except Exception as e: 
+                      print(f"⚠️ 请求 {s} 异常: {e}")
 
               active_games, f_to_paid, f_weekend = [], [], []
-              print(f"🔎 开始处理 {len(ids)} 个 Steam 游戏...")
+              print(f"🔎 最终汇总，开始处理 {len(ids)} 个 Steam 游戏...")
               
               for app_id in ids:
                   info = get_steam_details(app_id, memory.get(app_id, "N/A"))
@@ -286,5 +294,5 @@ jobs:
         run: |
           git config --global user.name 'GitHub Action'
           git add *.json || true
-          git commit -m "Add Epic Hidden Freebie Radar & Steam Fix" || true
+          git commit -m "Add Scrape Headers and Debug Logs" || true
           git push
