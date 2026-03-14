@@ -89,10 +89,32 @@ jobs:
                           dt = datetime(y, m, d, 17, 0, 0)
                           if not best_dt or dt > best_dt: best_dt = dt
                       except: pass
+              m1 = re.findall(r'(?:until|ends|before|exp|on|starting|after|as\s+of)\s+([a-zA-Z]{3,})\s+(\d+)', text, re.IGNORECASE)
+              m2 = re.findall(r'(?:until|ends|before)\s+(\d+)\s+([a-zA-Z]{3,})', text, re.IGNORECASE)
+              for m_str, d_str in m1:
+                  m_s = m_str.lower()[:3]
+                  if m_s in months:
+                      now = datetime.utcnow()
+                      y, m, d = now.year, months[m_s], int(d_str)
+                      if m < now.month - 2: y += 1
+                      try:
+                          dt = datetime(y, m, d, 17, 0, 0)
+                          if not best_dt or dt > best_dt: best_dt = dt
+                      except: pass
+              for d_str, m_str in m2:
+                  m_s = m_str.lower()[:3]
+                  if m_s in months:
+                      now = datetime.utcnow()
+                      y, m, d = now.year, months[m_s], int(d_str)
+                      if m < now.month - 2: y += 1
+                      try:
+                          dt = datetime(y, m, d, 17, 0, 0)
+                          if not best_dt or dt > best_dt: best_dt = dt
+                      except: pass
               return best_dt.strftime('%Y-%m-%dT%H:%M:%SZ') if best_dt else "N/A"
 
           def get_steam_details(app_id, old_time="N/A"):
-              if str(app_id) in EA_PLAY_BANS: return None # 🚫 强制拦截战地5等游戏
+              if str(app_id) in EA_PLAY_BANS: return None
               try:
                   url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=schinese&cc=CN"
                   res_raw = requests.get(url, headers=HEADERS, timeout=10)
@@ -128,13 +150,15 @@ jobs:
 
                   if not (is_free or is_100_off or has_free_license): return None
 
-                  keywords = ["转付费", "收费", "开始收费", "结束免费", "价格调整", "paid", "pricing", "限免", "免费领取", "免费入库", "free to keep", "恢复原价"]
+                  # ⚡ 增加高敏感度词汇：专门抓取宣布转付费的游戏
+                  keywords = ["转付费", "开始收费", "结束免费", "become paid", "becoming paid", "paid game", "price tag", "pricing", "限免", "免费领取", "free to keep", "恢复原价"]
                   
                   if end_date == "N/A":
                       desc_text = d.get('detailed_description', '') + " " + d.get('short_description', '')
                       if any(k in desc_text.lower() for k in keywords):
                           dt = parse_date_smart(desc_text)
-                          if dt != "N/A": end_date = dt
+                          # ⚡ 模糊兜底：只要触发关键字，哪怕没有明确日期，也强制入库！
+                          end_date = dt if dt != "N/A" else "近期即将转付费"
 
                   if end_date == "N/A":
                       try:
@@ -144,7 +168,8 @@ jobs:
                               content = item.get('title', '') + item.get('contents', '')
                               if any(k in content.lower() for k in keywords):
                                   dt = parse_date_smart(content)
-                                  if dt != "N/A": end_date = dt; break
+                                  end_date = dt if dt != "N/A" else "近期即将转付费"
+                                  break
                       except: pass
 
                   if end_date == "N/A" and old_time != "N/A": end_date = old_time
@@ -170,16 +195,7 @@ jobs:
 
               ids = set(memory.keys())
 
-              # 🔍 独家绝技：自然语言补漏器（直接写名字，AI 帮你查 ID，完全不写死数字）
-              missing_names = ["宠物怪兽", "拾取宝石后意外觉醒了"]
-              for name in missing_names:
-                  try:
-                      res = requests.get(f"https://store.steampowered.com/search/suggest?term={name}&f=games&cc=CN&l=schinese", headers=HEADERS, timeout=5)
-                      m = re.search(r'data-ds-appid="(\d+)"', res.text)
-                      if m: ids.add(m.group(1))
-                  except: pass
-
-              # 📡 Steam 官方首页动态抓取
+              # 📡 Steam 官方首页动态抓取 (扫描商城前150款打折商品)
               for page in range(0, 3):
                   try:
                       search_url = f"https://store.steampowered.com/search/results/?query&start={page*50}&count=50&dynamic_data=&sort_by=_ASC&snr=1_7_7_7000_7&specials=1&infinite=1"
@@ -192,13 +208,13 @@ jobs:
                               if "-100%" in b or ">Free<" in b or ">免费<" in b: ids.add(app_id)
                   except: pass
 
-              # 📡 拓展全球 Reddit 源 (范围扩大 3 倍，媲美 UU 级别覆盖率)
+              # 📡 开启深层 JSON 雷达：抓取过去 30 天的高价值社区情报，彻底解决 RSS 失忆漏抓问题！
               sources = [
                   "https://keylol.com/forum.php?mod=rss&fid=319",
-                  "https://www.reddit.com/r/FreeGameFindings/new.rss",
-                  "https://www.reddit.com/r/FreeGamesOnSteam/new.rss",
-                  "https://www.reddit.com/r/GameDeals/new.rss",
-                  "https://www.reddit.com/r/Freegamestuff/new.rss"
+                  "https://www.reddit.com/r/FreeGameFindings/new.json?limit=100",
+                  "https://www.reddit.com/r/FreeGamesOnSteam/new.json?limit=100",
+                  "https://www.reddit.com/r/GameDeals/new.json?limit=100",
+                  "https://www.steamgifts.com/discussions/deals"
               ]
               for s in sources:
                   try:
@@ -236,6 +252,7 @@ jobs:
                           active_games.append(info)
                       elif info['is_weekend']: 
                           f_weekend.append(info)
+                      # ⚡ 即使是模糊日期("近期即将转付费")也能完美通过校验并展示！
                       elif info.get('is_free_game') and info.get('end_date') != "N/A": 
                           f_to_paid.append(info)
                   time.sleep(1.5)
@@ -314,5 +331,5 @@ jobs:
         run: |
           git config --global user.name 'GitHub Action'
           git add *.json || true
-          git commit -m "Auto Natural Language Radar & Ban BFV" || true
+          git commit -m "Auto Deep Radar without Hardcoding" || true
           git push
