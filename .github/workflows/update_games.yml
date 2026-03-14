@@ -31,7 +31,7 @@ jobs:
           import string
           from datetime import datetime
 
-          HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ActionRunner/1.0', 'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'}
+          HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36', 'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'}
           COOKIES = {'birthtime': '283993201', 'wants_mature_content': '1'}
           API_BASE = 'system.et-api.com'
 
@@ -58,7 +58,6 @@ jobs:
                   print(f"⚠️ 拉取旧数据 {filename} 失败: {e}")
                   return []
 
-          # ⚡ 新增：专门用于带签名上传数据的函数
           def post_update_with_sign(filename, data):
               method = 'POST'
               path = '/v1/update/steam-daily-free'
@@ -78,7 +77,7 @@ jobs:
               try:
                   res = requests.post(url, headers=headers, json=data, timeout=15)
                   if res.status_code != 200:
-                      print(f"❌ 上传 {filename} 被服务器拒绝! 状态码: {res.status_code}, 响应: {res.text}")
+                      print(f"❌ 上传 {filename} 被服务器拒绝! 状态码: {res.status_code}")
                   else:
                       print(f"✅ 上传 {filename} 成功!")
               except Exception as e:
@@ -128,7 +127,6 @@ jobs:
                   res_raw = requests.get(url, headers=HEADERS, timeout=10)
                   
                   if res_raw.status_code == 429:
-                      print(f"🚨 Steam API 限流 (429)! AppID: {app_id}")
                       return None
                       
                   res = res_raw.json()
@@ -187,10 +185,10 @@ jobs:
                       "short_description": d.get('short_description', '').strip().split('。')[0],
                       "is_100_off": is_100_off or (has_free_license and price.get('final', 0) == 0),
                       "end_date": end_date,
-                      "is_weekend": has_free_license and not is_100_off and price.get('final', 0) > 0
+                      "is_weekend": has_free_license and not is_100_off and price.get('final', 0) > 0,
+                      "is_free_game": is_free
                   }
               except Exception as e:
-                  print(f"⚠️ 处理 Steam ID {app_id} 发生错误: {e}")
                   return None
 
           def main():
@@ -208,62 +206,73 @@ jobs:
               ids = set(memory.keys())
               print(f"📦 从记忆中恢复了 {len(ids)} 个 Steam 游戏")
 
-              # 🚨 诱饵恢复池：强制拉取已知限免，防止空窗期
-              fallback_ids = ["214340", "4138970", "3018430", "1121640"] 
-              ids.update(fallback_ids)
-
-              # ⚡ 修复 1：解决 Steam 推荐页类型突变导致的崩溃
-              for url in ["https://store.steampowered.com/api/featuredcategories/", "https://store.steampowered.com/api/featuredcategories/?cc=CN&l=schinese"]:
+              # ⚡ 彻底移除写死代码，替换为“全自动 Steam 官方深度雷达”
+              print("📡 启动 Steam 官方特惠雷达，深度扫描 -100% 折扣...")
+              for page in range(0, 3): # 扫描商城前 150 款特惠游戏
                   try:
-                      res = requests.get(url, headers=HEADERS, timeout=10)
+                      search_url = f"https://store.steampowered.com/search/results/?query&start={page*50}&count=50&dynamic_data=&sort_by=_ASC&snr=1_7_7_7000_7&specials=1&infinite=1"
+                      res = requests.get(search_url, headers=HEADERS, timeout=10)
                       if res.status_code == 200:
-                          for cat in res.json().values():
-                              if isinstance(cat, dict) and 'items' in cat: # 必须加类型判定
-                                  for item in cat['items']:
-                                      if 'id' in item: # 必须加 id 存在判定
-                                          ids.add(str(item['id']))
-                  except Exception as e: 
-                      print(f"⚠️ 获取 Steam 推荐页异常: {e}")
+                          html = res.json().get('results_html', '')
+                          blocks = html.split('data-ds-appid="')
+                          for b in blocks[1:]:
+                              app_id = b.split('"')[0]
+                              # 暴力扫描：只要商品块带有 -100% 标签，立刻抓取
+                              if "-100%" in b or ">Free<" in b or ">免费<" in b:
+                                  ids.add(app_id)
+                  except Exception as e:
+                      print(f"⚠️ Steam 搜索页扫描异常: {e}")
 
-              # ⚡ 修复 2：深度解析 Gamerpower，跟随跳转抓取真实 Steam ID
-              try:
-                  gp = requests.get("https://www.gamerpower.com/api/giveaways?platform=steam", headers=HEADERS, timeout=15).json()
-                  gp_count = 0
-                  for g in gp:
-                      url = g.get('open_giveaway_url', '')
-                      if url:
-                          try:
-                              act_url = requests.get(url, headers=HEADERS, timeout=5, allow_redirects=True).url
-                              m = re.search(r'app/(\d+)', act_url)
-                              if m:
-                                  ids.add(m.group(1))
-                                  gp_count += 1
-                          except: pass
-                  print(f"📡 从 Gamerpower 深度解析获取到 {gp_count} 个 ID")
-              except Exception as e:
-                  print(f"⚠️ Gamerpower 异常: {e}")
-
-              #常规 RSS 抓取
-              sources = ["https://keylol.com/forum.php?mod=rss&fid=319", "https://www.reddit.com/r/FreeGameFindings/new.rss"]
+              # ⚡ 拓展资讯源，增加更多 Subreddit 防止漏网之鱼
+              sources = [
+                  "https://keylol.com/forum.php?mod=rss&fid=319",
+                  "https://www.reddit.com/r/FreeGameFindings/new.rss",
+                  "https://www.reddit.com/r/FreeGamesOnSteam/new.rss",
+                  "https://www.reddit.com/r/GameDeals/new.rss"
+              ]
               for s in sources:
                   try:
                       res = requests.get(s, headers=HEADERS, timeout=15)
                       if res.status_code == 200:
                           found = re.findall(r'app/(\d+)', res.text)
                           ids.update(found)
-                          print(f"📡 从 {s.split('/')[2]} 获取到 {len(found)} 个 ID")
-                  except Exception as e: 
-                      print(f"⚠️ 请求 {s} 异常: {e}")
+                  except: pass
+
+              for url in ["https://store.steampowered.com/api/featuredcategories/", "https://store.steampowered.com/api/featuredcategories/?cc=CN&l=schinese"]:
+                  try:
+                      res = requests.get(url, headers=HEADERS, timeout=10)
+                      if res.status_code == 200:
+                          for cat in res.json().values():
+                              if isinstance(cat, dict) and 'items' in cat:
+                                  for item in cat['items']:
+                                      if 'id' in item:
+                                          ids.add(str(item['id']))
+                  except: pass
+
+              try:
+                  gp = requests.get("https://www.gamerpower.com/api/giveaways?platform=steam", headers=HEADERS, timeout=15).json()
+                  for g in gp:
+                      url = g.get('open_giveaway_url', '')
+                      if url:
+                          try:
+                              act_url = requests.get(url, headers=HEADERS, timeout=5, allow_redirects=True).url
+                              m = re.search(r'app/(\d+)', act_url)
+                              if m: ids.add(m.group(1))
+                          except: pass
+              except: pass
 
               active_games, f_to_paid, f_weekend = [], [], []
-              print(f"🔎 最终汇总，开始处理 {len(ids)} 个 Steam 游戏...")
               
               for app_id in ids:
                   info = get_steam_details(app_id, memory.get(app_id, "N/A"))
                   if info:
-                      if info['is_100_off']: active_games.append(info)
-                      elif info['is_weekend']: f_weekend.append(info)
-                      else: f_to_paid.append(info)
+                      if info['is_100_off']: 
+                          active_games.append(info)
+                      elif info['is_weekend']: 
+                          f_weekend.append(info)
+                      # ⚡ 双重保险：必须是真免费，且有结束时间，才能算作“转付费” (防战地5乱入)
+                      elif info.get('is_free_game') and info.get('end_date') != "N/A": 
+                          f_to_paid.append(info)
                   time.sleep(1.5)
 
               upcoming_list = []
@@ -318,7 +327,6 @@ jobs:
                                       continue
                               except: pass
 
-                              print(f"✅ Found Hidden Epic Game: {title} ({slug})")
                               active_games.append({
                                   "zh_title": title,
                                   "thumbnail": img,
@@ -330,7 +338,6 @@ jobs:
                       except: pass
               except: pass
 
-              # ⚡ 修复 3：使用带签名的 POST 强制上传数据
               post_update_with_sign("games.json", active_games)
               post_update_with_sign("upcoming.json", upcoming_list)
               post_update_with_sign("intel.json", {"to_paid": f_to_paid, "free_weekend": f_weekend})
@@ -342,5 +349,5 @@ jobs:
         run: |
           git config --global user.name 'GitHub Action'
           git add *.json || true
-          git commit -m "Fix POST signature verification" || true
+          git commit -m "Auto Radar & BFV Fix" || true
           git push
