@@ -181,19 +181,44 @@ jobs:
 
               ids = set(memory.keys())
               print(f"📦 从记忆中恢复了 {len(ids)} 个 Steam 游戏")
-              
-              # ⚡ 修复 1：加上 headers 防止被 Steam 屏蔽
+
+              # 🚨 诱饵恢复池：强制拉取已知限免，防止空窗期
+              fallback_ids = ["214340", "4138970", "3018430", "1121640"] 
+              ids.update(fallback_ids)
+
+              # ⚡ 修复 1：解决 Steam 推荐页类型突变导致的崩溃
               for url in ["https://store.steampowered.com/api/featuredcategories/", "https://store.steampowered.com/api/featuredcategories/?cc=CN&l=schinese"]:
                   try:
                       res = requests.get(url, headers=HEADERS, timeout=10)
                       if res.status_code == 200:
                           for cat in res.json().values():
-                              if 'items' in cat: ids.update([str(item['id']) for item in cat['items']])
+                              if isinstance(cat, dict) and 'items' in cat: # 必须加类型判定
+                                  for item in cat['items']:
+                                      if 'id' in item: # 必须加 id 存在判定
+                                          ids.add(str(item['id']))
                   except Exception as e: 
                       print(f"⚠️ 获取 Steam 推荐页异常: {e}")
 
-              # ⚡ 修复 2：加上 headers 防止被 Reddit/第三方 屏蔽
-              sources = ["https://keylol.com/forum.php?mod=rss&fid=319", "https://www.gamerpower.com/api/giveaways?platform=steam", "https://www.reddit.com/r/FreeGameFindings/new.rss"]
+              # ⚡ 修复 2：深度解析 Gamerpower，跟随跳转抓取真实 Steam ID
+              try:
+                  gp = requests.get("https://www.gamerpower.com/api/giveaways?platform=steam", headers=HEADERS, timeout=15).json()
+                  gp_count = 0
+                  for g in gp:
+                      url = g.get('open_giveaway_url', '')
+                      if url:
+                          try:
+                              act_url = requests.get(url, headers=HEADERS, timeout=5, allow_redirects=True).url
+                              m = re.search(r'app/(\d+)', act_url)
+                              if m:
+                                  ids.add(m.group(1))
+                                  gp_count += 1
+                          except: pass
+                  print(f"📡 从 Gamerpower 深度解析获取到 {gp_count} 个 ID")
+              except Exception as e:
+                  print(f"⚠️ Gamerpower 异常: {e}")
+
+              #常规 RSS 抓取
+              sources = ["https://keylol.com/forum.php?mod=rss&fid=319", "https://www.reddit.com/r/FreeGameFindings/new.rss"]
               for s in sources:
                   try:
                       res = requests.get(s, headers=HEADERS, timeout=15)
@@ -294,5 +319,5 @@ jobs:
         run: |
           git config --global user.name 'GitHub Action'
           git add *.json || true
-          git commit -m "Add Scrape Headers and Debug Logs" || true
+          git commit -m "Fix Steam JSON crash and force restore memory" || true
           git push
