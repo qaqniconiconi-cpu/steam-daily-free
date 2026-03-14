@@ -1,4 +1,4 @@
-name: Update Games (Full Pipeline & Signature Fix)
+name: Update Games (Steam Recovery & Signature Fix)
 
 on:
   schedule:
@@ -34,31 +34,15 @@ jobs:
           HOST = 'system.et-api.com'
           UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
           HEADERS = {'User-Agent': UA, 'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'}
-          COOKIES = {'birthtime': '283993201', 'wants_mature_content': '1'}
-
-          # ⚡ 精准复刻前端验签算法，确保 200 OK
+          
+          # ⚡ 精准复刻前端验签算法，解决 403 报错
           def get_signed_headers(method, path):
               ver = "1773281024"
               nonce = ''.join(random.choices(string.ascii_letters + string.digits, k=32))
               ts = str(int(time.time()))
-              # 算法：method + host + path + ?ver=...&nonce=...&ts=...&ua=...
               sign_string = f"{method}{HOST}{path}?ver={ver}&nonce={nonce}&ts={ts}&ua={UA}"
               sig = hashlib.sha256(sign_string.encode('utf-8')).hexdigest()
               return {'sig': sig, 'ts': ts, 'nonce': nonce, 'ver': ver, 'User-Agent': UA}
-
-          def parse_date_smart(text):
-              months = {"jan":1, "feb":2, "mar":3, "apr":4, "may":5, "jun":6, "jul":7, "aug":8, "sep":9, "oct":10, "nov":11, "dec":12}
-              best_dt = None
-              cn_dates = re.findall(r'(?:(\d{4})年)?(\d{1,2})月(\d{1,2})[日号]?', text)
-              if cn_dates:
-                  now = datetime.utcnow()
-                  for y_str, m_str, d_str in cn_dates:
-                      y, m, d = (int(y_str) if y_str else now.year), int(m_str), int(d_str)
-                      try: 
-                          dt = datetime(y, m, d, 17, 0, 0)
-                          if not best_dt or dt > best_dt: best_dt = dt
-                      except: pass
-              return best_dt.strftime('%Y-%m-%dT%H:%M:%SZ') if best_dt else "N/A"
 
           def get_steam_details(app_id):
               try:
@@ -66,105 +50,98 @@ jobs:
                   res = requests.get(url, headers=HEADERS, timeout=10).json()
                   if str(app_id) not in res or not res[str(app_id)]['success']: return None
                   d = res[str(app_id)]['data']
+                  
                   price = d.get('price_overview', {})
-                  is_100_off = price.get('discount_percent') == 100
-                  if not (is_100_off or d.get('is_free')): return None
-                  end_date = "N/A"
-                  if price.get('discount_expiration'):
-                      end_date = datetime.fromtimestamp(int(price['discount_expiration'])).strftime('%Y-%m-%dT%H:%M:%SZ')
-                  return {
-                      "steam_id": str(app_id), "zh_title": d.get('name'), "thumbnail": d.get('header_image'),
-                      "short_description": d.get('short_description', '').strip().split('。')[0],
-                      "is_100_off": is_100_off, "end_date": end_date, "platform": "Steam"
-                  }
+                  is_free = d.get('is_free', False)
+                  discount = price.get('discount_percent', 0)
+                  
+                  # 判定标准：100%折或者是免费游戏本体
+                  if is_free or discount == 100:
+                      end_date = "N/A"
+                      if price.get('discount_expiration'):
+                          end_date = datetime.fromtimestamp(int(price['discount_expiration'])).strftime('%Y-%m-%dT%H:%M:%SZ')
+                      
+                      return {
+                          "steam_id": str(app_id), "zh_title": d.get('name'), "thumbnail": d.get('header_image'),
+                          "short_description": d.get('short_description', '').strip().split('。')[0],
+                          "end_date": end_date, "platform": "Steam"
+                      }
               except: return None
+              return None
 
           def main():
-              # --- 1. 读取旧数据 (需验签) ---
-              memory = {}
+              active_games, upcoming_list = [], []
+              
+              # --- 1. 抓取 Steam 热点 (官方分类 + 多源 RSS) ---
+              print("🔍 正在扫描 Steam 热点信息...")
+              steam_ids = set()
+              # 来源 A: 官方推荐位
               try:
-                  for fn in ["games.json", "intel.json"]:
-                      h = get_signed_headers('GET', '/v1/get/steam-daily-free')
-                      url = f"https://{HOST}/v1/get/steam-daily-free?filename={fn}"
-                      res = requests.get(url, headers=h, timeout=10).json()
-                      items = res if isinstance(res, list) else (res.get('to_paid', []) + res.get('free_weekend', []))
-                      for i in items:
-                          if i.get('steam_id'): memory[i['steam_id']] = i.get('end_date', "N/A")
+                  res = requests.get("https://store.steampowered.com/api/featuredcategories/?cc=CN&l=schinese", timeout=10).json()
+                  for cat in res.values():
+                      if 'items' in cat: steam_ids.update([str(item['id']) for item in cat['items']])
+              except: pass
+              # 来源 B: 第三方热点情报 (GamerPower)
+              try:
+                  gp = requests.get("https://www.gamerpower.com/api/giveaways?platform=steam", timeout=10).json()
+                  for g in gp:
+                      m = re.search(r'app/(\d+)', g.get('open_giveaway_url', ''))
+                      if m: steam_ids.add(m.group(1))
               except: pass
 
-              # --- 2. Steam ID 采集 ---
-              ids = set(memory.keys())
-              for url in ["https://store.steampowered.com/api/featuredcategories/", "https://store.steampowered.com/api/featuredcategories/?cc=CN&l=schinese"]:
-                  try:
-                      res = requests.get(url, timeout=10).json()
-                      for cat in res.values():
-                          if 'items' in cat: ids.update([str(item['id']) for item in cat['items']])
-                  except: pass
-              sources = ["https://keylol.com/forum.php?mod=rss&fid=319", "https://www.gamerpower.com/api/giveaways?platform=steam", "https://www.reddit.com/r/FreeGameFindings/new.rss"]
-              for s in sources:
-                  try:
-                      res = requests.get(s, timeout=15).text
-                      ids.update(re.findall(r'app/(\d+)', res))
-                  except: pass
-
-              active_games, f_to_paid, f_weekend = [], [], []
-              for sid in ids:
+              for sid in steam_ids:
                   info = get_steam_details(sid)
-                  if info:
-                      if info['is_100_off']: active_games.append(info)
-                      else: f_to_paid.append(info)
+                  if info: active_games.append(info)
 
-              # --- 3. Epic 采集 ---
-              upcoming_list = []
+              # --- 2. 抓取 Epic 官方官方 ---
+              print("🔍 正在扫描 Epic 官方数据...")
               try:
                   res = requests.get("https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN", timeout=10).json()
                   for item in res['data']['Catalog']['searchStore']['elements']:
                       promos = item.get('promotions')
                       if not promos: continue
-                      slug = item.get('productSlug') or item.get('urlSlug') or "free-games"
+                      slug = item.get('productSlug') or "free-games"
                       img = next((i['url'] for i in item.get('keyImages', []) if i['type'] in ['OfferImageWide', 'Thumbnail']), "")
+                      
                       for node in promos.get('promotionalOffers', []):
                           for offer in node.get('promotionalOffers', []):
                               if offer.get('discountSetting', {}).get('discountPercentage') == 0:
                                   active_games.append({"zh_title": item['title'], "thumbnail": img, "end_date": offer['endDate'], "platform": "Epic Games", "epic_slug": slug})
+                      
                       for node in promos.get('upcomingPromotionalOffers', []):
                           for offer in node.get('promotionalOffers', []):
                               upcoming_list.append({"zh_title": item['title'], "image": img, "start_date": offer['startDate'], "end_date": offer['endDate'], "platform": "Epic Games", "epic_slug": slug})
               except: pass
 
-              # --- 4. 隐藏雷达 (特征识别，无需硬编码) ---
+              # --- 3. 抓取 Epic 隐藏雷达 (自动捕获《光明斗士》等) ---
+              print("🔍 正在扫描 Epic 隐藏雷达...")
               try:
                   gp_epic = requests.get("https://www.gamerpower.com/api/giveaways?platform=epic-games-store", timeout=10).json()
+                  official_slugs = {g.get('epic_slug') for g in active_games + upcoming_list if g.get('epic_slug')}
                   for g in gp_epic:
                       worth = g.get('worth', 'Free')
-                      # 特征：有原价($) + 类型是 Game = 真限免
+                      # 特征：有原价($) + 类型是 Game = 非永久免费的限免大作
                       if worth not in ["Free", "N/A", "$0.00", "0.00"] and g.get('type') == 'Game':
                           actual_url = requests.get(g.get('open_giveaway_url'), timeout=10).url
                           m = re.search(r'p/([^/?#]+)', actual_url)
                           if m:
-                              active_games.append({
-                                  "zh_title": g.get('title'), "thumbnail": g.get('thumbnail'), 
-                                  "end_date": (datetime.utcnow() + timedelta(days=7)).strftime('%Y-%m-%dT23:59:59Z'), 
-                                  "platform": "Epic Games", "epic_slug": m.group(1)
-                              })
+                              slug = m.group(1)
+                              if slug not in official_slugs:
+                                  # 赋予 7 天滚动有效期，确保能过前端 isValidEpic 检查
+                                  end_date = (datetime.utcnow() + timedelta(days=7)).strftime('%Y-%m-%dT23:59:59Z')
+                                  active_games.append({"zh_title": g.get('title'), "thumbnail": g.get('thumbnail'), "end_date": end_date, "platform": "Epic Games", "epic_slug": slug})
               except: pass
 
-              # --- 5. 带着通行证强闯封锁线 ---
-              for fn, data in [("games.json", active_games), ("upcoming.json", upcoming_list), ("intel.json", {"to_paid": f_to_paid, "free_weekend": f_weekend})]:
+              # --- 4. 带着签名更新服务器 ---
+              for fn, data in [("games.json", active_games), ("upcoming.json", upcoming_list)]:
                   try:
-                      h = get_signed_headers('POST', '/v1/update/steam-daily-free')
-                      h.update({"filename": fn, "Content-Type": "application/json"})
-                      res = requests.post(f"https://{HOST}/v1/update/steam-daily-free", headers=h, json=data, timeout=20)
-                      print(f"Update {fn}: {res.status_code}")
+                      headers = get_signed_headers('POST', '/v1/update/steam-daily-free')
+                      headers.update({"filename": fn, "Content-Type": "application/json"})
+                      res = requests.post(f"https://{HOST}/v1/update/steam-daily-free", headers=headers, json=data, timeout=20)
+                      print(f"🚀 更新 {fn} 状态码: {res.status_code}")
                   except Exception as e:
-                      print(f"Failed {fn}: {e}")
+                      print(f"🚨 更新 {fn} 失败: {e}")
 
           if __name__ == "__main__": main()
           EOF
           python processor.py
-      - name: Commit and Push
-        run: |
-          git config --global user.name 'GitHub Action'
-          git add *.json || true
-          git commit -m "Fix Data Update Pipe with Signature" || true
-          git push
