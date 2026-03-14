@@ -178,35 +178,35 @@ jobs:
                           mappings = item.get('catalogNs', {}).get('mappings', [])
                           slug = mappings[0].get('pageSlug') if mappings else (item.get('productSlug') or item.get('urlSlug') or "free-games")
                           img = next((i['url'] for i in item.get('keyImages', []) if i['type'] in ['OfferImageWide', 'Thumbnail']), "")
+                          
                           if promos.get('promotionalOffers'):
                               offers = promos['promotionalOffers'][0]['promotionalOffers']
                               if offers and offers[0].get('discountSetting', {}).get('discountPercentage') == 0:
-                                  active_games.append({"zh_title": item['title'], "thumbnail": img, "end_date": offers[0]['endDate'], "epic_slug": slug, "short_description": "Epic 官方限时免费"})
+                                  # 修复：补齐 platform 字段，确保前端状态机能精准识别
+                                  active_games.append({"zh_title": item['title'], "thumbnail": img, "end_date": offers[0]['endDate'], "platform": "Epic Games", "epic_slug": slug, "short_description": "Epic 官方限时免费"})
                           elif promos.get('upcomingPromotionalOffers'):
                               offers = promos['upcomingPromotionalOffers'][0]['promotionalOffers']
                               if offers:
-                                  upcoming_list.append({"zh_title": item['title'], "image": img, "start_date": offers[0]['startDate'], "platform": "Epic Games", "epic_slug": slug, "short_description": "即将开启免费领取"})
+                                  # 修复：预告也必须带上 end_date 和 platform，让前端到点自动流转
+                                  upcoming_list.append({"zh_title": item['title'], "image": img, "start_date": offers[0]['startDate'], "end_date": offers[0]['endDate'], "platform": "Epic Games", "epic_slug": slug, "short_description": "即将开启免费领取"})
                       if active_games: break
                   except: continue
 
-              # ⚡ 第二步：启动 Epic 隐藏雷达 (抓取类似 The Assault: Survivor 的野生喜加一)
+              # ⚡ 第二步：启动 Epic 隐藏雷达 (抓取野生喜加一，并执行最严安检)
               official_epic_slugs = {g.get('epic_slug') for g in active_games if g.get('epic_slug')}
               try:
                   gp_epic = requests.get("https://www.gamerpower.com/api/giveaways?platform=epic-games-store", timeout=15).json()
                   for g in gp_epic:
                       title = g.get('title', '')
-                      if "mystery" in title.lower(): continue # 过滤官方的神秘占位符
+                      if "mystery" in title.lower(): continue 
                       
-                      # 顺藤摸瓜：跟随重定向获取最真实的 Epic 商店 URL
                       gp_url = g.get('open_giveaway_url')
                       if not gp_url: continue
                       try:
-                          # 强行解析最终跳转网址提取 slug
                           actual_url = requests.get(gp_url, timeout=10).url
                           m = re.search(r'store\.epicgames\.com/(?:[a-z]{2}-[a-zA-Z]{2}/)?p/([^/?#]+)', actual_url)
                           if m:
                               slug = m.group(1)
-                              # 去重：如果官方限免里已经有了，就不重复添加
                               if slug in official_epic_slugs: continue
                               
                               img = g.get('thumbnail')
@@ -216,11 +216,23 @@ jobs:
                                   try: end_date = datetime.strptime(end_str, "%Y-%m-%d %H:%M:%S").strftime('%Y-%m-%dT%H:%M:%SZ')
                                   except: pass
                               
+                              # 🚨 绝对核心防御 A：剔除幽灵数据与常驻免费 (纪念碑谷、Idle Champions等)
+                              # 凡是从第三方抓来却没有结束时间的，100%是脏数据，直接丢弃！
+                              if end_date == "N/A": continue
+                              
+                              # 🚨 绝对核心防御 B：剔除已过期游戏 (Turnip Boy、Assault 等)
+                              # 凡是抓取时刻发现已经过期的，直接截杀，不许写入 JSON！
+                              try:
+                                  if datetime.strptime(end_date, '%Y-%m-%dT%H:%M:%SZ') < datetime.utcnow():
+                                      continue
+                              except: pass
+
                               print(f"✅ Found Hidden Epic Game: {title} ({slug})")
                               active_games.append({
                                   "zh_title": title,
                                   "thumbnail": img,
                                   "end_date": end_date,
+                                  "platform": "Epic Games", # 补齐平台字段
                                   "epic_slug": slug,
                                   "short_description": "Epic 独立隐藏限免 / 额外赠送"
                               })
