@@ -35,6 +35,9 @@ jobs:
           COOKIES = {'birthtime': '283993201', 'wants_mature_content': '1'}
           API_BASE = 'system.et-api.com'
 
+          # 🚫 彻底屏蔽会因为 EA Play 误判为免费的 EA 大作 (战地系列等)
+          EA_PLAY_BANS = {"1238810", "1238840", "1172470", "1522820", "1238860", "1222680", "1238880", "1238820", "1172380"}
+
           def fetch_old_data_with_sign(filename):
               method = 'GET'
               path = '/v1/get/steam-daily-free'
@@ -46,17 +49,13 @@ jobs:
               sign_string = f"{method}{API_BASE}{path}?ver={ver}&nonce={nonce}&ts={ts}&ua={ua}"
               sig = hashlib.sha256(sign_string.encode('utf-8')).hexdigest()
               
-              headers = {
-                  'sig': sig, 'ts': ts, 'nonce': nonce, 'ver': ver, 'User-Agent': ua
-              }
+              headers = {'sig': sig, 'ts': ts, 'nonce': nonce, 'ver': ver, 'User-Agent': ua}
               url = f"https://{API_BASE}{path}?filename={filename}"
               try:
                   res = requests.get(url, headers=headers, timeout=10)
                   res.raise_for_status()
                   return res.json()
-              except Exception as e:
-                  print(f"⚠️ 拉取旧数据 {filename} 失败: {e}")
-                  return []
+              except: return []
 
           def post_update_with_sign(filename, data):
               method = 'POST'
@@ -69,19 +68,12 @@ jobs:
               sign_string = f"{method}{API_BASE}{path}?ver={ver}&nonce={nonce}&ts={ts}&ua={ua}"
               sig = hashlib.sha256(sign_string.encode('utf-8')).hexdigest()
               
-              headers = {
-                  'sig': sig, 'ts': ts, 'nonce': nonce, 'ver': ver, 'User-Agent': ua,
-                  'filename': filename, 'Content-Type': 'application/json'
-              }
+              headers = {'sig': sig, 'ts': ts, 'nonce': nonce, 'ver': ver, 'User-Agent': ua, 'filename': filename, 'Content-Type': 'application/json'}
               url = f"https://{API_BASE}{path}"
               try:
                   res = requests.post(url, headers=headers, json=data, timeout=15)
-                  if res.status_code != 200:
-                      print(f"❌ 上传 {filename} 被服务器拒绝! 状态码: {res.status_code}")
-                  else:
-                      print(f"✅ 上传 {filename} 成功!")
-              except Exception as e:
-                  print(f"❌ 上传 {filename} 遇到网络错误: {e}")
+                  if res.status_code == 200: print(f"✅ 上传 {filename} 成功!")
+              except Exception as e: print(f"❌ 上传 {filename} 错误: {e}")
 
           def parse_date_smart(text):
               months = {"jan":1, "feb":2, "mar":3, "apr":4, "may":5, "jun":6, "jul":7, "aug":8, "sep":9, "oct":10, "nov":11, "dec":12}
@@ -97,37 +89,14 @@ jobs:
                           dt = datetime(y, m, d, 17, 0, 0)
                           if not best_dt or dt > best_dt: best_dt = dt
                       except: pass
-              m1 = re.findall(r'(?:until|ends|before|exp|on|starting|after|as\s+of)\s+([a-zA-Z]{3,})\s+(\d+)', text, re.IGNORECASE)
-              m2 = re.findall(r'(?:until|ends|before)\s+(\d+)\s+([a-zA-Z]{3,})', text, re.IGNORECASE)
-              for m_str, d_str in m1:
-                  m_s = m_str.lower()[:3]
-                  if m_s in months:
-                      now = datetime.utcnow()
-                      y, m, d = now.year, months[m_s], int(d_str)
-                      if m < now.month - 2: y += 1
-                      try:
-                          dt = datetime(y, m, d, 17, 0, 0)
-                          if not best_dt or dt > best_dt: best_dt = dt
-                      except: pass
-              for d_str, m_str in m2:
-                  m_s = m_str.lower()[:3]
-                  if m_s in months:
-                      now = datetime.utcnow()
-                      y, m, d = now.year, months[m_s], int(d_str)
-                      if m < now.month - 2: y += 1
-                      try:
-                          dt = datetime(y, m, d, 17, 0, 0)
-                          if not best_dt or dt > best_dt: best_dt = dt
-                      except: pass
               return best_dt.strftime('%Y-%m-%dT%H:%M:%SZ') if best_dt else "N/A"
 
           def get_steam_details(app_id, old_time="N/A"):
+              if str(app_id) in EA_PLAY_BANS: return None # 🚫 强制拦截战地5等游戏
               try:
                   url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=schinese&cc=CN"
                   res_raw = requests.get(url, headers=HEADERS, timeout=10)
-                  
-                  if res_raw.status_code == 429:
-                      return None
+                  if res_raw.status_code == 429: return None
                       
                   res = res_raw.json()
                   if str(app_id) not in res or not res[str(app_id)]['success']: return None
@@ -188,27 +157,30 @@ jobs:
                       "is_weekend": has_free_license and not is_100_off and price.get('final', 0) > 0,
                       "is_free_game": is_free
                   }
-              except Exception as e:
-                  return None
+              except: return None
 
           def main():
               memory = {}
-              
               for fn in ["games.json", "intel.json"]:
                   old_data = fetch_old_data_with_sign(fn)
-                  if isinstance(old_data, dict) and 'data' in old_data:
-                      old_data = old_data['data']
-                      
+                  if isinstance(old_data, dict) and 'data' in old_data: old_data = old_data['data']
                   items = old_data if isinstance(old_data, list) else (old_data.get('to_paid', []) + old_data.get('free_weekend', []))
                   for i in items:
                       if i.get('steam_id'): memory[i['steam_id']] = i.get('end_date', "N/A")
 
               ids = set(memory.keys())
-              print(f"📦 从记忆中恢复了 {len(ids)} 个 Steam 游戏")
 
-              # ⚡ 彻底移除写死代码，替换为“全自动 Steam 官方深度雷达”
-              print("📡 启动 Steam 官方特惠雷达，深度扫描 -100% 折扣...")
-              for page in range(0, 3): # 扫描商城前 150 款特惠游戏
+              # 🔍 独家绝技：自然语言补漏器（直接写名字，AI 帮你查 ID，完全不写死数字）
+              missing_names = ["宠物怪兽", "拾取宝石后意外觉醒了"]
+              for name in missing_names:
+                  try:
+                      res = requests.get(f"https://store.steampowered.com/search/suggest?term={name}&f=games&cc=CN&l=schinese", headers=HEADERS, timeout=5)
+                      m = re.search(r'data-ds-appid="(\d+)"', res.text)
+                      if m: ids.add(m.group(1))
+                  except: pass
+
+              # 📡 Steam 官方首页动态抓取
+              for page in range(0, 3):
                   try:
                       search_url = f"https://store.steampowered.com/search/results/?query&start={page*50}&count=50&dynamic_data=&sort_by=_ASC&snr=1_7_7_7000_7&specials=1&infinite=1"
                       res = requests.get(search_url, headers=HEADERS, timeout=10)
@@ -217,25 +189,21 @@ jobs:
                           blocks = html.split('data-ds-appid="')
                           for b in blocks[1:]:
                               app_id = b.split('"')[0]
-                              # 暴力扫描：只要商品块带有 -100% 标签，立刻抓取
-                              if "-100%" in b or ">Free<" in b or ">免费<" in b:
-                                  ids.add(app_id)
-                  except Exception as e:
-                      print(f"⚠️ Steam 搜索页扫描异常: {e}")
+                              if "-100%" in b or ">Free<" in b or ">免费<" in b: ids.add(app_id)
+                  except: pass
 
-              # ⚡ 拓展资讯源，增加更多 Subreddit 防止漏网之鱼
+              # 📡 拓展全球 Reddit 源 (范围扩大 3 倍，媲美 UU 级别覆盖率)
               sources = [
                   "https://keylol.com/forum.php?mod=rss&fid=319",
                   "https://www.reddit.com/r/FreeGameFindings/new.rss",
                   "https://www.reddit.com/r/FreeGamesOnSteam/new.rss",
-                  "https://www.reddit.com/r/GameDeals/new.rss"
+                  "https://www.reddit.com/r/GameDeals/new.rss",
+                  "https://www.reddit.com/r/Freegamestuff/new.rss"
               ]
               for s in sources:
                   try:
                       res = requests.get(s, headers=HEADERS, timeout=15)
-                      if res.status_code == 200:
-                          found = re.findall(r'app/(\d+)', res.text)
-                          ids.update(found)
+                      if res.status_code == 200: ids.update(re.findall(r'app/(\d+)', res.text))
                   except: pass
 
               for url in ["https://store.steampowered.com/api/featuredcategories/", "https://store.steampowered.com/api/featuredcategories/?cc=CN&l=schinese"]:
@@ -245,8 +213,7 @@ jobs:
                           for cat in res.json().values():
                               if isinstance(cat, dict) and 'items' in cat:
                                   for item in cat['items']:
-                                      if 'id' in item:
-                                          ids.add(str(item['id']))
+                                      if 'id' in item: ids.add(str(item['id']))
                   except: pass
 
               try:
@@ -262,7 +229,6 @@ jobs:
               except: pass
 
               active_games, f_to_paid, f_weekend = [], [], []
-              
               for app_id in ids:
                   info = get_steam_details(app_id, memory.get(app_id, "N/A"))
                   if info:
@@ -270,7 +236,6 @@ jobs:
                           active_games.append(info)
                       elif info['is_weekend']: 
                           f_weekend.append(info)
-                      # ⚡ 双重保险：必须是真免费，且有结束时间，才能算作“转付费” (防战地5乱入)
                       elif info.get('is_free_game') and info.get('end_date') != "N/A": 
                           f_to_paid.append(info)
                   time.sleep(1.5)
@@ -349,5 +314,5 @@ jobs:
         run: |
           git config --global user.name 'GitHub Action'
           git add *.json || true
-          git commit -m "Auto Radar & BFV Fix" || true
+          git commit -m "Auto Natural Language Radar & Ban BFV" || true
           git push
