@@ -1,4 +1,4 @@
-name: Update Games (Final Pipeline)
+name: Update Games (Full Pipeline & Sign Fix)
 
 on:
   schedule:
@@ -32,7 +32,8 @@ jobs:
           from datetime import datetime, timedelta
 
           HOST = 'system.et-api.com'
-          # ⚡ 核心：签名生成函数
+          HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'}
+          
           def get_signed_headers(method, path):
               ver = "1773281024"
               nonce = ''.join(random.choices(string.ascii_letters + string.digits, k=32))
@@ -42,64 +43,100 @@ jobs:
               sig = hashlib.sha256(sign_string.encode('utf-8')).hexdigest()
               return {'User-Agent': ua, 'sig': sig, 'ts': ts, 'nonce': nonce, 'ver': ver}
 
-          def main():
-              active_games, upcoming_list = [], []
-              
-              # 1. 抓取 Epic 官方限免
-              epic_api = "https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN"
+          def parse_date_smart(text):
+              months = {"jan":1, "feb":2, "mar":3, "apr":4, "may":5, "jun":6, "jul":7, "aug":8, "sep":9, "oct":10, "nov":11, "dec":12}
+              best_dt = None
+              cn_dates = re.findall(r'(?:(\d{4})年)?(\d{1,2})月(\d{1,2})[日号]?', text)
+              if cn_dates:
+                  now = datetime.utcnow()
+                  for y_str, m_str, d_str in cn_dates:
+                      y = int(y_str) if y_str else now.year
+                      m, d = int(m_str), int(d_str)
+                      try: 
+                          dt = datetime(y, m, d, 17, 0, 0)
+                          if not best_dt or dt > best_dt: best_dt = dt
+                      except: pass
+              return best_dt.strftime('%Y-%m-%dT%H:%M:%SZ') if best_dt else "N/A"
+
+          def get_steam_details(app_id):
               try:
-                  res = requests.get(epic_api, timeout=10).json()
-                  elements = res['data']['Catalog']['searchStore']['elements']
-                  for item in elements:
+                  url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=schinese&cc=CN"
+                  res = requests.get(url, headers=HEADERS, timeout=10).json()
+                  if str(app_id) not in res or not res[str(app_id)]['success']: return None
+                  d = res[str(app_id)]['data']
+                  price = d.get('price_overview', {})
+                  is_100_off = price.get('discount_percent') == 100
+                  if not (is_100_off or d.get('is_free')): return None
+                  
+                  end_date = "N/A"
+                  if price.get('discount_expiration'):
+                      end_date = datetime.fromtimestamp(int(price['discount_expiration'])).strftime('%Y-%m-%dT%H:%M:%SZ')
+                  
+                  return {
+                      "steam_id": str(app_id), "zh_title": d.get('name'), "thumbnail": d.get('header_image'),
+                      "short_description": d.get('short_description', '').strip().split('。')[0],
+                      "is_100_off": is_100_off, "end_date": end_date
+                  }
+              except: return None
+
+          def main():
+              active_games, upcoming_list, f_to_paid, f_weekend = [], [], [], []
+              
+              # --- 1. Steam 抓取 ---
+              steam_ids = set()
+              try:
+                  res = requests.get("https://www.gamerpower.com/api/giveaways?platform=steam", timeout=10).json()
+                  for g in res: 
+                      m = re.search(r'app/(\d+)', g.get('open_giveaway_url', ''))
+                      if m: steam_ids.add(m.group(1))
+              except: pass
+              
+              for sid in steam_ids:
+                  info = get_steam_details(sid)
+                  if info: active_games.append(info)
+
+              # --- 2. Epic 抓取 ---
+              try:
+                  epic_res = requests.get("https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN", timeout=10).json()
+                  for item in epic_res['data']['Catalog']['searchStore']['elements']:
                       promos = item.get('promotions')
                       if not promos: continue
-                      slug = (item.get('catalogNs', {}).get('mappings', [{}])[0].get('pageSlug') or 
-                              item.get('productSlug') or item.get('urlSlug') or "free-games")
+                      slug = item.get('productSlug') or "free-games"
                       img = next((i['url'] for i in item.get('keyImages', []) if i['type'] in ['OfferImageWide', 'Thumbnail']), "")
                       
-                      for active_nodes in promos.get('promotionalOffers', []):
-                          for offer in active_nodes.get('promotionalOffers', []):
+                      for active in promos.get('promotionalOffers', []):
+                          for offer in active.get('promotionalOffers', []):
                               if offer.get('discountSetting', {}).get('discountPercentage') == 0:
                                   active_games.append({"zh_title": item['title'], "thumbnail": img, "end_date": offer['endDate'], "platform": "Epic Games", "epic_slug": slug})
                       
-                      for upcoming_nodes in promos.get('upcomingPromotionalOffers', []):
-                          for offer in upcoming_nodes.get('promotionalOffers', []):
+                      for up in promos.get('upcomingPromotionalOffers', []):
+                          for offer in up.get('promotionalOffers', []):
                               upcoming_list.append({"zh_title": item['title'], "image": img, "start_date": offer['startDate'], "end_date": offer['endDate'], "platform": "Epic Games", "epic_slug": slug})
               except: pass
 
-              # 2. 抓取隐藏雷达 (GamerPower)
+              # --- 3. 隐藏雷达 (识别《光明斗士》) ---
               try:
-                  gp_url = "https://www.gamerpower.com/api/giveaways?platform=epic-games-store"
-                  gp_data = requests.get(gp_url, timeout=15).json()
-                  official_slugs = {g.get('epic_slug') for g in active_games + upcoming_list}
-                  
-                  for g in gp_data:
-                      title = g.get('title', '')
+                  gp_epic = requests.get("https://www.gamerpower.com/api/giveaways?platform=epic-games-store", timeout=10).json()
+                  for g in gp_epic:
                       worth = g.get('worth', 'Free')
-                      status = g.get('status', '')
-                      g_type = g.get('type', '')
-                      
-                      # ⚡ 零硬编码识别逻辑：只要是 Active 的付费游戏本体就放行
-                      is_paid = worth not in ["Free", "N/A", "$0.00", "0.00", 0]
-                      if status == 'Active' and g_type == 'Game' and is_paid:
-                          # 提取 Slug
-                          link = g.get('open_giveaway_url', '')
-                          actual_url = requests.get(link, timeout=10).url
-                          m = re.search(r'store\.epicgames\.com/(?:[a-z]{2}-[a-zA-Z]{2}/)?(?:p|bundles)/([^/?#]+)', actual_url)
+                      # 特征识别：只要不是 Free 且类型是 Game，即判定为限免
+                      if worth not in ["Free", "N/A", "$0.00"] and g.get('type') == 'Game':
+                          actual_url = requests.get(g.get('open_giveaway_url'), timeout=10).url
+                          m = re.search(r'p/([^/?#]+)', actual_url)
                           if m:
-                              slug = m.group(1)
-                              if slug not in official_slugs:
-                                  end_date = (datetime.utcnow() + timedelta(days=7)).strftime('%Y-%m-%dT23:59:59Z')
-                                  active_games.append({"zh_title": title, "thumbnail": g.get('thumbnail'), "end_date": end_date, "platform": "Epic Games", "epic_slug": slug, "short_description": "Epic 官方活动赠送"})
-                                  print(f"✅ Captured: {title}")
+                              active_games.append({
+                                  "zh_title": g.get('title'), "thumbnail": g.get('thumbnail'), 
+                                  "end_date": (datetime.utcnow() + timedelta(days=7)).strftime('%Y-%m-%dT23:59:59Z'), 
+                                  "platform": "Epic Games", "epic_slug": m.group(1)
+                              })
               except: pass
 
-              # 3. 带着签名更新服务器
-              for fn, data in [("games.json", active_games), ("upcoming.json", upcoming_list)]:
+              # --- 4. 带着签名写入服务器 ---
+              for fn, data in [("games.json", active_games), ("upcoming.json", upcoming_list), ("intel.json", {"to_paid": f_to_paid, "free_weekend": f_weekend})]:
                   headers = get_signed_headers('POST', '/v1/update/steam-daily-free')
                   headers.update({"filename": fn, "Content-Type": "application/json"})
                   res = requests.post(f"https://{HOST}/v1/update/steam-daily-free", headers=headers, json=data)
-                  print(f"🚀 Update {fn} Status: {res.status_code}")
+                  print(f"Update {fn}: {res.status_code}")
 
           if __name__ == "__main__": main()
           EOF
