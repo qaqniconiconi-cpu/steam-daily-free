@@ -94,14 +94,14 @@ jobs:
                       img = next((i['url'] for i in item.get('keyImages', []) if i['type'] in ['OfferImageWide', 'Thumbnail']), "")
                       for node in promos.get('promotionalOffers', []):
                           for offer in node.get('promotionalOffers', []):
-                              if offer.get('discountSetting', {}).get('discountPercentage') == 0:
+                              if offer.get('discount_percentage', 100) == 0 or offer.get('discountSetting', {}).get('discountPercentage') == 0:
                                   active_games.append({"zh_title": item['title'], "thumbnail": img, "end_date": offer['endDate'], "platform": "Epic Games", "epic_slug": slug})
                       for node in promos.get('upcomingPromotionalOffers', []):
                           for offer in node.get('promotionalOffers', []):
                               upcoming_list.append({"zh_title": item['title'], "image": img, "start_date": offer['startDate'], "end_date": offer['endDate'], "platform": "Epic Games", "epic_slug": slug})
               except: pass
 
-              # --- 3. Epic 隐藏雷达 ---
+              # --- 3. Epic 隐藏雷达 (特征识别) ---
               try:
                   gp_epic = requests.get("https://www.gamerpower.com/api/giveaways?platform=epic-games-store", headers=HEADERS, timeout=15).json()
                   official_slugs = {g.get('epic_slug') for g in active_games + upcoming_list if g.get('epic_slug')}
