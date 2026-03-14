@@ -1,4 +1,4 @@
-name: Update Games (Epic Hidden Radar & Final Fix)
+name: Update Games (Full Auto & Deep Scan)
 
 on:
   schedule:
@@ -17,9 +17,9 @@ jobs:
         with:
           python-version: '3.9'
       - name: Install dependencies
-        run: pip install requests
+        run: pip install requests beautifulsoup4
 
-      - name: Run Smart Processor
+      - name: Run Global Smart Processor
         run: |
           cat <<'EOF' > processor.py
           import requests
@@ -30,20 +30,20 @@ jobs:
           import random
           import string
           from datetime import datetime, timedelta
+          from bs4 import BeautifulSoup
 
           HOST = 'system.et-api.com'
-          # ⚡ 优化点 1：手动补漏名单。如果发现某个游戏漏了，直接把 AppID 填在这里。
-          # 1498060 是《宠物怪兽》(Nanomon Virtual Pet)
-          MANUAL_STEAM_IDS = ["1498060"] 
-          
-          HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'}
+          HEADERS = {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'
+          }
           COOKIES = {'birthtime': '283993201', 'wants_mature_content': '1'}
 
           def get_signed_headers(method, path):
               ver = "1773281024"
               nonce = ''.join(random.choices(string.ascii_letters + string.digits, k=32))
               ts = str(int(time.time()))
-              ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+              ua = HEADERS['User-Agent']
               sign_string = f"{method}{HOST}{path}?ver={ver}&nonce={nonce}&ts={ts}&ua={ua}"
               sig = hashlib.sha256(sign_string.encode('utf-8')).hexdigest()
               return {'User-Agent': ua, 'sig': sig, 'ts': ts, 'nonce': nonce, 'ver': ver}
@@ -51,6 +51,16 @@ jobs:
           def parse_date_smart(text):
               months = {"jan":1, "feb":2, "mar":3, "apr":4, "may":5, "jun":6, "jul":7, "aug":8, "sep":9, "oct":10, "nov":11, "dec":12}
               best_dt = None
+              # 1. 匹配标准日期 2026-05-01 或 05/01
+              std_dates = re.findall(r'(\d{4})[-/](\d{1,2})[-/](\d{1,2})', text)
+              if std_dates:
+                  for y, m, d in std_dates:
+                      try:
+                          dt = datetime(int(y), int(m), int(d), 17, 0, 0)
+                          if not best_dt or dt > best_dt: best_dt = dt
+                      except: pass
+
+              # 2. 匹配中文日期
               cn_dates = re.findall(r'(?:(\d{4})年)?(\d{1,2})月(\d{1,2})[日号]?', text)
               if cn_dates:
                   now = datetime.utcnow()
@@ -62,19 +72,10 @@ jobs:
                           dt = datetime(y, m, d, 17, 0, 0)
                           if not best_dt or dt > best_dt: best_dt = dt
                       except: pass
-              m1 = re.findall(r'(?:until|ends|before|exp|on|starting|after|as\s+of)\s+([a-zA-Z]{3,})\s+(\d+)', text, re.IGNORECASE)
-              m2 = re.findall(r'(?:until|ends|before)\s+(\d+)\s+([a-zA-Z]{3,})', text, re.IGNORECASE)
+              
+              # 3. 匹配英文月日
+              m1 = re.findall(r'(?:until|ends|before|on|starting|after|at|by)\s+([a-zA-Z]{3,})\s+(\d+)', text, re.IGNORECASE)
               for m_str, d_str in m1:
-                  m_s = m_str.lower()[:3]
-                  if m_s in months:
-                      now = datetime.utcnow()
-                      y, m, d = now.year, months[m_s], int(d_str)
-                      if m < now.month - 2: y += 1
-                      try:
-                          dt = datetime(y, m, d, 17, 0, 0)
-                          if not best_dt or dt > best_dt: best_dt = dt
-                      except: pass
-              for d_str, m_str in m2:
                   m_s = m_str.lower()[:3]
                   if m_s in months:
                       now = datetime.utcnow()
@@ -102,84 +103,56 @@ jobs:
                   if price.get('discount_expiration'):
                       end_date = datetime.fromtimestamp(int(price['discount_expiration'])).strftime('%Y-%m-%dT%H:%M:%SZ')
                   
-                  # ⚡ 优化点 2：扩充关键词库，增加对“转为收费”等表达方式的识别
-                  keywords = [
-                      "转付费", "收费", "开始收费", "结束免费", "价格调整", "paid", "pricing", 
-                      "become paid", "purchase required", "premium transition", "恢复原价", 
-                      "转为付费", "limit free", "限免", "免费领取", "免费入库", "free to keep"
-                  ]
+                  keywords = ["转付费", "收费", "价格调整", "paid", "pricing", "premium", "no longer free", "going paid", "transition"]
 
+                  # 深度扫描新闻：处理类似《宠物怪兽》这种没有折扣过期字段的情况
                   if end_date == "N/A":
                       try:
-                          h = requests.get(f"https://store.steampowered.com/app/{app_id}?l=english", headers=HEADERS, cookies=COOKIES, timeout=5).text
-                          if "Free to keep" in h or "100% off" in h: is_100_off = True
-                          tm = re.search(r'DiscountEndDate\s*=\s*(\d+)', h) or re.search(r'data-ds-discount-end="(\d+)"', h)
-                          if tm: 
-                              end_date = datetime.fromtimestamp(int(tm.group(1))).strftime('%Y-%m-%dT%H:%M:%SZ')
-                          else:
-                              ban = re.search(r'game_purchase_discount_countdown[^>]*>([^<]+)<', h) or re.search(r'Free to keep when you get it before([^<]+)', h, re.IGNORECASE)
-                              if ban: 
-                                  date_str = ban.group(1) if "before" in ban.group(0).lower() else "before " + ban.group(1)
-                                  dt = parse_date_smart(date_str)
-                                  if dt != "N/A": end_date = dt
-                      except: pass
-
-                  if not (is_free or is_100_off or has_free_license): return None
-
-                  if end_date == "N/A":
-                      desc_text = d.get('detailed_description', '') + " " + d.get('short_description', '')
-                      if any(k in desc_text.lower() for k in keywords):
-                          dt = parse_date_smart(desc_text)
-                          if dt != "N/A": end_date = dt
-
-                  if end_date == "N/A":
-                      try:
-                          news_url = f"https://api.steampowered.com/ISteamNews/GetNewsForApp/v0002/?appid={app_id}&count=10"
+                          news_url = f"https://api.steampowered.com/ISteamNews/GetNewsForApp/v0002/?appid={app_id}&count=5"
                           items = requests.get(news_url, timeout=5).json().get('appnews', {}).get('newsitems', [])
                           for item in items:
                               content = (item.get('title', '') + item.get('contents', '')).lower()
                               if any(k in content for k in keywords):
                                   dt = parse_date_smart(content)
-                                  if dt != "N/A": end_date = dt; break
+                                  if dt != "N/A": 
+                                      end_date = dt
+                                      break
                       except: pass
 
-                  if end_date == "N/A" and old_time != "N/A": end_date = old_time
+                  # 判定是否属于转付费或现免
+                  is_to_paid = (end_date != "N/A" and (is_free or (has_free_license and price.get('final', 0) == 0)))
                   
+                  if not (is_100_off or is_to_paid or (has_free_license and price.get('final', 0) > 0)): return None
+
                   return {
                       "steam_id": str(app_id), "zh_title": d.get('name'), "thumbnail": d.get('header_image'),
                       "short_description": d.get('short_description', '').strip().split('。')[0],
-                      "is_100_off": is_100_off or (has_free_license and price.get('final', 0) == 0),
+                      "is_100_off": is_100_off,
                       "end_date": end_date,
-                      "is_weekend": has_free_license and not is_100_off and price.get('final', 0) > 0
+                      "is_weekend": has_free_license and not is_100_off and price.get('final', 0) > 0,
+                      "is_to_paid": is_to_paid and not is_100_off
                   }
               except: return None
 
           def main():
-              memory = {}
-              try:
-                  for fn in ["games.json", "intel.json"]:
-                      headers = get_signed_headers('GET', '/v1/get/steam-daily-free')
-                      url = f"https://{HOST}/v1/get/steam-daily-free?filename={fn}"
-                      res = requests.get(url, headers=headers, timeout=10)
-                      if res.status_code == 200:
-                          old = res.json()
-                          items = old if isinstance(old, list) else (old.get('to_paid', []) + old.get('free_weekend', []))
-                          for i in items:
-                              if i.get('steam_id'): memory[i['steam_id']] = i.get('end_date', "N/A")
-              except: pass
+              ids = set()
+              # ⚡ 突破点 1：主动搜索扫描（不依赖 ID，直接搜免费榜）
+              for page in range(1, 4):
+                  try:
+                      search_url = f"https://store.steampowered.com/search/?maxprice=free&sort_by=Released_DESC&page={page}"
+                      r = requests.get(search_url, headers=HEADERS, timeout=15)
+                      ids.update(re.findall(r'data-ds-appid="(\d+)"', r.text))
+                  except: pass
 
-              # ⚡ 优化点 3：强制注入手动扫描列表
-              ids = set(memory.keys())
-              ids.update(MANUAL_STEAM_IDS)
-              
-              for url in ["https://store.steampowered.com/api/featuredcategories/", "https://store.steampowered.com/api/featuredcategories/?cc=CN&l=schinese"]:
+              # 补充原有渠道
+              for url in ["https://store.steampowered.com/api/featuredcategories/?cc=CN&l=schinese"]:
                   try:
                       res = requests.get(url, timeout=10).json()
                       for cat in res.values():
                           if 'items' in cat: ids.update([str(item['id']) for item in cat['items']])
                   except: pass
 
-              sources = ["https://keylol.com/forum.php?mod=rss&fid=319", "https://www.gamerpower.com/api/giveaways?platform=steam", "https://www.reddit.com/r/FreeGameFindings/new.rss"]
+              sources = ["https://keylol.com/forum.php?mod=rss&fid=319", "https://www.gamerpower.com/api/giveaways?platform=steam"]
               for s in sources:
                   try:
                       res = requests.get(s, timeout=15).text
@@ -188,13 +161,13 @@ jobs:
 
               active_games, f_to_paid, f_weekend = [], [], []
               for app_id in ids:
-                  info = get_steam_details(app_id, memory.get(app_id, "N/A"))
+                  info = get_steam_details(app_id)
                   if info:
-                      if info['is_100_off']: active_games.append(info)
+                      if info.get('is_to_paid'): f_to_paid.append(info)
+                      elif info['is_100_off']: active_games.append(info)
                       elif info['is_weekend']: f_weekend.append(info)
-                      else: f_to_paid.append(info)
 
-              # Epic 部分保持原有修复后的逻辑
+              # ⚡ Epic 逻辑完整保留
               upcoming_list = []
               epic_urls = ["https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=CN&allowCountries=CN", "https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN"]
               for e_url in epic_urls:
@@ -218,12 +191,11 @@ jobs:
                       if active_games: break
                   except: continue
 
-              official_epic_slugs = {g.get('epic_slug') for g in active_games + upcoming_list if g.get('epic_slug')}
+              # Epic 隐藏雷达
               try:
                   gp_epic = requests.get("https://www.gamerpower.com/api/giveaways?platform=epic-games-store", timeout=15).json()
                   for g in gp_epic:
                       title = g.get('title', '')
-                      if "mystery" in title.lower(): continue 
                       gp_url = g.get('open_giveaway_url')
                       if not gp_url: continue
                       try:
@@ -231,43 +203,25 @@ jobs:
                           m = re.search(r'store\.epicgames\.com/(?:[a-z]{2}-[a-zA-Z]{2}/)?p/([^/?#]+)', actual_url)
                           if m:
                               slug = m.group(1)
-                              if slug in official_epic_slugs: continue
-                              img = g.get('thumbnail')
-                              end_str = g.get('end_date')
                               end_date = "N/A"
+                              end_str = g.get('end_date')
                               if end_str and end_str != "N/A":
                                   try: end_date = datetime.strptime(end_str, "%Y-%m-%d %H:%M:%S").strftime('%Y-%m-%dT%H:%M:%SZ')
-                                  except:
-                                      try: end_date = datetime.strptime(end_str.split(' ')[0], "%Y-%m-%d").strftime('%Y-%m-%dT23:59:59Z')
-                                      except: pass
-                              if end_date == "N/A":
-                                  g_type = g.get('type', 'Game')
-                                  pub_str = g.get('published_date')
-                                  if g_type == 'Game' and pub_str:
-                                      try:
-                                          pub_dt = datetime.strptime(pub_str, "%Y-%m-%d %H:%M:%S")
-                                          if (datetime.utcnow() - pub_dt).days <= 30:
-                                              end_date = (pub_dt + timedelta(days=30)).strftime('%Y-%m-%dT23:59:59Z')
-                                      except: pass
-                              if end_date == "N/A": continue
-                              try:
-                                  if datetime.strptime(end_date, '%Y-%m-%dT%H:%M:%SZ') < datetime.utcnow(): continue
-                              except: pass
-                              active_games.append({"zh_title": title, "thumbnail": img, "end_date": end_date, "platform": "Epic Games", "epic_slug": slug, "short_description": "Epic 独立隐藏限免 / 额外赠送"})
+                                  except: pass
+                              if end_date != "N/A":
+                                  active_games.append({"zh_title": title, "thumbnail": g.get('thumbnail'), "end_date": end_date, "platform": "Epic Games", "epic_slug": slug, "short_description": "Epic 额外赠送/隐藏"})
                       except: pass
               except: pass
 
-              # 数据上传
+              # 数据分发上传
               for fn, data in [("games.json", active_games), ("upcoming.json", upcoming_list), ("intel.json", {"to_paid": f_to_paid, "free_weekend": f_weekend})]:
                   try:
                       headers = get_signed_headers('POST', '/v1/update/steam-daily-free')
                       headers['filename'] = fn
                       headers['Content-Type'] = 'application/json'
                       url = f"https://{HOST}/v1/update/steam-daily-free"
-                      res = requests.post(url, headers=headers, json=data)
-                      print(f"Update {fn}: {res.status_code}")
-                  except Exception as e:
-                      print(f"Failed to update {fn}: {e}")
+                      requests.post(url, headers=headers, json=data, timeout=15)
+                  except: pass
 
           if __name__ == "__main__": main()
           EOF
@@ -276,5 +230,5 @@ jobs:
         run: |
           git config --global user.name 'GitHub Action'
           git add *.json || true
-          git commit -m "Add Steam Manual ID Support & Enhanced Keywords" || true
+          git commit -m "Full Update with Steam Deep Scan" || true
           git push
