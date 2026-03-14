@@ -29,28 +29,22 @@ jobs:
           import time
           import random
           import string
+          # ⚡ 新增 timedelta 支持时间推导
           from datetime import datetime, timedelta
 
           HOST = 'system.et-api.com'
           HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'}
           COOKIES = {'birthtime': '283993201', 'wants_mature_content': '1'}
 
-          # ⚡ 核心突破：让爬虫自带验签算法，突破后端的 403 封锁
           def get_signed_headers(method, path):
               ver = "1773281024"
               nonce = ''.join(random.choices(string.ascii_letters + string.digits, k=32))
               ts = str(int(time.time()))
               ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
-              
               sign_string = f"{method}{HOST}{path}?ver={ver}&nonce={nonce}&ts={ts}&ua={ua}"
               sig = hashlib.sha256(sign_string.encode('utf-8')).hexdigest()
-              
               return {
-                  'User-Agent': ua,
-                  'sig': sig,
-                  'ts': ts,
-                  'nonce': nonce,
-                  'ver': ver
+                  'User-Agent': ua, 'sig': sig, 'ts': ts, 'nonce': nonce, 'ver': ver
               }
 
           def parse_date_smart(text):
@@ -125,7 +119,6 @@ jobs:
                   if not (is_free or is_100_off or has_free_license): return None
 
                   keywords = ["转付费", "收费", "开始收费", "结束免费", "价格调整", "paid", "pricing", "限免", "免费领取", "免费入库", "free to keep", "恢复原价"]
-                  
                   if end_date == "N/A":
                       desc_text = d.get('detailed_description', '') + " " + d.get('short_description', '')
                       if any(k in desc_text.lower() for k in keywords):
@@ -192,7 +185,7 @@ jobs:
                       elif info['is_weekend']: f_weekend.append(info)
                       else: f_to_paid.append(info)
 
-              # ⚡ 修复：全节点提取Epic官方游戏（不放过任何预告和现免）
+              # Epic 官方限免
               upcoming_list = []
               epic_urls = ["https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=CN&allowCountries=CN", "https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN"]
               for e_url in epic_urls:
@@ -205,14 +198,12 @@ jobs:
                           slug = mappings[0].get('pageSlug') if mappings else (item.get('productSlug') or item.get('urlSlug') or "free-games")
                           img = next((i['url'] for i in item.get('keyImages', []) if i['type'] in ['OfferImageWide', 'Thumbnail']), "")
                           
-                          # 提取限免
                           for active_nodes in promos.get('promotionalOffers', []):
                               for offer in active_nodes.get('promotionalOffers', []):
                                   if offer.get('discountSetting', {}).get('discountPercentage') == 0:
                                       active_games.append({"zh_title": item['title'], "thumbnail": img, "end_date": offer['endDate'], "platform": "Epic Games", "epic_slug": slug, "short_description": "Epic 官方限时免费"})
                                       break
 
-                          # 提取预告
                           for upcoming_nodes in promos.get('upcomingPromotionalOffers', []):
                               for offer in upcoming_nodes.get('promotionalOffers', []):
                                   upcoming_list.append({"zh_title": item['title'], "image": img, "start_date": offer['startDate'], "end_date": offer['endDate'], "platform": "Epic Games", "epic_slug": slug, "short_description": "即将开启免费领取"})
@@ -220,7 +211,7 @@ jobs:
                       if active_games: break
                   except: continue
 
-              # ⚡ 修复：隐藏雷达严格过滤
+              # Epic 隐藏雷达
               official_epic_slugs = {g.get('epic_slug') for g in active_games + upcoming_list if g.get('epic_slug')}
               try:
                   gp_epic = requests.get("https://www.gamerpower.com/api/giveaways?platform=epic-games-store", timeout=15).json()
@@ -232,7 +223,8 @@ jobs:
                       if not gp_url: continue
                       try:
                           actual_url = requests.get(gp_url, timeout=10).url
-                          m = re.search(r'store\.epicgames\.com/(?:[a-z]{2}-[a-zA-Z]{2}/)?p/([^/?#]+)', actual_url)
+                          # ⚡ 增加对 bundle 路径的正则兼容，防止漏抓
+                          m = re.search(r'store\.epicgames\.com/(?:[a-z]{2}-[a-zA-Z]{2}/)?(?:p|bundles)/([^/?#]+)', actual_url)
                           if m:
                               slug = m.group(1)
                               if slug in official_epic_slugs: continue
@@ -247,40 +239,34 @@ jobs:
                                       try: end_date = datetime.strptime(end_str.split(' ')[0], "%Y-%m-%d").strftime('%Y-%m-%dT23:59:59Z')
                                       except: pass
                               
-                              # 🚨 自动化容错引擎：拯救缺失时间的近期真实大作（如《光明斗士》）
-                              # 特征识别：哪怕没写结束日期，只要它是“游戏本体(Game)”且“发布于近30天内”，就自动放行！
+                              # ⚡ 升级版容错引擎：拯救《光明斗士》
                               if end_date == "N/A":
                                   g_type = g.get('type', 'Game')
                                   pub_str = g.get('published_date')
-                                  if g_type == 'Game' and pub_str:
+                                  # 只要不是 DLC 和 Loot，且发布时间在 180 天内，一律放行！
+                                  if g_type not in ['DLC', 'Loot'] and pub_str:
                                       try:
                                           pub_dt = datetime.strptime(pub_str, "%Y-%m-%d %H:%M:%S")
-                                          # 如果是近一个月内发布的新情报
-                                          if (datetime.utcnow() - pub_dt).days <= 30:
-                                              # 自动推导一个安全兜底截止日期（从发布日往后推 30 天）
-                                              end_date = (pub_dt + timedelta(days=30)).strftime('%Y-%m-%dT23:59:59Z')
+                                          if (datetime.utcnow() - pub_dt).days <= 180:
+                                              # 强行赋予一个 60 天的安全生存期，确保它能被写入 JSON
+                                              end_date = (datetime.utcnow() + timedelta(days=60)).strftime('%Y-%m-%dT23:59:59Z')
                                       except: pass
                               
-                              # 🚨 严格过滤常驻免费(DLC)和远古幽灵数据
+                              # 严格过滤常驻免费(DLC)和幽灵数据
                               if end_date == "N/A": continue
-                              
                               try:
                                   if datetime.strptime(end_date, '%Y-%m-%dT%H:%M:%SZ') < datetime.utcnow(): continue
                               except: pass
 
                               print(f"✅ Found Hidden Epic Game: {title} ({slug})")
                               active_games.append({
-                                  "zh_title": title,
-                                  "thumbnail": img,
-                                  "end_date": end_date,
-                                  "platform": "Epic Games",
-                                  "epic_slug": slug,
-                                  "short_description": "Epic 独立隐藏限免 / 额外赠送"
+                                  "zh_title": title, "thumbnail": img, "end_date": end_date,
+                                  "platform": "Epic Games", "epic_slug": slug, "short_description": "Epic 独立隐藏限免 / 额外赠送"
                               })
                       except: pass
               except: pass
 
-              # ⚡ 核心突破：带着刚生成的签名去突破后端 403 封锁
+              # 写入 API
               for fn, data in [("games.json", active_games), ("upcoming.json", upcoming_list), ("intel.json", {"to_paid": f_to_paid, "free_weekend": f_weekend})]:
                   try:
                       headers = get_signed_headers('POST', '/v1/update/steam-daily-free')
@@ -288,9 +274,7 @@ jobs:
                       headers['Content-Type'] = 'application/json'
                       url = f"https://{HOST}/v1/update/steam-daily-free"
                       res = requests.post(url, headers=headers, json=data)
-                      print(f"Update {fn}: {res.status_code}")
-                  except Exception as e:
-                      print(f"Failed to update {fn}: {e}")
+                  except: pass
 
           if __name__ == "__main__": main()
           EOF
