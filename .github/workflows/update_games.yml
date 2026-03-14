@@ -58,6 +58,32 @@ jobs:
                   print(f"⚠️ 拉取旧数据 {filename} 失败: {e}")
                   return []
 
+          # ⚡ 新增：专门用于带签名上传数据的函数
+          def post_update_with_sign(filename, data):
+              method = 'POST'
+              path = '/v1/update/steam-daily-free'
+              ver = '1773281024'
+              nonce = ''.join(random.choices(string.ascii_letters + string.digits, k=32))
+              ts = str(int(time.time()))
+              ua = HEADERS['User-Agent']
+              
+              sign_string = f"{method}{API_BASE}{path}?ver={ver}&nonce={nonce}&ts={ts}&ua={ua}"
+              sig = hashlib.sha256(sign_string.encode('utf-8')).hexdigest()
+              
+              headers = {
+                  'sig': sig, 'ts': ts, 'nonce': nonce, 'ver': ver, 'User-Agent': ua,
+                  'filename': filename, 'Content-Type': 'application/json'
+              }
+              url = f"https://{API_BASE}{path}"
+              try:
+                  res = requests.post(url, headers=headers, json=data, timeout=15)
+                  if res.status_code != 200:
+                      print(f"❌ 上传 {filename} 被服务器拒绝! 状态码: {res.status_code}, 响应: {res.text}")
+                  else:
+                      print(f"✅ 上传 {filename} 成功!")
+              except Exception as e:
+                  print(f"❌ 上传 {filename} 遇到网络错误: {e}")
+
           def parse_date_smart(text):
               months = {"jan":1, "feb":2, "mar":3, "apr":4, "may":5, "jun":6, "jul":7, "aug":8, "sep":9, "oct":10, "nov":11, "dec":12}
               best_dt = None
@@ -304,13 +330,10 @@ jobs:
                       except: pass
               except: pass
 
-              try:
-                  requests.post("https://system.et-api.com/v1/update/steam-daily-free", headers={"filename": "games.json", "Content-Type": "application/json"}, json=active_games)
-                  requests.post("https://system.et-api.com/v1/update/steam-daily-free", headers={"filename": "upcoming.json", "Content-Type": "application/json"}, json=upcoming_list)
-                  requests.post("https://system.et-api.com/v1/update/steam-daily-free", headers={"filename": "intel.json", "Content-Type": "application/json"}, json={"to_paid": f_to_paid, "free_weekend": f_weekend})
-                  print("✅ 数据更新完成！")
-              except Exception as e:
-                  print(f"❌ 上传数据失败: {e}")
+              # ⚡ 修复 3：使用带签名的 POST 强制上传数据
+              post_update_with_sign("games.json", active_games)
+              post_update_with_sign("upcoming.json", upcoming_list)
+              post_update_with_sign("intel.json", {"to_paid": f_to_paid, "free_weekend": f_weekend})
 
           if __name__ == "__main__": main()
           EOF
@@ -319,5 +342,5 @@ jobs:
         run: |
           git config --global user.name 'GitHub Action'
           git add *.json || true
-          git commit -m "Fix Steam JSON crash and force restore memory" || true
+          git commit -m "Fix POST signature verification" || true
           git push
