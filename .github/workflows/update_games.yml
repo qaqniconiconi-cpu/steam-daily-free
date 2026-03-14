@@ -239,23 +239,24 @@ jobs:
                                       try: end_date = datetime.strptime(end_str.split(' ')[0], "%Y-%m-%d").strftime('%Y-%m-%dT23:59:59Z')
                                       except: pass
                               
-                              # ⚡ 升级版容错引擎：拯救《光明斗士》
+                              # ⚡ 纯特征识别引擎 (绝对零硬编码，靠原价识别真游戏)
                               if end_date == "N/A":
-                                  g_type = g.get('type', 'Game')
-                                  pub_str = g.get('published_date')
-                                  # 只要不是 DLC 和 Loot，且发布时间在 180 天内，一律放行！
-                                  if g_type not in ['DLC', 'Loot'] and pub_str:
-                                      try:
-                                          pub_dt = datetime.strptime(pub_str, "%Y-%m-%d %H:%M:%S")
-                                          if (datetime.utcnow() - pub_dt).days <= 180:
-                                              # 强行赋予一个 60 天的安全生存期，确保它能被写入 JSON
-                                              end_date = (datetime.utcnow() + timedelta(days=60)).strftime('%Y-%m-%dT23:59:59Z')
-                                      except: pass
+                                  status = g.get('status', '')
+                                  g_type = g.get('type', '')
+                                  worth = g.get('worth', 'N/A')
+                                  
+                                  # 核心特征：原价不是免费/无数据，说明这是真正的付费游戏白送
+                                  is_paid_game = worth not in ["N/A", "Free", "$0.00", "0.00", 0]
+                                  
+                                  if status == 'Active' and g_type == 'Game' and is_paid_game:
+                                      # 只要它是 Active 状态的付费游戏，就给它 7 天的滚动显示期
+                                      end_date = (datetime.utcnow() + timedelta(days=7)).strftime('%Y-%m-%dT23:59:59Z')
+                                  else:
+                                      continue # 彻底拦截常驻免费和幽灵数据
                               
-                              # 严格过滤常驻免费(DLC)和幽灵数据
-                              if end_date == "N/A": continue
                               try:
-                                  if datetime.strptime(end_date, '%Y-%m-%dT%H:%M:%SZ') < datetime.utcnow(): continue
+                                  if datetime.strptime(end_date, '%Y-%m-%dT%H:%M:%SZ') < datetime.utcnow(): 
+                                      continue
                               except: pass
 
                               print(f"✅ Found Hidden Epic Game: {title} ({slug})")
