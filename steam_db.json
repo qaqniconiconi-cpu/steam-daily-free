@@ -23,5 +23,18 @@
   "3018430": {
     "status": "invalid",
     "reason": "非免费/非特惠"
+  },
+  "3470190": {
+    "status": "valid",
+    "type": "to_paid",
+    "details": {
+      "steam_id": "3470190",
+      "zh_title": "光明斗士",
+      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3470190/67647b188eb225104efc964d8f5210db87bc54ee/header_schinese.jpg?t=1751120012",
+      "short_description": "光明斗士是一款包含创新元素的快节奏第一人称射击游戏，简单爽快",
+      "is_100_off": false,
+      "is_weekend": false,
+      "end_date": "近期即将转付费"
+    }
   }
 }
