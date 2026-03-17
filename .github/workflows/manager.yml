@@ -4,13 +4,13 @@
 
 # ➕ 强制添加区 (可以填完整 Steam 链接，也可以填纯数字 ID)
 add:
-  - link: "https://store.steampowered.com/app/3018430"
+  - link: "https://store.steampowered.com/app/4138970"
     # 类别必填: 100_off(喜加一) / to_paid(转付费) / weekend(免费玩)
     type: "to_paid" 
     # 结束时间选填: 可以留空自动查，也可以写 "近期即将转付费" 或 "2026-03-30T17:00:00Z"
-    end_date: "近期即将转付费" 
+    end_date: "" 
 
 # 🚫 强力黑名单 (不管是不是真的，只要在这里就绝对不会显示)
 disable:
-  - "https://store.steampowered.com/app/1238810"  # 战地5
-  - "1238840"                                     # 战地1
+  - ""
+  - ""
