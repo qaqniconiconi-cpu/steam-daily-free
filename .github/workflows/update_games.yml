@@ -72,13 +72,17 @@ jobs:
                                       else: e_date = str(raw_date).strip() if raw_date else ""
                                       if not e_date or e_date.lower() == "none": e_date = "近期即将结束"
                                       
+                                      # ⚡ 支持自定义简介，否则给默认值
+                                      desc = str(item.get('desc', item.get('description', ''))).strip()
+                                      if not desc: desc = "已通过管理员通道强制上架"
+
                                       FORCED_EPIC.append({
                                           "zh_title": name or slug,
                                           "thumbnail": item.get('thumbnail', "https://via.placeholder.com/600x300/121215/9F70FA?text=Epic+Game"),
                                           "end_date": e_date,
                                           "platform": "Epic Games",
                                           "epic_slug": slug,
-                                          "short_description": "已通过管理员通道强制上架"
+                                          "short_description": desc
                                       })
                                   continue
                               
@@ -347,8 +351,12 @@ jobs:
                           elif g_type == "weekend": f_weekend.append(details)
 
               upcoming_list = []
-              # ⚡ 核心修复：强制同时遍历中国区和全球区 API，合并去重！
-              epic_urls = ["https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=CN&allowCountries=CN", "https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN"]
+              
+              # ⚡ 增加对全球区 (US) 的请求，突破 Epic 国区“隐藏限免”的锁定机制
+              epic_urls = [
+                  "https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=CN&allowCountries=CN", 
+                  "https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=US&allowCountries=US"
+              ]
               seen_epic_slugs = set()
               
               for e_url in epic_urls:
@@ -359,20 +367,24 @@ jobs:
                           if not promos: continue
                           slug = item.get('catalogNs', {}).get('mappings', [{}])[0].get('pageSlug') or item.get('productSlug') or "free"
                           
-                          # ⚡ 自动去重机制
                           if slug in seen_epic_slugs: continue
                           seen_epic_slugs.add(slug)
                           
                           img = next((i['url'] for i in item.get('keyImages', []) if i['type'] in ['OfferImageWide', 'Thumbnail']), "")
                           
+                          # ⚡ 提取真实的官方简介
+                          desc = str(item.get('description') or item.get('shortDescription') or '').strip()
+                          if not desc or desc.lower() == item.get('title', '').lower():
+                              desc = "Epic 限时免费福利，建议立即入库体验。"
+                          
                           if promos.get('promotionalOffers'):
                               offers = promos['promotionalOffers'][0]['promotionalOffers']
                               if offers and offers[0].get('discountSetting', {}).get('discountPercentage') == 0:
-                                  active_games.append({"zh_title": item['title'], "thumbnail": img, "end_date": offers[0]['endDate'], "platform": "Epic Games", "epic_slug": slug, "short_description": "Epic 官方限时免费"})
+                                  active_games.append({"zh_title": item['title'], "thumbnail": img, "end_date": offers[0]['endDate'], "platform": "Epic Games", "epic_slug": slug, "short_description": desc})
                           elif promos.get('upcomingPromotionalOffers'):
                               offers = promos['upcomingPromotionalOffers'][0]['promotionalOffers']
                               if offers:
-                                  upcoming_list.append({"zh_title": item['title'], "image": img, "start_date": offers[0]['startDate'], "end_date": offers[0]['endDate'], "platform": "Epic Games", "epic_slug": slug, "short_description": "即将开启免费领取"})
+                                  upcoming_list.append({"zh_title": item['title'], "image": img, "start_date": offers[0]['startDate'], "end_date": offers[0]['endDate'], "platform": "Epic Games", "epic_slug": slug, "short_description": desc})
                   except: continue
 
               official_epic_slugs = {g.get('epic_slug') for g in active_games if g.get('epic_slug')}
@@ -402,9 +414,13 @@ jobs:
                                   if datetime.strptime(end_date, '%Y-%m-%dT%H:%M:%SZ') < datetime.utcnow(): continue
                               except: pass
 
+                              # ⚡ 提取真实的聚合接口简介
+                              gp_desc = g.get('description', '').strip().split('\n')[0][:90]
+                              if not gp_desc: gp_desc = "Epic 独立隐藏限免 / 额外赠送"
+
                               active_games.append({
                                   "zh_title": title, "thumbnail": img, "end_date": end_date,
-                                  "platform": "Epic Games", "epic_slug": slug, "short_description": "Epic 独立隐藏限免 / 额外赠送"
+                                  "platform": "Epic Games", "epic_slug": slug, "short_description": gp_desc
                               })
                       except: pass
               except: pass
@@ -429,7 +445,9 @@ jobs:
         run: |
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
-          git pull --rebase origin main || true
+          
+          # ⚡ 核心修复：按严格顺序先保存本地变动，再拉取你的 manager.yml，最后合并推送
           git add steam_db.json *.json || true
           git commit -m "Auto Update ETL Database [skip ci]" || true
+          git pull --rebase origin main || true
           git push
