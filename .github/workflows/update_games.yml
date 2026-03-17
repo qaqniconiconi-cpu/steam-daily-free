@@ -104,10 +104,10 @@ jobs:
                       posts = res.json().get('data', {}).get('children', [])
                       for post in posts:
                           data = post['data']
-                          title = data.get('title', '')
+                          title = data.get('title', '').lower()
                           url = data.get('url', '')
-                          # 只要标题带 [Steam] 且包含 store.steampowered.com/app 的链接
-                          if '[steam]' in title.lower() and 'store.steampowered.com/app/' in url:
+                          # 只要标题带 [steam] 且包含 store.steampowered.com/app 的链接
+                          if '[steam]' in title and 'store.steampowered.com/app/' in url:
                               m = re.search(r'app/(\d+)', url)
                               if m: steam_ids.add(m.group(1))
               except Exception as e: print(f"⚠️ Reddit API 失败: {e}")
@@ -127,37 +127,72 @@ jobs:
               return steam_ids
 
           # ==========================================
-          # Steam 验真系统 (仅验证收集到的 ID)
+          # Steam 验真系统 (精准探测折扣与新闻公告)
           # ==========================================
-          def verify_steam_app(app_id):
+          def verify_steam_app(app_id, forced_info=None):
               try:
                   url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=schinese&cc=CN"
                   res_raw = requests.get(url, headers=HEADERS, timeout=10)
-                  if res_raw.status_code == 429: return None # 触发限流跳过
-                      
-                  res = res_raw.json()
-                  if str(app_id) not in res or not res[str(app_id)]['success']: return None
-                  d = res[str(app_id)]['data']
-                  if d.get('type') != 'game': return None # 拒绝 DLC 和 原声带
+                  if res_raw.status_code == 429 and not forced_info: return None
+                  
+                  d = {}
+                  if res_raw.status_code == 200:
+                      res = res_raw.json()
+                      if str(app_id) in res and res[str(app_id)]['success']:
+                          d = res[str(app_id)]['data']
+                  
+                  # ⚡ 上帝模式：如果有强制参数，无脑构造放行
+                  if forced_info:
+                      g_type = forced_info['type']
+                      e_date = forced_info['end_date'] or "近期即将转付费"
+                      z_title = forced_info.get('name') or d.get('name', f"神秘福利 {app_id}")
+                      thumb = d.get('header_image', f"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{app_id}/header.jpg")
+                      return {
+                          "steam_id": str(app_id), "zh_title": z_title, "thumbnail": thumb,
+                          "short_description": "已通过管理员通道强制核准",
+                          "is_100_off": g_type == "100_off", "is_weekend": g_type == "weekend", "end_date": e_date,
+                          "type": g_type
+                      }
+
+                  if not d or d.get('type') != 'game': return None
 
                   price = d.get('price_overview', {})
                   is_100_off = price.get('discount_percent') == 100
+                  is_free = d.get('is_free', False)
                   has_free_license = any(sub.get('is_free_license') for group in d.get('package_groups', []) for sub in group.get('subs', []))
 
                   end_date = "N/A"
                   if price.get('discount_expiration'):
                       end_date = datetime.fromtimestamp(int(price['discount_expiration'])).strftime('%Y-%m-%dT%H:%M:%SZ')
 
-                  if not is_100_off and has_free_license and price.get('final', 0) == 0:
+                  if not is_100_off and has_free_license and price.get('final', 0) == 0 and not is_free:
                       is_100_off = True
 
-                  # 只有 100% 免费打折的我们才要
-                  if not is_100_off: return None
+                  game_type = "unknown"
+                  
+                  if is_100_off:
+                      game_type = "100_off"
+                  elif is_free:
+                      # ⚡ 重点：它是免费游戏，用官方新闻 API 探测它是不是宣告要收费了
+                      keywords = ["转付费", "开始收费", "become paid", "becoming paid", "paid game", "price tag", "pricing"]
+                      try:
+                          news_url = f"https://api.steampowered.com/ISteamNews/GetNewsForApp/v0002/?appid={app_id}&count=5"
+                          items = requests.get(news_url, timeout=5).json().get('appnews', {}).get('newsitems', [])
+                          for item in items:
+                              text = (item.get('title','') + item.get('contents','')).lower()
+                              if any(k in text for k in keywords):
+                                  game_type = "to_paid"
+                                  end_date = "近期即将转付费"
+                                  break
+                      except: pass
+
+                  if game_type == "unknown": return None
 
                   return {
                       "steam_id": str(app_id), "zh_title": d.get('name'), "thumbnail": d.get('header_image'),
                       "short_description": d.get('short_description', '').strip().split('。')[0],
-                      "is_100_off": True, "is_weekend": False, "end_date": end_date
+                      "is_100_off": game_type == "100_off", "is_weekend": game_type == "weekend", "end_date": end_date,
+                      "type": game_type
                   }
               except: return None
 
@@ -165,35 +200,70 @@ jobs:
               active_epic, upcoming_epic = fetch_epic_games()
               steam_ids = fetch_steam_ids_from_apis()
               
-              # 读取手动管理菜单 manager.yml
+              FORCED_ADD = {}
+              BLACKLIST = set()
+              
+              # 读取手动管理菜单 (高容错版)
               if os.path.exists('manager.yml'):
                   try:
                       with open('manager.yml', 'r', encoding='utf-8') as f:
                           mgr = yaml.safe_load(f) or {}
-                          for item in mgr.get('add', []):
-                              link = item.get('link', '') if isinstance(item, dict) else str(item)
-                              m = re.search(r'app/(\d+)', link)
-                              if m: steam_ids.add(m.group(1))
-                          for item in mgr.get('disable', []):
+                          print(f"📄 已成功解析 manager.yml")
+                          
+                          disable_list = mgr.get('disable') or mgr.get('DISABLE') or []
+                          if not isinstance(disable_list, list): disable_list = [disable_list]
+                          for item in disable_list:
                               m = re.search(r'app/(\d+)', str(item))
-                              if m and m.group(1) in steam_ids: steam_ids.remove(m.group(1))
-                  except: pass
+                              app_id = m.group(1) if m else str(item).strip()
+                              if app_id.isdigit(): BLACKLIST.add(app_id)
+
+                          add_list = mgr.get('add') or mgr.get('ADD') or []
+                          if not isinstance(add_list, list): add_list = [add_list]
+                          for item in add_list:
+                              if isinstance(item, dict):
+                                  link = str(item.get('link', item.get('id', '')))
+                                  m = re.search(r'app/(\d+)', link)
+                                  app_id = m.group(1) if m else link.strip()
+                                  if app_id.isdigit():
+                                      FORCED_ADD[app_id] = {
+                                          "type": item.get('type', 'to_paid'),
+                                          "end_date": item.get('end_date', ''),
+                                          "name": item.get('name', '')
+                                      }
+                              else:
+                                  link = str(item)
+                                  m = re.search(r'app/(\d+)', link)
+                                  app_id = m.group(1) if m else link.strip()
+                                  if app_id.isdigit():
+                                      FORCED_ADD[app_id] = {"type": "to_paid", "end_date": "近期即将转付费", "name": ""}
+                  except Exception as e: print(f"⚠️ 解析 manager.yml 失败: {e}")
+
+              # 剔除黑名单
+              steam_ids = {sid for sid in steam_ids if sid not in BLACKLIST}
+              # 合并强制验证名单
+              steam_ids.update(FORCED_ADD.keys())
 
               print(f"⚖️ 开始验证 {len(steam_ids)} 个 Steam 候选游戏...")
-              active_steam = []
+              active_steam, f_to_paid = [], []
+              
               for app_id in steam_ids:
-                  info = verify_steam_app(app_id)
+                  forced = FORCED_ADD.get(app_id)
+                  info = verify_steam_app(app_id, forced)
                   if info:
-                      active_steam.append(info)
-                      print(f"✨ 有效 Steam 喜加一: {info['zh_title']}")
-                  time.sleep(1.5) # 防止 Steam 封禁
+                      if info['type'] == "100_off":
+                          active_steam.append(info)
+                          print(f"✨ 喜加一: {info['zh_title']}")
+                      elif info['type'] == "to_paid":
+                          f_to_paid.append(info)
+                          print(f"🔄 转付费入库: {info['zh_title']}")
+                  time.sleep(1.5)
 
-              # 合并并上传
               final_active = active_epic + active_steam
               post_update_with_sign("games.json", final_active)
               post_update_with_sign("upcoming.json", upcoming_epic)
-              # 由于摒弃了全网扫描，纯粹靠精准备用 API，"转付费"和"试玩"等杂乱分类将被搁置
-              post_update_with_sign("intel.json", {"to_paid": [], "free_weekend": []})
+              
+              # ⚡ 恢复 intel.json 通道，向前端推送转付费游戏
+              post_update_with_sign("intel.json", {"to_paid": f_to_paid, "free_weekend": []})
 
           if __name__ == "__main__": main()
           EOF
@@ -203,5 +273,5 @@ jobs:
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
           git add *.json || true
-          git commit -m "Migrate to Stable APIs (Epic + Reddit + GamerPower) [skip ci]" || true
+          git commit -m "Migrate to Stable APIs & Restore To-Paid Intel" || true
           git push
