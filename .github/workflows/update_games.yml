@@ -1,4 +1,4 @@
-name: Update Games (Stable API Engine)
+name: Update Games (Ultimate API & NLP Engine)
 
 on:
   schedule:
@@ -19,7 +19,7 @@ jobs:
       - name: Install dependencies
         run: pip install requests pyyaml
 
-      - name: Run Stable API Processor
+      - name: Run Ultimate Processor
         run: |
           cat <<EOF > processor.py
           import requests
@@ -31,10 +31,10 @@ jobs:
           import string
           import os
           import yaml
-          from datetime import datetime
+          from datetime import datetime, timedelta
 
-          # Reddit 接口要求必须有特殊的 User-Agent，否则报 429
           HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ETalienBot/1.0', 'Accept-Language': 'zh-CN,zh;q=0.9'}
+          COOKIES = {'birthtime': '283993201', 'wants_mature_content': '1'}
           API_BASE = 'system.et-api.com'
 
           def post_update_with_sign(filename, data):
@@ -50,9 +50,71 @@ jobs:
                       if res.status_code == 200: 
                           print(f"✅ 上传 {filename} 成功! (共 {len(data) if isinstance(data, list) else len(data.get('to_paid',[]))+len(data.get('free_weekend',[]))} 条)")
                           return
-                  except Exception as e: 
-                      time.sleep(3)
+                  except Exception as e: time.sleep(3)
               print(f"❌ 上传 {filename} 最终彻底失败!")
+
+          # ==========================================
+          # 🧠 终极自然语言日期解析引擎 (NLP Date Engine)
+          # ==========================================
+          def parse_date_smart(text):
+              text = text.lower()
+              now = datetime.utcnow()
+              best_dt = None
+
+              months = {"jan":1, "feb":2, "mar":3, "apr":4, "may":5, "jun":6, "jul":7, "aug":8, "sep":9, "oct":10, "nov":11, "dec":12}
+              
+              # 1. 绝对日期 (中英文)
+              cn_dates = re.findall(r'(?:(\d{4})年)?(\d{1,2})月(\d{1,2})[日号]?', text)
+              for y_str, m_str, d_str in cn_dates:
+                  y = int(y_str) if y_str else now.year
+                  m, d = int(m_str), int(d_str)
+                  if m < now.month - 2 and not y_str: y += 1
+                  try: 
+                      dt = datetime(y, m, d, 17, 0, 0)
+                      if not best_dt or dt > best_dt: best_dt = dt
+                  except: pass
+
+              en_m1 = re.findall(r'([a-z]{3,})\s+(\d{1,2})(?:st|nd|rd|th)?', text)
+              en_m2 = re.findall(r'(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?([a-z]{3,})', text)
+              for m_str, d_str in en_m1 + [(m, d) for d, m in en_m2]:
+                  m_s = m_str[:3]
+                  if m_s in months:
+                      y, m, d = now.year, months[m_s], int(d_str)
+                      if m < now.month - 2: y += 1
+                      try:
+                          dt = datetime(y, m, d, 17, 0, 0)
+                          if not best_dt or dt > best_dt: best_dt = dt
+                      except: pass
+
+              if best_dt: return best_dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+              # 2. 相对时间推算 (明天/几天后/几周后/月底)
+              if re.search(r'\btomorrow\b|\bnext 24 hours\b|明天|次日', text):
+                  return (now + timedelta(days=1)).strftime('%Y-%m-%dT%H:%M:%SZ')
+              
+              m_days = re.search(r'in\s+(\d+)\s+days?|(\d+)\s+days?\s+later|(\d+)\s*天后', text)
+              if m_days:
+                  days = int(m_days.group(1) or m_days.group(2) or m_days.group(3))
+                  return (now + timedelta(days=days)).strftime('%Y-%m-%dT%H:%M:%SZ')
+                  
+              if re.search(r'\bnext week\b|下周', text):
+                  return (now + timedelta(days=7)).strftime('%Y-%m-%dT%H:%M:%SZ')
+                  
+              m_weeks = re.search(r'in\s+(\d+)\s+weeks?|(\d+)\s+weeks?\s+later|(\d+)\s*周后', text)
+              if m_weeks:
+                  weeks = int(m_weeks.group(1) or m_weeks.group(2) or m_weeks.group(3))
+                  return (now + timedelta(weeks=weeks)).strftime('%Y-%m-%dT%H:%M:%SZ')
+                  
+              if re.search(r'end of (the|this) month|本月底|月底', text):
+                  next_month = now.replace(day=28) + timedelta(days=4)
+                  last_day = next_month - timedelta(days=next_month.day)
+                  return last_day.replace(hour=17, minute=0, second=0).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+              # 3. 极度模糊兜底
+              fuzzy_keywords = ["soon", "upcoming", "near future", "few days", "next update", "next patch", "later this month", "即将", "不久", "下次更新", "近期", "快要", "本月晚些时候", "下个补丁"]
+              if any(k in text for k in fuzzy_keywords): return "近期即将转付费"
+
+              return "N/A"
 
           # ==========================================
           # 核心源 1: Epic 官方后端 API
@@ -69,24 +131,14 @@ jobs:
                       slug = item.get('catalogNs', {}).get('mappings', [{}])[0].get('pageSlug') or item.get('productSlug') or "free"
                       img = next((i['url'] for i in item.get('keyImages', []) if i['type'] in ['OfferImageWide', 'Thumbnail']), "")
                       
-                      # 本周免
                       if promos.get('promotionalOffers'):
                           offers = promos['promotionalOffers'][0]['promotionalOffers']
                           if offers and offers[0].get('discountSetting', {}).get('discountPercentage') == 0:
-                              active.append({
-                                  "zh_title": item['title'], "thumbnail": img, 
-                                  "end_date": offers[0]['endDate'], "platform": "Epic Games", 
-                                  "epic_slug": slug, "short_description": "Epic 官方限时免费"
-                              })
-                      # 下周预告
+                              active.append({"zh_title": item['title'], "thumbnail": img, "end_date": offers[0]['endDate'], "platform": "Epic Games", "epic_slug": slug, "short_description": "Epic 官方限时免费"})
                       elif promos.get('upcomingPromotionalOffers'):
                           offers = promos['upcomingPromotionalOffers'][0]['promotionalOffers']
                           if offers:
-                              upcoming.append({
-                                  "zh_title": item['title'], "image": img, 
-                                  "start_date": offers[0]['startDate'], "end_date": offers[0]['endDate'], 
-                                  "platform": "Epic Games", "epic_slug": slug, "short_description": "即将开启免费领取"
-                              })
+                              upcoming.append({"zh_title": item['title'], "image": img, "start_date": offers[0]['startDate'], "end_date": offers[0]['endDate'], "platform": "Epic Games", "epic_slug": slug, "short_description": "即将开启免费领取"})
               except Exception as e: print(f"⚠️ Epic API 解析失败: {e}")
               return active, upcoming
 
@@ -96,38 +148,30 @@ jobs:
           def fetch_steam_ids_from_apis():
               print("📡 正在获取 Steam 社区及聚合 API 数据...")
               steam_ids = set()
-              
-              # 1. Reddit r/FreeGameFindings (提取带有 [Steam] 的帖子)
               try:
                   res = requests.get("https://www.reddit.com/r/FreeGameFindings/new.json?limit=50", headers=HEADERS, timeout=15)
                   if res.status_code == 200:
                       posts = res.json().get('data', {}).get('children', [])
                       for post in posts:
                           data = post['data']
-                          title = data.get('title', '').lower()
-                          url = data.get('url', '')
-                          # 只要标题带 [steam] 且包含 store.steampowered.com/app 的链接
+                          title, url = data.get('title', '').lower(), data.get('url', '')
                           if '[steam]' in title and 'store.steampowered.com/app/' in url:
                               m = re.search(r'app/(\d+)', url)
                               if m: steam_ids.add(m.group(1))
-              except Exception as e: print(f"⚠️ Reddit API 失败: {e}")
-
-              # 2. GamerPower API (提取平台为 Steam 的喜加一)
+              except: pass
               try:
                   res = requests.get("https://www.gamerpower.com/api/giveaways?platform=steam", headers=HEADERS, timeout=15)
                   if res.status_code == 200:
                       for item in res.json():
                           url = item.get('open_giveaway_url', '')
-                          # 跟随重定向获取真实 Steam URL
                           act_url = requests.get(url, headers=HEADERS, timeout=5, allow_redirects=True).url
                           m = re.search(r'app/(\d+)', act_url)
                           if m: steam_ids.add(m.group(1))
-              except Exception as e: print(f"⚠️ GamerPower API 失败: {e}")
-
+              except: pass
               return steam_ids
 
           # ==========================================
-          # Steam 验真系统 (精准探测折扣与新闻公告)
+          # Steam 验真系统 (加入新闻解析引擎)
           # ==========================================
           def verify_steam_app(app_id, forced_info=None):
               try:
@@ -138,10 +182,9 @@ jobs:
                   d = {}
                   if res_raw.status_code == 200:
                       res = res_raw.json()
-                      if str(app_id) in res and res[str(app_id)]['success']:
-                          d = res[str(app_id)]['data']
+                      if str(app_id) in res and res[str(app_id)]['success']: d = res[str(app_id)]['data']
                   
-                  # ⚡ 上帝模式：如果有强制参数，无脑构造放行
+                  # 上帝模式：优先使用 manager.yml 的配置
                   if forced_info:
                       g_type = forced_info['type']
                       e_date = forced_info['end_date'] or "近期即将转付费"
@@ -150,8 +193,7 @@ jobs:
                       return {
                           "steam_id": str(app_id), "zh_title": z_title, "thumbnail": thumb,
                           "short_description": "已通过管理员通道强制核准",
-                          "is_100_off": g_type == "100_off", "is_weekend": g_type == "weekend", "end_date": e_date,
-                          "type": g_type
+                          "is_100_off": g_type == "100_off", "is_weekend": g_type == "weekend", "end_date": e_date, "type": g_type
                       }
 
                   if not d or d.get('type') != 'game': return None
@@ -161,19 +203,27 @@ jobs:
                   is_free = d.get('is_free', False)
                   has_free_license = any(sub.get('is_free_license') for group in d.get('package_groups', []) for sub in group.get('subs', []))
 
+                  if not is_100_off and has_free_license and price.get('final', 0) == 0 and not is_free: is_100_off = True
+
                   end_date = "N/A"
                   if price.get('discount_expiration'):
                       end_date = datetime.fromtimestamp(int(price['discount_expiration'])).strftime('%Y-%m-%dT%H:%M:%SZ')
-
-                  if not is_100_off and has_free_license and price.get('final', 0) == 0 and not is_free:
-                      is_100_off = True
-
-                  game_type = "unknown"
                   
-                  if is_100_off:
+                  if end_date == "N/A":
+                      try:
+                          h = requests.get(f"https://store.steampowered.com/app/{app_id}?l=english", headers=HEADERS, cookies=COOKIES, timeout=5).text
+                          ban = re.search(r'Free to keep when you get it before([^<]+)', h, re.IGNORECASE)
+                          if ban: 
+                              is_100_off = True
+                              dt = parse_date_smart("before " + ban.group(1))
+                              if dt != "N/A": end_date = dt
+                      except: pass
+
+                  # ⚡ 重点恢复：去查官方新闻，用全新的智能引擎分析！
+                  game_type = "unknown"
+                  if is_100_off: 
                       game_type = "100_off"
                   elif is_free:
-                      # ⚡ 重点：它是免费游戏，用官方新闻 API 探测它是不是宣告要收费了
                       keywords = ["转付费", "开始收费", "become paid", "becoming paid", "paid game", "price tag", "pricing"]
                       try:
                           news_url = f"https://api.steampowered.com/ISteamNews/GetNewsForApp/v0002/?appid={app_id}&count=5"
@@ -182,7 +232,9 @@ jobs:
                               text = (item.get('title','') + item.get('contents','')).lower()
                               if any(k in text for k in keywords):
                                   game_type = "to_paid"
-                                  end_date = "近期即将转付费"
+                                  # ⚡ 呼叫终极时间解析器！
+                                  dt = parse_date_smart(text)
+                                  end_date = dt if dt != "N/A" else "近期即将转付费"
                                   break
                       except: pass
 
@@ -191,8 +243,7 @@ jobs:
                   return {
                       "steam_id": str(app_id), "zh_title": d.get('name'), "thumbnail": d.get('header_image'),
                       "short_description": d.get('short_description', '').strip().split('。')[0],
-                      "is_100_off": game_type == "100_off", "is_weekend": game_type == "weekend", "end_date": end_date,
-                      "type": game_type
+                      "is_100_off": game_type == "100_off", "is_weekend": game_type == "weekend", "end_date": end_date, "type": game_type
                   }
               except: return None
 
@@ -202,67 +253,44 @@ jobs:
               
               FORCED_ADD = {}
               BLACKLIST = set()
-              
-              # 读取手动管理菜单 (高容错版)
+
               if os.path.exists('manager.yml'):
                   try:
                       with open('manager.yml', 'r', encoding='utf-8') as f:
                           mgr = yaml.safe_load(f) or {}
-                          print(f"📄 已成功解析 manager.yml")
-                          
-                          disable_list = mgr.get('disable') or mgr.get('DISABLE') or []
-                          if not isinstance(disable_list, list): disable_list = [disable_list]
-                          for item in disable_list:
+                          for item in mgr.get('disable', []):
                               m = re.search(r'app/(\d+)', str(item))
                               app_id = m.group(1) if m else str(item).strip()
                               if app_id.isdigit(): BLACKLIST.add(app_id)
 
-                          add_list = mgr.get('add') or mgr.get('ADD') or []
-                          if not isinstance(add_list, list): add_list = [add_list]
-                          for item in add_list:
+                          for item in mgr.get('add', []):
                               if isinstance(item, dict):
                                   link = str(item.get('link', item.get('id', '')))
                                   m = re.search(r'app/(\d+)', link)
                                   app_id = m.group(1) if m else link.strip()
                                   if app_id.isdigit():
                                       FORCED_ADD[app_id] = {
-                                          "type": item.get('type', 'to_paid'),
-                                          "end_date": item.get('end_date', ''),
-                                          "name": item.get('name', '')
+                                          "type": item.get('type', 'to_paid'), "end_date": item.get('end_date', ''), "name": item.get('name', '')
                                       }
-                              else:
-                                  link = str(item)
-                                  m = re.search(r'app/(\d+)', link)
-                                  app_id = m.group(1) if m else link.strip()
-                                  if app_id.isdigit():
-                                      FORCED_ADD[app_id] = {"type": "to_paid", "end_date": "近期即将转付费", "name": ""}
-                  except Exception as e: print(f"⚠️ 解析 manager.yml 失败: {e}")
+                                      steam_ids.add(app_id)
+                  except: pass
 
-              # 剔除黑名单
               steam_ids = {sid for sid in steam_ids if sid not in BLACKLIST}
-              # 合并强制验证名单
-              steam_ids.update(FORCED_ADD.keys())
-
+              
               print(f"⚖️ 开始验证 {len(steam_ids)} 个 Steam 候选游戏...")
               active_steam, f_to_paid = [], []
-              
               for app_id in steam_ids:
                   forced = FORCED_ADD.get(app_id)
                   info = verify_steam_app(app_id, forced)
                   if info:
-                      if info['type'] == "100_off":
-                          active_steam.append(info)
-                          print(f"✨ 喜加一: {info['zh_title']}")
-                      elif info['type'] == "to_paid":
-                          f_to_paid.append(info)
-                          print(f"🔄 转付费入库: {info['zh_title']}")
+                      if info['type'] == "100_off": active_steam.append(info)
+                      elif info['type'] == "to_paid": f_to_paid.append(info)
+                      print(f"✨ 入库成功: [{info['type']}] {info['zh_title']}")
                   time.sleep(1.5)
 
               final_active = active_epic + active_steam
               post_update_with_sign("games.json", final_active)
               post_update_with_sign("upcoming.json", upcoming_epic)
-              
-              # ⚡ 恢复 intel.json 通道，向前端推送转付费游戏
               post_update_with_sign("intel.json", {"to_paid": f_to_paid, "free_weekend": []})
 
           if __name__ == "__main__": main()
@@ -273,5 +301,5 @@ jobs:
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
           git add *.json || true
-          git commit -m "Migrate to Stable APIs & Restore To-Paid Intel" || true
+          git commit -m "Merge Stable APIs with NLP Date Parser" || true
           git push
