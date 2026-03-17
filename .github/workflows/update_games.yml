@@ -161,21 +161,16 @@ jobs:
                   if forced_info:
                       g_type = forced_info.get('type') or "to_paid"
                       
-                      # ⚡ 核心修复 1：防 YAML 日期解析坑
                       raw_date = forced_info.get('end_date')
-                      if isinstance(raw_date, datetime):
-                          e_date = raw_date.strftime('%Y-%m-%dT%H:%M:%SZ')
-                      else:
-                          e_date = str(raw_date).strip() if raw_date else ""
-                      if not e_date or e_date.lower() == "none":
-                          e_date = "近期即将转付费"
+                      if isinstance(raw_date, datetime): e_date = raw_date.strftime('%Y-%m-%dT%H:%M:%SZ')
+                      else: e_date = str(raw_date).strip() if raw_date else ""
+                      if not e_date or e_date.lower() == "none": e_date = "近期即将转付费"
                           
                       z_title = forced_info.get('name') or d.get('name', f"神秘福利 {app_id}")
                       thumb = d.get('header_image', f"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{app_id}/header.jpg")
                       
-                      # ⚡ 核心修复 2：恢复真实的 Steam 游戏简介
                       raw_desc = d.get('short_description', '') if d else ""
-                      short_desc = raw_desc.strip().split('。')[0] if raw_desc else "管理员强推的福利情报"
+                      short_desc = raw_desc.strip().split('。')[0] if raw_desc else "已通过管理员通道强制上架"
 
                       return {
                           "status": "valid", "type": g_type,
@@ -391,6 +386,8 @@ jobs:
         run: |
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
+          # ⚡ 新增 git pull --rebase，解决你修改 manager.yml 引起的推送冲突
+          git pull --rebase origin main || true
           git add steam_db.json *.json || true
           git commit -m "Auto Update ETL Database [skip ci]" || true
           git push
