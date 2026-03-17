@@ -40,6 +40,7 @@ jobs:
 
           BLACKLIST = set()
           FORCED_ADD = {}
+          FORCED_EPIC = [] # ⚡ 新增 Epic 强制通道
 
           if os.path.exists('manager.yml'):
               print("🎛️ 发现手动管理菜单 manager.yml，正在加载规则...")
@@ -61,6 +62,28 @@ jobs:
                               link = str(item.get('link', item.get('id', ''))).strip()
                               name = str(item.get('name', '')).strip()
                               
+                              # ⚡ 判断是否为 Epic 游戏
+                              is_epic = 'epicgames.com' in link.lower() or str(item.get('platform', '')).lower() == 'epic'
+                              if is_epic:
+                                  m_epic = re.search(r'epicgames\.com/(?:[a-z]{2}-[a-zA-Z]{2}/)?p/([^/?#]+)', link)
+                                  slug = m_epic.group(1) if m_epic else link.split('/')[-1]
+                                  if slug:
+                                      raw_date = item.get('end_date', '')
+                                      if isinstance(raw_date, datetime): e_date = raw_date.strftime('%Y-%m-%dT%H:%M:%SZ')
+                                      else: e_date = str(raw_date).strip() if raw_date else ""
+                                      if not e_date or e_date.lower() == "none": e_date = "近期即将结束"
+                                      
+                                      FORCED_EPIC.append({
+                                          "zh_title": name or slug,
+                                          "thumbnail": item.get('thumbnail', "https://via.placeholder.com/600x300/121215/9F70FA?text=Epic+Game"),
+                                          "end_date": e_date,
+                                          "platform": "Epic Games",
+                                          "epic_slug": slug,
+                                          "short_description": "已通过管理员通道强制上架"
+                                      })
+                                  continue
+                              
+                              # 正常 Steam 解析逻辑
                               app_id = ""
                               m = re.search(r'app/(\d+)', link)
                               if m: app_id = m.group(1)
@@ -113,9 +136,6 @@ jobs:
                           return
                   except: time.sleep(3)
 
-          # ==========================================
-          # 🧠 终极自然语言解析引擎 (恢复版)
-          # ==========================================
           def parse_date_smart(text):
               text = text.lower()
               now = datetime.utcnow()
@@ -132,7 +152,6 @@ jobs:
                       if not best_dt or dt > best_dt: best_dt = dt
                   except: pass
 
-              # ⚡ 从任意英文中提取所有可能的日期，对比选出最晚的那个！
               en_m1 = re.findall(r'([a-z]{3,})\s+(\d{1,2})(?:st|nd|rd|th)?', text)
               en_m2 = re.findall(r'(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?([a-z]{3,})', text)
               for m_str, d_str in en_m1 + [(m, d) for d, m in en_m2]:
@@ -175,7 +194,6 @@ jobs:
                       res = res_raw.json()
                       if str(app_id) in res and res[str(app_id)]['success']: d = res[str(app_id)]['data']
                   
-                  # ⚡ 修改后的核心逻辑：哪怕是强制添加的游戏，如果未提供日期，系统也会走正常通道去分析它的公告
                   if not d or d.get('type') != 'game':
                       if forced_info:
                           e_date = str(forced_info.get('end_date', '')).strip()
@@ -204,7 +222,6 @@ jobs:
                               if dt != "N/A": end_date = dt
                       except: pass
 
-                  # ⚡ 重点修复：加入了 "100% off" 和 "100%off" 作为扫描新闻的触发雷达
                   keywords = ["转付费", "开始收费", "结束免费", "become paid", "paid game", "pricing", "限免", "free to keep", "恢复原价", "100% off", "100%off", "100% discount"]
                   if end_date == "N/A":
                       desc_text = d.get('detailed_description', '') + " " + d.get('short_description', '')
@@ -224,7 +241,6 @@ jobs:
                                   break
                       except: pass
 
-                  # ⚡ 如果在 manager.yml 中写了具体时间，以 manager 为准覆盖；如果没写，保留刚刚解析出来的智能时间！
                   if forced_info:
                       raw_e = str(forced_info.get('end_date', '')).strip()
                       if raw_e and raw_e.lower() != "none" and raw_e != "近期即将转付费":
@@ -242,12 +258,14 @@ jobs:
                   else: return {"status": "invalid"}
 
                   z_title = forced_info.get('name') if forced_info and forced_info.get('name') else d.get('name')
+                  raw_desc = d.get('short_description', '') if d else ""
+                  short_desc = raw_desc.strip().split('。')[0] if raw_desc else "已通过管理员通道强制上架"
                   
                   return {
                       "status": "valid", "type": game_type,
                       "details": {
                           "steam_id": str(app_id), "zh_title": z_title, "thumbnail": d.get('header_image'),
-                          "short_description": d.get('short_description', '').strip().split('。')[0],
+                          "short_description": short_desc,
                           "is_100_off": game_type == "100_off", "is_weekend": game_type == "weekend", "end_date": end_date
                       }
                   }
@@ -385,6 +403,13 @@ jobs:
                               })
                       except: pass
               except: pass
+
+              # ⚡ 注入 Epic 强制上架游戏
+              epic_existing_slugs = {g.get('epic_slug') for g in active_games if g.get('epic_slug')}
+              for fe in FORCED_EPIC:
+                  if fe['epic_slug'] not in epic_existing_slugs:
+                      active_games.append(fe)
+                      print(f"✨ 跨平台入库成功: [Epic上帝模式] {fe['zh_title']}")
 
               post_update_with_sign("games.json", active_games)
               post_update_with_sign("upcoming.json", upcoming_list)
