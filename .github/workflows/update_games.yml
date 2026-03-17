@@ -41,15 +41,11 @@ jobs:
           BLACKLIST = set()
           FORCED_ADD = {}
 
-          # ==========================================
-          # 🎛️ 解析用户的手动管理菜单 (支持留空盲搜)
-          # ==========================================
           if os.path.exists('manager.yml'):
               print("🎛️ 发现手动管理菜单 manager.yml，正在加载规则...")
               try:
                   with open('manager.yml', 'r', encoding='utf-8') as f:
                       mgr = yaml.safe_load(f) or {}
-                      print(f"📄 菜单解析结果: {mgr}")
                       
                       disable_list = mgr.get('disable') or mgr.get('DISABLE') or []
                       if not isinstance(disable_list, list): disable_list = [disable_list]
@@ -72,17 +68,12 @@ jobs:
                               elif link.isdigit(): 
                                   app_id = link
                                   
-                              # ⚡ 留空盲搜核心：如果没有提供链接，只提供了名字，自动去 Steam 搜索提取 ID！
                               if not app_id and name:
                                   try:
                                       res = requests.get(f"https://store.steampowered.com/search/suggest?term={name}&f=games&cc=CN&l=schinese", headers=HEADERS, timeout=5)
                                       m_search = re.search(r'data-ds-appid="(\d+)"', res.text)
-                                      if m_search:
-                                          app_id = m_search.group(1)
-                                          print(f"🔍 留空搜索成功：[{name}] 的 Steam ID 自动解析为 {app_id}")
-                                      else:
-                                          print(f"⚠️ 留空搜索失败：找不到名为 [{name}] 的游戏，请补充链接！")
-                                  except Exception as e: print(f"⚠️ 留空搜索报错: {e}")
+                                      if m_search: app_id = m_search.group(1)
+                                  except: pass
 
                               if app_id and app_id.isdigit():
                                   FORCED_ADD[app_id] = {
@@ -123,9 +114,7 @@ jobs:
                       if res.status_code == 200: 
                           print(f"✅ 上传 {filename} 成功!")
                           return
-                  except Exception as e: 
-                      time.sleep(3)
-              print(f"❌ 上传 {filename} 最终彻底失败!")
+                  except: time.sleep(3)
 
           def parse_date_smart(text):
               months = {"jan":1, "feb":2, "mar":3, "apr":4, "may":5, "jun":6, "jul":7, "aug":8, "sep":9, "oct":10, "nov":11, "dec":12}
@@ -155,7 +144,7 @@ jobs:
               return best_dt.strftime('%Y-%m-%dT%H:%M:%SZ') if best_dt else "N/A"
 
           def verify_steam_app(app_id):
-              if str(app_id) in BLACKLIST: return {"status": "invalid", "reason": "黑名单"}
+              if str(app_id) in BLACKLIST: return {"status": "invalid"}
               try:
                   forced_info = FORCED_ADD.get(str(app_id))
                   url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=schinese&cc=CN"
@@ -171,20 +160,33 @@ jobs:
                   
                   if forced_info:
                       g_type = forced_info.get('type') or "to_paid"
-                      e_date = forced_info.get('end_date') or "近期即将转付费"
+                      
+                      # ⚡ 核心修复 1：防 YAML 日期解析坑
+                      raw_date = forced_info.get('end_date')
+                      if isinstance(raw_date, datetime):
+                          e_date = raw_date.strftime('%Y-%m-%dT%H:%M:%SZ')
+                      else:
+                          e_date = str(raw_date).strip() if raw_date else ""
+                      if not e_date or e_date.lower() == "none":
+                          e_date = "近期即将转付费"
+                          
                       z_title = forced_info.get('name') or d.get('name', f"神秘福利 {app_id}")
                       thumb = d.get('header_image', f"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{app_id}/header.jpg")
+                      
+                      # ⚡ 核心修复 2：恢复真实的 Steam 游戏简介
+                      raw_desc = d.get('short_description', '') if d else ""
+                      short_desc = raw_desc.strip().split('。')[0] if raw_desc else "管理员强推的福利情报"
+
                       return {
                           "status": "valid", "type": g_type,
                           "details": {
                               "steam_id": str(app_id), "zh_title": z_title, "thumbnail": thumb,
-                              "short_description": "已通过管理员通道强制核准",
+                              "short_description": short_desc,
                               "is_100_off": g_type == "100_off", "is_weekend": g_type == "weekend", "end_date": e_date
                           }
                       }
 
-                  if not d: return {"status": "invalid"}
-                  if d.get('type') != 'game': return {"status": "invalid"}
+                  if not d or d.get('type') != 'game': return {"status": "invalid"}
 
                   price = d.get('price_overview', {})
                   is_100_off = price.get('discount_percent') == 100
@@ -240,7 +242,7 @@ jobs:
                           "is_100_off": game_type == "100_off", "is_weekend": game_type == "weekend", "end_date": end_date
                       }
                   }
-              except Exception as e: return {"status": "invalid"}
+              except: return {"status": "invalid"}
 
           def main():
               db = {}
