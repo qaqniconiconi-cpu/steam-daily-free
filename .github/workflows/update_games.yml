@@ -17,7 +17,6 @@ jobs:
         with:
           python-version: '3.9'
       - name: Install dependencies
-        # ⚡ 新增 pyyaml 依赖，用于读取管理菜单
         run: pip install requests pyyaml
 
       - name: Run ETL Processor
@@ -39,12 +38,11 @@ jobs:
           API_BASE = 'system.et-api.com'
           DB_FILE = 'steam_db.json'
 
-          EA_PLAY_BANS = {"1238810", "1238840", "1172470", "1522820", "1238860", "1222680", "1238880", "1238820", "1172380"}
-          BLACKLIST = set(EA_PLAY_BANS)
+          BLACKLIST = set()
           FORCED_ADD = {}
 
           # ==========================================
-          # 🎛️ 加载手动管理菜单
+          # 🎛️ 解析用户的手动管理菜单 (上帝模式)
           # ==========================================
           if os.path.exists('manager.yml'):
               print("🎛️ 发现手动管理菜单 manager.yml，正在加载规则...")
@@ -64,7 +62,8 @@ jobs:
                           if app_id.isdigit():
                               FORCED_ADD[app_id] = {
                                   "type": item.get('type', 'to_paid'),
-                                  "end_date": item.get('end_date', '')
+                                  "end_date": item.get('end_date', ''),
+                                  "name": item.get('name', '')
                               }
               except Exception as e: print(f"⚠️ 解析 manager.yml 失败: {e}")
 
@@ -80,16 +79,25 @@ jobs:
                   return res.json()
               except: return []
 
+          # ⚡ 新增网络容错机制：解决 15 秒冷启动断连导致的更新失败
           def post_update_with_sign(filename, data):
               method, path, ver = 'POST', '/v1/update/steam-daily-free', '1773281024'
-              nonce = ''.join(random.choices(string.ascii_letters + string.digits, k=32))
-              ts = str(int(time.time()))
               ua = HEADERS['User-Agent']
-              sig = hashlib.sha256(f"{method}{API_BASE}{path}?ver={ver}&nonce={nonce}&ts={ts}&ua={ua}".encode('utf-8')).hexdigest()
-              try:
-                  res = requests.post(f"https://{API_BASE}{path}", headers={'sig': sig, 'ts': ts, 'nonce': nonce, 'ver': ver, 'User-Agent': ua, 'filename': filename, 'Content-Type': 'application/json'}, json=data, timeout=15)
-                  if res.status_code == 200: print(f"✅ 上传 {filename} 成功!")
-              except Exception as e: print(f"❌ 上传 {filename} 错误: {e}")
+              
+              for attempt in range(3): # 最大重试 3 次
+                  nonce = ''.join(random.choices(string.ascii_letters + string.digits, k=32))
+                  ts = str(int(time.time()))
+                  sig = hashlib.sha256(f"{method}{API_BASE}{path}?ver={ver}&nonce={nonce}&ts={ts}&ua={ua}".encode('utf-8')).hexdigest()
+                  headers = {'sig': sig, 'ts': ts, 'nonce': nonce, 'ver': ver, 'User-Agent': ua, 'filename': filename, 'Content-Type': 'application/json'}
+                  try:
+                      res = requests.post(f"https://{API_BASE}{path}", headers=headers, json=data, timeout=20)
+                      if res.status_code == 200: 
+                          print(f"✅ 上传 {filename} 成功!")
+                          return
+                  except Exception as e: 
+                      print(f"⚠️ 上传 {filename} 失败 (第 {attempt+1} 次)，原因: {e}")
+                      time.sleep(3) # 失败后等3秒再试，给服务器唤醒时间
+              print(f"❌ 上传 {filename} 最终彻底失败!")
 
           def parse_date_smart(text):
               months = {"jan":1, "feb":2, "mar":3, "apr":4, "may":5, "jun":6, "jul":7, "aug":8, "sep":9, "oct":10, "nov":11, "dec":12}
@@ -121,30 +129,38 @@ jobs:
           def verify_steam_app(app_id):
               if str(app_id) in BLACKLIST: return {"status": "invalid", "reason": "黑名单强制拦截"}
               try:
+                  # ⚡ 独立处理强制添加通道：哪怕 Steam API 爆炸也能通过你提供的参数硬上架！
+                  forced_info = FORCED_ADD.get(str(app_id))
+                  
                   url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=schinese&cc=CN"
                   res_raw = requests.get(url, headers=HEADERS, timeout=10)
-                  if res_raw.status_code == 429: return {"status": "rate_limit"}
-                      
-                  res = res_raw.json()
-                  if str(app_id) not in res or not res[str(app_id)]['success']: return {"status": "invalid", "reason": "无此游戏"}
-                  d = res[str(app_id)]['data']
-                  if d.get('type') != 'game': return {"status": "invalid", "reason": "非游戏本体"}
                   
-                  # ==========================================
-                  # ⚡ 强制入库通道：只取图文信息，无视规则打标
-                  # ==========================================
-                  forced_info = FORCED_ADD.get(str(app_id))
+                  if res_raw.status_code == 429 and not forced_info: return {"status": "rate_limit"}
+                  
+                  d = {}
+                  if res_raw.status_code == 200:
+                      res = res_raw.json()
+                      if str(app_id) in res and res[str(app_id)]['success']:
+                          d = res[str(app_id)]['data']
+                  
+                  # 如果是强制模式，直接无脑构建信息
                   if forced_info:
                       g_type = forced_info['type']
                       e_date = forced_info['end_date'] or "近期即将转付费"
+                      z_title = forced_info.get('name') or d.get('name', f"神秘福利 {app_id}")
+                      thumb = d.get('header_image', f"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{app_id}/header.jpg")
+                      
                       return {
                           "status": "valid", "type": g_type,
                           "details": {
-                              "steam_id": str(app_id), "zh_title": d.get('name'), "thumbnail": d.get('header_image'),
-                              "short_description": d.get('short_description', '').strip().split('。')[0],
+                              "steam_id": str(app_id), "zh_title": z_title, "thumbnail": thumb,
+                              "short_description": "已通过管理员通道强制核准",
                               "is_100_off": g_type == "100_off", "is_weekend": g_type == "weekend", "end_date": e_date
                           }
                       }
+
+                  if not d: return {"status": "invalid", "reason": "无此游戏"}
+                  if d.get('type') != 'game': return {"status": "invalid", "reason": "非游戏本体"}
 
                   price = d.get('price_overview', {})
                   is_100_off = price.get('discount_percent') == 100
@@ -204,9 +220,8 @@ jobs:
 
           def main():
               db = {}
-              # ⚡ 增加热启动逻辑：第一次生成文件时，直接从服务器拉回历史数据当骨架，防止页面空窗
               if not os.path.exists(DB_FILE):
-                  print("🔄 首次运行：正在从服务器读取旧数据初始化记忆库...")
+                  print("🔄 初始化：从服务器读取旧数据恢复记忆库...")
                   for fn in ["games.json", "intel.json"]:
                       old = fetch_old_data_with_sign(fn)
                       if isinstance(old, dict) and 'data' in old: old = old['data']
@@ -222,13 +237,6 @@ jobs:
                   except: pass
 
               scraped_ids = set()
-              
-              for name in ["拾取宝石后意外觉醒了"]:
-                  try:
-                      res = requests.get(f"https://store.steampowered.com/search/suggest?term={name}&f=games&cc=CN&l=schinese", headers=HEADERS, timeout=5)
-                      m = re.search(r'data-ds-appid="(\d+)"', res.text)
-                      if m: scraped_ids.add(m.group(1))
-                  except: pass
 
               sources = ["https://keylol.com/forum.php?mod=rss&fid=319", "https://www.reddit.com/r/FreeGameFindings/new.json?limit=50", "https://www.reddit.com/r/FreeGamesOnSteam/new.json?limit=50", "https://www.reddit.com/r/GameDeals/new.json?limit=50", "https://www.steamgifts.com/discussions/deals"]
               for s in sources:
@@ -250,14 +258,13 @@ jobs:
               for app_id in scraped_ids:
                   if app_id not in db: db[app_id] = {"status": "pending"}
 
-              # ⚡ 管理器强制指令注入：将菜单里的游戏立刻排进验证队列第一位
+              # ⚡ 注入管理者强制命令：确保就算游戏早就被刷掉，也能强行验证并入库！
               for f_id in FORCED_ADD:
                   if f_id not in db or db[f_id].get('status') != 'valid':
                       db[f_id] = {"status": "pending"}
 
               pending_ids = [app_id for app_id, data in db.items() if data.get('status') == 'pending']
-              # 优先级排序：把手工加的排在最前面，防止被 API 额度卡住
-              pending_ids.sort(key=lambda x: 0 if x in FORCED_ADD else 1)
+              pending_ids.sort(key=lambda x: 0 if x in FORCED_ADD else 1) # 强推置顶
               
               print(f"⚖️ 开始处理队列... 待验总数: {len(pending_ids)}")
               for app_id in pending_ids[:40]:
@@ -273,7 +280,6 @@ jobs:
               
               for app_id, data in list(db.items()):
                   if data.get('status') == 'valid':
-                      # ⚡ 黑名单强制除名
                       if str(app_id) in BLACKLIST:
                           db[app_id]['status'] = 'invalid'
                           continue
