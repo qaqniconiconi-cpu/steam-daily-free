@@ -42,29 +42,44 @@ jobs:
           FORCED_ADD = {}
 
           # ==========================================
-          # 🎛️ 解析用户的手动管理菜单 (上帝模式)
+          # 🎛️ 解析用户的手动管理菜单 (高容错版)
           # ==========================================
           if os.path.exists('manager.yml'):
               print("🎛️ 发现手动管理菜单 manager.yml，正在加载规则...")
               try:
                   with open('manager.yml', 'r', encoding='utf-8') as f:
                       mgr = yaml.safe_load(f) or {}
+                      print(f"📄 菜单解析结果: {mgr}")
                       
-                      for item in mgr.get('disable', []):
+                      # 解析黑名单
+                      disable_list = mgr.get('disable') or mgr.get('DISABLE') or []
+                      if not isinstance(disable_list, list): disable_list = [disable_list]
+                      for item in disable_list:
                           m = re.search(r'app/(\d+)', str(item))
                           app_id = m.group(1) if m else str(item).strip()
                           if app_id.isdigit(): BLACKLIST.add(app_id)
                           
-                      for item in mgr.get('add', []):
-                          link = item.get('link', '')
-                          m = re.search(r'app/(\d+)', str(link))
-                          app_id = m.group(1) if m else str(link).strip()
-                          if app_id.isdigit():
-                              FORCED_ADD[app_id] = {
-                                  "type": item.get('type', 'to_paid'),
-                                  "end_date": item.get('end_date', ''),
-                                  "name": item.get('name', '')
-                              }
+                      # 解析强制添加
+                      add_list = mgr.get('add') or mgr.get('ADD') or []
+                      if not isinstance(add_list, list): add_list = [add_list]
+                      for item in add_list:
+                          if isinstance(item, dict):
+                              link = str(item.get('link', item.get('id', '')))
+                              m = re.search(r'app/(\d+)', link)
+                              app_id = m.group(1) if m else link.strip()
+                              if app_id.isdigit():
+                                  FORCED_ADD[app_id] = {
+                                      "type": item.get('type', 'to_paid'),
+                                      "end_date": item.get('end_date', ''),
+                                      "name": item.get('name', '')
+                                  }
+                          else:
+                              # 容错：如果用户直接写了链接而不是字典
+                              link = str(item)
+                              m = re.search(r'app/(\d+)', link)
+                              app_id = m.group(1) if m else link.strip()
+                              if app_id.isdigit():
+                                  FORCED_ADD[app_id] = {"type": "to_paid", "end_date": "近期即将转付费", "name": ""}
               except Exception as e: print(f"⚠️ 解析 manager.yml 失败: {e}")
 
           def fetch_old_data_with_sign(filename):
@@ -79,12 +94,10 @@ jobs:
                   return res.json()
               except: return []
 
-          # ⚡ 新增网络容错机制：解决 15 秒冷启动断连导致的更新失败
           def post_update_with_sign(filename, data):
               method, path, ver = 'POST', '/v1/update/steam-daily-free', '1773281024'
               ua = HEADERS['User-Agent']
-              
-              for attempt in range(3): # 最大重试 3 次
+              for attempt in range(3):
                   nonce = ''.join(random.choices(string.ascii_letters + string.digits, k=32))
                   ts = str(int(time.time()))
                   sig = hashlib.sha256(f"{method}{API_BASE}{path}?ver={ver}&nonce={nonce}&ts={ts}&ua={ua}".encode('utf-8')).hexdigest()
@@ -96,7 +109,7 @@ jobs:
                           return
                   except Exception as e: 
                       print(f"⚠️ 上传 {filename} 失败 (第 {attempt+1} 次)，原因: {e}")
-                      time.sleep(3) # 失败后等3秒再试，给服务器唤醒时间
+                      time.sleep(3)
               print(f"❌ 上传 {filename} 最终彻底失败!")
 
           def parse_date_smart(text):
@@ -129,9 +142,7 @@ jobs:
           def verify_steam_app(app_id):
               if str(app_id) in BLACKLIST: return {"status": "invalid", "reason": "黑名单强制拦截"}
               try:
-                  # ⚡ 独立处理强制添加通道：哪怕 Steam API 爆炸也能通过你提供的参数硬上架！
                   forced_info = FORCED_ADD.get(str(app_id))
-                  
                   url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=schinese&cc=CN"
                   res_raw = requests.get(url, headers=HEADERS, timeout=10)
                   
@@ -143,13 +154,11 @@ jobs:
                       if str(app_id) in res and res[str(app_id)]['success']:
                           d = res[str(app_id)]['data']
                   
-                  # 如果是强制模式，直接无脑构建信息
                   if forced_info:
                       g_type = forced_info['type']
                       e_date = forced_info['end_date'] or "近期即将转付费"
                       z_title = forced_info.get('name') or d.get('name', f"神秘福利 {app_id}")
                       thumb = d.get('header_image', f"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{app_id}/header.jpg")
-                      
                       return {
                           "status": "valid", "type": g_type,
                           "details": {
@@ -258,10 +267,9 @@ jobs:
               for app_id in scraped_ids:
                   if app_id not in db: db[app_id] = {"status": "pending"}
 
-              # ⚡ 注入管理者强制命令：确保就算游戏早就被刷掉，也能强行验证并入库！
+              # ⚡ 绝对注入：只要在 manager 里写了，立刻强置为待验状态覆盖旧记忆！
               for f_id in FORCED_ADD:
-                  if f_id not in db or db[f_id].get('status') != 'valid':
-                      db[f_id] = {"status": "pending"}
+                  db[f_id] = {"status": "pending"}
 
               pending_ids = [app_id for app_id, data in db.items() if data.get('status') == 'pending']
               pending_ids.sort(key=lambda x: 0 if x in FORCED_ADD else 1) # 强推置顶
