@@ -12,8 +12,6 @@ add:
     end_date: ""
     
   - name: "光明斗士"
-    link: "https://store.epicgames.com/zh-CN/p/rockman2000-eb2f84"
-    end_date: "2026-03-30T21:00:00Z"
 
 
 # 🚫 强力黑名单 (不管是不是真的，只要在这里就绝对不会显示)
