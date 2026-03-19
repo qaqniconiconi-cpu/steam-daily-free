@@ -36,5 +36,8 @@
       "is_weekend": false,
       "end_date": "近期即将转付费"
     }
+  },
+  "3159330": {
+    "status": "invalid"
   }
 }
