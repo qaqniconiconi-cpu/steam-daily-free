@@ -15,8 +15,18 @@ add:
     name: "Narvas"
     type: "100_off"
     end_date: ""    
+  
+  - link: "https://store.epicgames.com/zh-CN/p/rockman2000-eb2f84"
+    name: "光明斗士"
+    type: "100_off"
+    end_date: ""    
+    
+  - link: "https://store.epicgames.com/zh-CN/p/wave-gods-ammo-night-7eb978"
+    name: "波神:弹药之夜"
+    type: "100_off"
+    end_date: ""   
 
-# 🚫 强力黑名单 (不管是不是真的，只要在这里就绝对不会显示)
+# 🚫 黑名单 (不管是不是真的，只要在这里就绝对不会显示)
 disable:
   - "3470190"
   - "3144950"
