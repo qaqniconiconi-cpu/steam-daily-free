@@ -72,13 +72,33 @@ jobs:
                                       else: e_date = str(raw_date).strip() if raw_date else ""
                                       if not e_date or e_date.lower() == "none": e_date = "近期即将结束"
                                       
-                                      # ⚡ 支持自定义简介，否则给默认值
+                                      thumbnail = str(item.get('thumbnail', '')).strip()
                                       desc = str(item.get('desc', item.get('description', ''))).strip()
-                                      if not desc: desc = "已通过管理员通道强制上架"
+                                      name_zh = name
+                                      
+                                      # ⚡ Epic 增强：如果没有配图和简介，直接去扒 Epic 网页的 Meta 信息！
+                                      if not thumbnail or not desc:
+                                          try:
+                                              epic_url = link if link.startswith('http') else f"https://store.epicgames.com/zh-CN/p/{slug}"
+                                              h = requests.get(epic_url, headers=HEADERS, timeout=5).text
+                                              if not thumbnail:
+                                                  m_img = re.search(r'<meta property="og:image" content="([^"]+)"', h)
+                                                  if m_img: thumbnail = m_img.group(1)
+                                              if not desc:
+                                                  m_desc = re.search(r'<meta property="og:description" content="([^"]+)"', h)
+                                                  if m_desc: desc = m_desc.group(1).replace('Epic Games Store', '').strip()
+                                              if not name_zh:
+                                                  m_title = re.search(r'<title>([^<]+)</title>', h)
+                                                  if m_title: name_zh = m_title.group(1).split('|')[0].strip()
+                                          except: pass
+                                      
+                                      if not thumbnail: thumbnail = "https://via.placeholder.com/600x300/121215/9F70FA?text=Epic+Game"
+                                      if not desc: desc = "Epic 限时免费福利，建议立即入库体验。"
+                                      if not name_zh: name_zh = slug
 
                                       FORCED_EPIC.append({
-                                          "zh_title": name or slug,
-                                          "thumbnail": item.get('thumbnail', "https://via.placeholder.com/600x300/121215/9F70FA?text=Epic+Game"),
+                                          "zh_title": name_zh,
+                                          "thumbnail": thumbnail,
                                           "end_date": e_date,
                                           "platform": "Epic Games",
                                           "epic_slug": slug,
@@ -292,6 +312,22 @@ jobs:
 
               scraped_ids = set()
 
+              # ⚡ 雷达修复：恢复对 Steam 隐蔽游戏（如宠物之地、Project Scrapper）的 GamerPower 探测
+              try:
+                  res_gp = requests.get("https://www.gamerpower.com/api/giveaways?platform=steam", headers=HEADERS, timeout=10)
+                  if res_gp.status_code == 200:
+                      for item in res_gp.json():
+                          u = item.get('open_giveaway_url', '')
+                          m = re.search(r'app/(\d+)', u)
+                          if m: scraped_ids.add(m.group(1))
+                          else:
+                              try:
+                                  act_u = requests.get(u, headers=HEADERS, timeout=5, allow_redirects=True).url
+                                  m = re.search(r'app/(\d+)', act_u)
+                                  if m: scraped_ids.add(m.group(1))
+                              except: pass
+              except: pass
+
               sources = ["https://keylol.com/forum.php?mod=rss&fid=319", "https://www.reddit.com/r/FreeGameFindings/new.json?limit=50", "https://www.reddit.com/r/FreeGamesOnSteam/new.json?limit=50", "https://www.reddit.com/r/GameDeals/new.json?limit=50", "https://www.steamgifts.com/discussions/deals"]
               for s in sources:
                   try:
@@ -342,9 +378,14 @@ jobs:
                               if dt < current_time: is_expired = True
                           except: pass
                       
+                      # ⚡ 核心修复：对于管理员在 manager.yml 里强推的游戏，即使计算出的日期过期了，也赋予不死金牌强制保留
                       if is_expired:
-                          db[app_id]['status'] = 'expired'
-                      else:
+                          if str(app_id) in FORCED_ADD:
+                              is_expired = False
+                          else:
+                              db[app_id]['status'] = 'expired'
+                      
+                      if not is_expired:
                           g_type = data['type']
                           if g_type == "100_off": active_games.append(details)
                           elif g_type == "to_paid": f_to_paid.append(details)
@@ -352,7 +393,6 @@ jobs:
 
               upcoming_list = []
               
-              # ⚡ 增加对全球区 (US) 的请求，突破 Epic 国区“隐藏限免”的锁定机制
               epic_urls = [
                   "https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=CN&allowCountries=CN", 
                   "https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=US&allowCountries=US"
@@ -372,7 +412,6 @@ jobs:
                           
                           img = next((i['url'] for i in item.get('keyImages', []) if i['type'] in ['OfferImageWide', 'Thumbnail']), "")
                           
-                          # ⚡ 提取真实的官方简介
                           desc = str(item.get('description') or item.get('shortDescription') or '').strip()
                           if not desc or desc.lower() == item.get('title', '').lower():
                               desc = "Epic 限时免费福利，建议立即入库体验。"
@@ -414,7 +453,6 @@ jobs:
                                   if datetime.strptime(end_date, '%Y-%m-%dT%H:%M:%SZ') < datetime.utcnow(): continue
                               except: pass
 
-                              # ⚡ 提取真实的聚合接口简介
                               gp_desc = g.get('description', '').strip().split('\n')[0][:90]
                               if not gp_desc: gp_desc = "Epic 独立隐藏限免 / 额外赠送"
 
@@ -446,8 +484,8 @@ jobs:
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
           
-          # ⚡ 核心修复：按严格顺序先保存本地变动，再拉取你的 manager.yml，最后合并推送
-          git add steam_db.json *.json || true
-          git commit -m "Auto Update ETL Database [skip ci]" || true
           git pull --rebase origin main || true
+          # ⚡ 核心修复：仅添加 steam_db.json，防止路径匹配失败导致缓存丢失
+          git add steam_db.json || true
+          git commit -m "Auto Update ETL Database [skip ci]" || true
           git push
