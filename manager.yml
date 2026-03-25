@@ -15,7 +15,12 @@ add:
     name: "拾取宝石后意外觉醒了复制魔王力量的逆天技能"
     type: "to_paid"
 
-  # Epic 现在也支持超级盲搜了，只要附带完整链接，连图片系统都会自己去抓：
+  - link: "https://store.steampowered.com/app/821380/Project_Scrapper/"
+    name: "Project Scrapper"
+    type: "to_paid"
+    desc: "2026-04-09T23:59:59Z"
+
+  # Epic 现在也支持盲搜了，只要附带完整链接，连图片系统都会自己去抓：（这个不准）
   - link: "https://store.epicgames.com/zh-CN/p/rockman2000-eb2f84"
     name: "光明斗士"
     type: "100_off"
