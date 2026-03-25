@@ -6,11 +6,6 @@
 add:
     # 类别必填: 100_off(喜加一) / to_paid(转付费) / weekend(免费玩)
     # 结束时间选填: 可以留空自动查，也可以写 "近期即将转付费" 或 "2026-03-30T17:00:00Z"
-  - link: "https://store.steampowered.com/app/1126440"
-    name: "Project Scrapper"
-    type: "to_paid"
-    end_date: ""
-
   - link: "https://store.steampowered.com/app/640700"
     name: "Narvas"
     type: "100_off"
@@ -23,14 +18,17 @@ add:
   - link: "https://store.epicgames.com/zh-CN/p/rockman2000-eb2f84"
     name: "光明斗士"
     type: "100_off"
+    end_time: "2026-03-30T21:00:00Z"
     
   - link: "https://store.epicgames.com/zh-CN/p/wave-gods-ammo-night-7eb978"
     name: "波神:弹药之夜"
     type: "100_off"
+    end_time: "2026-03-29T03:00:00Z"
 
-  - link: "https://store.epicgames.com/zh-CN/p/electrician-simulator-264bc8"
+  - link: "https://store.epicgames.com/zh-CN/p/electrician-simulator-164e9f"
     name: "电工模拟器"
     type: "100_off"  
+    end_time: "2026-03-26T08:00:00Z"
 
 # 🚫 黑名单 (不管是不是真的，只要在这里就绝对不会显示)
 disable:
