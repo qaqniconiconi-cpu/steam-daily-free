@@ -21,7 +21,7 @@ jobs:
 
       - name: Run ETL Processor
         run: |
-          # ⚡ 核心修复：使用 'EOF' 防止 Shell 吞掉 GraphQL 里的变量！
+          # ⚡ 核心修复：使用 'EOF' (加单引号) 防止 Shell 吞掉 GraphQL 里的变量！
           cat <<'EOF' > processor.py
           import requests
           import json
@@ -77,7 +77,7 @@ jobs:
                                   desc = str(item.get('desc', item.get('description', ''))).strip()
                                   name_zh = name
                                   
-                                  # 第 1 层：GraphQL 官方搜寻（成功率最高，支持仅输入名字的盲搜）
+                                  # 第 1 层：GraphQL 官方搜寻
                                   if not thumbnail or not desc or not slug:
                                       try:
                                           query = '''
@@ -138,10 +138,10 @@ jobs:
                                           if res_epic.status_code == 200:
                                               h = res_epic.text
                                               if not thumbnail:
-                                                  m_img = re.search(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']|<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']', h)
+                                                  m_img = re.search(r'property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', h) or re.search(r'content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']', h)
                                                   if m_img: thumbnail = m_img.group(1) or m_img.group(2)
                                               if not desc:
-                                                  m_desc = re.search(r'<meta[^>]+property=["\']og:description["\'][^>]+content=["\']([^"\']+)["\']|<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:description["\']', h)
+                                                  m_desc = re.search(r'property=["\']og:description["\'][^>]+content=["\']([^"\']+)["\']', h) or re.search(r'content=["\']([^"\']+)["\'][^>]+property=["\']og:description["\']', h)
                                                   if m_desc: desc = (m_desc.group(1) or m_desc.group(2)).replace('Epic Games Store', '').strip()
                                               if not name_zh:
                                                   m_title = re.search(r'<title>([^<]+)</title>', h)
@@ -377,7 +377,6 @@ jobs:
 
               scraped_ids = set()
 
-              # ⚡ 恢复全域深度扫描雷达，不再漏掉小众福利！
               try:
                   res_gp = requests.get("https://www.gamerpower.com/api/giveaways?platform=steam", headers=HEADERS, timeout=10)
                   if res_gp.status_code == 200:
@@ -449,7 +448,7 @@ jobs:
                               if dt < current_time: is_expired = True
                           except: pass
                       
-                      # ⚡ 不死金牌逻辑：只要是你加在 manager 里的，就算是公元前的过期日期，也不准踢除！
+                      # ⚡ 不死金牌逻辑：只要是你加在 manager 里的，绝对不准踢除！
                       if is_expired:
                           if str(app_id) in FORCED_ADD:
                               is_expired = False
@@ -534,7 +533,6 @@ jobs:
                       except: pass
               except: pass
 
-              # 合并 Epic 上帝模式追加的游戏
               epic_existing_slugs = {g.get('epic_slug') for g in active_games if g.get('epic_slug')}
               for fe in FORCED_EPIC:
                   if fe['epic_slug'] not in epic_existing_slugs:
@@ -556,7 +554,8 @@ jobs:
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
           
-          git pull --rebase origin main || true
+          # ⚡ 核心修复：按严格顺序先 commit 本地变动，再去 pull --rebase，彻底告别推送冲突！
           git add steam_db.json || true
           git commit -m "Auto Update ETL Database [skip ci]" || true
+          git pull --rebase origin main || true
           git push
