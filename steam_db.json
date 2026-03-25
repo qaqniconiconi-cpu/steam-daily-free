@@ -83,5 +83,18 @@
   },
   "1214550": {
     "status": "invalid"
+  },
+  "1126440": {
+    "status": "valid",
+    "type": "to_paid",
+    "details": {
+      "steam_id": "1126440",
+      "zh_title": "Project Scrapper",
+      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1126440/header.jpg?t=1630886077",
+      "short_description": "Rogue Rocks is a space rocks shoot-em-up with minimalist roguelite elements. Blast your way to the center of a procedurally generated galaxy before you get caught!",
+      "is_100_off": false,
+      "is_weekend": false,
+      "end_date": "近期即将转付费"
+    }
   }
 }
