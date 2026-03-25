@@ -85,7 +85,7 @@
     "status": "invalid"
   },
   "1126440": {
-    "status": "valid",
+    "status": "invalid",
     "type": "to_paid",
     "details": {
       "steam_id": "1126440",
