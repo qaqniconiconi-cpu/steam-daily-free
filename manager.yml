@@ -24,19 +24,19 @@ add:
   - link: "https://store.epicgames.com/zh-CN/p/rockman2000-eb2f84"
     name: "光明斗士"
     type: "100_off"
-    end_time: "2026-03-30T21:00:00Z"
+    endtime: "2026-03-30T21:00:00Z"
     
   - link: "https://store.epicgames.com/zh-CN/p/wave-gods-ammo-night-7eb978"
     name: "波神:弹药之夜"
     type: "100_off"
-    end_time: "2026-03-29T03:00:00Z"
+    endtime: "2026-03-29T03:00:00Z"
     thumbnail: "https://cdn1.epicgames.com/spt-assets/19d68c58dfc747168f4e2922994679a5/wave-gods-ammo-night-374mh.png?resize=1&w=480&h=270&quality=medium"
     desc: "扫射僵尸"
 
   - link: "https://store.epicgames.com/zh-CN/p/electrician-simulator-164e9f"
     name: "电工模拟器"
     type: "100_off"  
-    end_time: "2026-03-26T08:00:00Z"                        # end_date 也是可选的，如果不写系统会显示“限免进行中”
+    endtime: "2026-03-26T08:00:00Z"                        # end_date 也是可选的，如果不写系统会显示“限免进行中”
     desc: "赛博修电工"
     
 
