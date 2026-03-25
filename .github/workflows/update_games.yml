@@ -33,7 +33,7 @@ jobs:
           import yaml
           from datetime import datetime, timedelta
 
-          HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36', 'Accept-Language': 'zh-CN,zh;q=0.9'}
+          HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Accept-Language': 'zh-CN,zh;q=0.9'}
           COOKIES = {'birthtime': '283993201', 'wants_mature_content': '1'}
           API_BASE = 'system.et-api.com'
           DB_FILE = 'steam_db.json'
@@ -48,7 +48,6 @@ jobs:
                   with open('manager.yml', 'r', encoding='utf-8') as f:
                       mgr = yaml.safe_load(f) or {}
                       
-                      # ⚡ 黑名单全平台强化：支持直接填 Steam ID、Epic Slug 甚至完整链接
                       disable_list = mgr.get('disable') or mgr.get('DISABLE') or []
                       if not isinstance(disable_list, list): disable_list = [disable_list]
                       for item in disable_list:
@@ -65,10 +64,9 @@ jobs:
                           if isinstance(item, dict):
                               link = str(item.get('link', item.get('id', ''))).strip()
                               name = str(item.get('name', '')).strip()
+                              custom_thumbnail = str(item.get('thumbnail', '')).strip()
+                              custom_desc = str(item.get('desc', item.get('description', ''))).strip()
                               
-                              # ==================================
-                              # ⚡ Epic 暴力解包引擎 (图文 + 截止日期)
-                              # ==================================
                               is_epic = 'epicgames.com' in link.lower() or str(item.get('platform', '')).lower() == 'epic'
                               if is_epic:
                                   m_epic = re.search(r'epicgames\.com/(?:[a-z]{2}-[a-zA-Z]{2}/)?p/([^/?#]+)', link)
@@ -76,43 +74,35 @@ jobs:
                                   if not slug: slug = name
                                   if not slug: continue
                                   
-                                  thumbnail = str(item.get('thumbnail', '')).strip()
-                                  desc = str(item.get('desc', item.get('description', ''))).strip()
-                                  name_zh = name
-                                  
                                   raw_date = item.get('end_date', '')
                                   if isinstance(raw_date, datetime): e_date = raw_date.strftime('%Y-%m-%dT%H:%M:%SZ')
                                   else: e_date = str(raw_date).strip() if raw_date else ""
 
+                                  thumbnail, desc, name_zh = custom_thumbnail, custom_desc, name
+
                                   try:
                                       epic_url = link if link.startswith('http') else f"https://store.epicgames.com/zh-CN/p/{slug}"
-                                      res_epic = requests.get(epic_url, headers=HEADERS, timeout=10)
+                                      bot_headers = {'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)', 'Accept-Language': 'zh-CN,zh;q=0.9'}
+                                      res_epic = requests.get(epic_url, headers=bot_headers, timeout=10)
                                       h = res_epic.text
                                       
                                       if not thumbnail:
-                                          m_img = re.search(r'property=[\'"]og:image[\'"][^>]+content=[\'"]([^\'"]+)[\'"]', h, re.IGNORECASE) or \
-                                                  re.search(r'content=[\'"]([^\'"]+)[\'"][^>]+property=[\'"]og:image[\'"]', h, re.IGNORECASE) or \
-                                                  re.search(r'name=[\'"]twitter:image[\'"][^>]+content=[\'"]([^\'"]+)[\'"]', h, re.IGNORECASE)
+                                          m_img = re.search(r'property=[\'"]og:image[\'"][^>]+content=[\'"]([^\'"]+)[\'"]', h, re.IGNORECASE) or re.search(r'content=[\'"]([^\'"]+)[\'"][^>]+property=[\'"]og:image[\'"]', h, re.IGNORECASE)
                                           if m_img: thumbnail = m_img.group(1)
-                                          
                                       if not desc:
-                                          m_desc = re.search(r'property=[\'"]og:description[\'"][^>]+content=[\'"]([^\'"]+)[\'"]', h, re.IGNORECASE) or \
-                                                   re.search(r'content=[\'"]([^\'"]+)[\'"][^>]+property=[\'"]og:description[\'"]', h, re.IGNORECASE)
+                                          m_desc = re.search(r'property=[\'"]og:description[\'"][^>]+content=[\'"]([^\'"]+)[\'"]', h, re.IGNORECASE) or re.search(r'content=[\'"]([^\'"]+)[\'"][^>]+property=[\'"]og:description[\'"]', h, re.IGNORECASE)
                                           if m_desc: desc = m_desc.group(1).replace('Epic Games Store', '').strip()
-                                          
                                       if not name_zh or name_zh == slug:
                                           m_title = re.search(r'<title>([^<]+)</title>', h, re.IGNORECASE)
                                           if m_title: 
                                               extracted = m_title.group(1).split('|')[0].strip()
                                               if extracted and "Epic Games" not in extracted: name_zh = extracted
-                                              
                                       if not e_date or e_date.lower() == "none":
                                           dates = re.findall(r'"endDate"\s*:\s*"(\d{4}-\d{2}-\d{2}T[^"]+)"', h)
                                           if dates:
                                               now_str = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
                                               future_dates = [d for d in dates if d > now_str]
-                                              if future_dates:
-                                                  e_date = min(future_dates)
+                                              if future_dates: e_date = min(future_dates)
                                   except: pass
 
                                   if not slug: slug = name if name else "unknown"
@@ -122,18 +112,13 @@ jobs:
                                   if not e_date or e_date.lower() == "none": e_date = "限免进行中"
 
                                   FORCED_EPIC.append({
-                                      "zh_title": name_zh,
-                                      "thumbnail": thumbnail,
-                                      "end_date": e_date,
-                                      "platform": "Epic Games",
-                                      "epic_slug": slug,
-                                      "short_description": desc
+                                      "zh_title": name_zh, "thumbnail": thumbnail, "end_date": e_date,
+                                      "platform": "Epic Games", "epic_slug": slug, "short_description": desc,
+                                      "_custom_desc": custom_desc, "_custom_thumb": custom_thumbnail # ⚡ 记录用户的自定义项
                                   })
                                   continue
                               
-                              # ==================================
-                              # Steam 解析处理
-                              # ==================================
+                              # Steam 处理
                               app_id = ""
                               m = re.search(r'app/(\d+)', link)
                               if m: app_id = m.group(1)
@@ -148,9 +133,8 @@ jobs:
 
                               if app_id and app_id.isdigit():
                                   FORCED_ADD[app_id] = {
-                                      "type": item.get('type', 'to_paid'),
-                                      "end_date": item.get('end_date', ''),
-                                      "name": name
+                                      "type": item.get('type', 'to_paid'), "end_date": item.get('end_date', ''), "name": name,
+                                      "_custom_desc": custom_desc, "_custom_thumb": custom_thumbnail # ⚡ 记录用户的自定义项
                                   }
                           else:
                               link = str(item)
@@ -230,12 +214,13 @@ jobs:
                       res = res_raw.json()
                       if str(app_id) in res and res[str(app_id)]['success']: d = res[str(app_id)]['data']
                   
-                  if not d or d.get('type') != 'game':
+                  # ⚡ 修复 DLC 封印：只要是管理员加的，就算是 DLC 也强行上架！
+                  if not d or (d.get('type') != 'game' and not forced_info):
                       if forced_info:
                           e_date = str(forced_info.get('end_date', '')).strip()
                           if not e_date or e_date.lower() == "none": e_date = "限免进行中"
                           z_title = forced_info.get('name') or f"神秘福利 {app_id}"
-                          return {"status": "valid", "type": forced_info.get('type', 'to_paid'), "details": {"steam_id": str(app_id), "zh_title": z_title, "thumbnail": f"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{app_id}/header.jpg", "short_description": "福利放送中，建议立即入库体验", "is_100_off": False, "is_weekend": False, "end_date": e_date}}
+                          return {"status": "valid", "type": forced_info.get('type', 'to_paid'), "details": {"steam_id": str(app_id), "zh_title": z_title, "thumbnail": forced_info.get('_custom_thumb') or f"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{app_id}/header.jpg", "short_description": forced_info.get('_custom_desc') or "福利放送中，建议立即入库体验", "is_100_off": False, "is_weekend": False, "end_date": e_date}}
                       return {"status": "invalid"}
 
                   price = d.get('price_overview', {})
@@ -279,10 +264,8 @@ jobs:
 
                   if forced_info:
                       raw_e = str(forced_info.get('end_date', '')).strip()
-                      if raw_e and raw_e.lower() != "none" and raw_e != "限免进行中":
-                          end_date = raw_e
-                      elif end_date == "N/A" or end_date == "近期即将转付费":
-                          end_date = "限免进行中"
+                      if raw_e and raw_e.lower() != "none" and raw_e != "限免进行中": end_date = raw_e
+                      elif end_date == "N/A" or end_date == "近期即将转付费": end_date = "限免进行中"
 
                   if not (is_free or is_100_off or has_free_license) and not forced_info: return {"status": "invalid"}
 
@@ -294,15 +277,18 @@ jobs:
                   else: return {"status": "invalid"}
 
                   z_title = forced_info.get('name') if forced_info and forced_info.get('name') else d.get('name')
+                  
+                  # ⚡ Steam 绝对覆盖：如果填了，强制替换！
                   raw_desc = d.get('short_description', '') if d else ""
-                  short_desc = raw_desc.strip().split('。')[0] if raw_desc else "福利放送中，建议立即入库体验"
+                  short_desc = forced_info.get('_custom_desc') if forced_info and forced_info.get('_custom_desc') else (raw_desc.strip().split('。')[0] if raw_desc else "福利放送中，建议立即入库体验")
+                  thumbnail = forced_info.get('_custom_thumb') if forced_info and forced_info.get('_custom_thumb') else d.get('header_image')
                   
                   if end_date == "N/A": end_date = "限免进行中"
 
                   return {
                       "status": "valid", "type": game_type,
                       "details": {
-                          "steam_id": str(app_id), "zh_title": z_title, "thumbnail": d.get('header_image'),
+                          "steam_id": str(app_id), "zh_title": z_title, "thumbnail": thumbnail,
                           "short_description": short_desc,
                           "is_100_off": game_type == "100_off", "is_weekend": game_type == "weekend", "end_date": end_date
                       }
@@ -393,10 +379,8 @@ jobs:
                           except: pass
                       
                       if is_expired:
-                          if str(app_id) in FORCED_ADD:
-                              is_expired = False
-                          else:
-                              db[app_id]['status'] = 'expired'
+                          if str(app_id) in FORCED_ADD: is_expired = False
+                          else: db[app_id]['status'] = 'expired'
                       
                       if not is_expired:
                           g_type = data['type']
@@ -420,18 +404,20 @@ jobs:
                           if not promos: continue
                           slug = item.get('catalogNs', {}).get('mappings', [{}])[0].get('pageSlug') or item.get('productSlug') or "free"
                           
-                          # ⚡ 黑名单雷达：抓取前先核对身份！
                           if slug in BLACKLIST: continue
-                          
                           if slug in seen_epic_slugs: continue
                           seen_epic_slugs.add(slug)
                           
                           img = next((i['url'] for i in item.get('keyImages', []) if i['type'] in ['OfferImageWide', 'Thumbnail']), "")
-                          
                           desc = str(item.get('description') or item.get('shortDescription') or '').strip()
-                          if not desc or desc.lower() == item.get('title', '').lower():
-                              desc = "Epic 限时免费福利，建议立即入库体验。"
+                          if not desc or desc.lower() == item.get('title', '').lower(): desc = "Epic 限时免费福利，建议立即入库体验。"
                           
+                          # ⚡ Epic 绝对覆盖：如果已经爬到了，检查有没有强推配置要求覆盖文案
+                          forced_info = next((f for f in FORCED_EPIC if f['epic_slug'] == slug), None)
+                          if forced_info:
+                              if forced_info.get('_custom_thumb'): img = forced_info['_custom_thumb']
+                              if forced_info.get('_custom_desc'): desc = forced_info['_custom_desc']
+
                           if promos.get('promotionalOffers'):
                               offers = promos['promotionalOffers'][0]['promotionalOffers']
                               if offers and offers[0].get('discountSetting', {}).get('discountPercentage') == 0:
@@ -439,7 +425,6 @@ jobs:
                           
                           elif promos.get('upcomingPromotionalOffers'):
                               offers = promos['upcomingPromotionalOffers'][0]['promotionalOffers']
-                              # ⚡ 即将到来验证锁：只放行 discountPercentage 严格等于 0 的终极福利！
                               if offers and offers[0].get('discountSetting', {}).get('discountPercentage') == 0:
                                   upcoming_list.append({"zh_title": item['title'], "image": img, "start_date": offers[0]['startDate'], "end_date": offers[0]['endDate'], "platform": "Epic Games", "epic_slug": slug, "short_description": desc})
                   except: continue
@@ -458,7 +443,7 @@ jobs:
                           m = re.search(r'store\.epicgames\.com/(?:[a-z]{2}-[a-zA-Z]{2}/)?p/([^/?#]+)', actual_url)
                           if m:
                               slug = m.group(1)
-                              if slug in BLACKLIST: continue # ⚡ 聚合器接口也加上黑名单防线
+                              if slug in BLACKLIST: continue
                               if slug in official_epic_slugs: continue
                               img = g.get('thumbnail')
                               end_str = g.get('end_date')
@@ -475,6 +460,11 @@ jobs:
                               gp_desc = g.get('description', '').strip().split('\n')[0][:90]
                               if not gp_desc: gp_desc = "Epic 独立隐藏限免 / 额外赠送"
 
+                              forced_info = next((f for f in FORCED_EPIC if f['epic_slug'] == slug), None)
+                              if forced_info:
+                                  if forced_info.get('_custom_thumb'): img = forced_info['_custom_thumb']
+                                  if forced_info.get('_custom_desc'): gp_desc = forced_info['_custom_desc']
+
                               active_games.append({
                                   "zh_title": title, "thumbnail": img, "end_date": end_date,
                                   "platform": "Epic Games", "epic_slug": slug, "short_description": gp_desc
@@ -485,7 +475,9 @@ jobs:
               epic_existing_slugs = {g.get('epic_slug') for g in active_games if g.get('epic_slug')}
               for fe in FORCED_EPIC:
                   if fe['epic_slug'] not in epic_existing_slugs and fe['epic_slug'] not in BLACKLIST:
-                      active_games.append(fe)
+                      # 清理内部字段再推给前端
+                      clean_fe = {k: v for k, v in fe.items() if not k.startswith('_')}
+                      active_games.append(clean_fe)
                       print(f"✨ 跨平台入库成功: [Epic上帝模式] {fe['zh_title']}")
 
               post_update_with_sign("games.json", active_games)
