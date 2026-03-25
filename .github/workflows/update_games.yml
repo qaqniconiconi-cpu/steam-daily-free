@@ -21,7 +21,6 @@ jobs:
 
       - name: Run ETL Processor
         run: |
-          # ⚡ 核心修复：使用 'EOF' (加单引号) 防止 Shell 吞掉 GraphQL 里的变量！
           cat <<'EOF' > processor.py
           import requests
           import json
@@ -70,7 +69,9 @@ jobs:
                               if is_epic:
                                   m_epic = re.search(r'epicgames\.com/(?:[a-z]{2}-[a-zA-Z]{2}/)?p/([^/?#]+)', link)
                                   slug = m_epic.group(1) if m_epic else (link.split('/')[-1] if link else "")
-                                  keyword = slug if slug else name
+                                  
+                                  # ⚡ 核心修复 1：优先拿中文名去搜，而不是拿长串乱码短链去搜！
+                                  keyword = name if name else slug
                                   if not keyword: continue
                                   
                                   thumbnail = str(item.get('thumbnail', '')).strip()
@@ -134,7 +135,13 @@ jobs:
                                   if (not thumbnail or not desc) and slug:
                                       try:
                                           epic_url = link if link.startswith('http') else f"https://store.epicgames.com/zh-CN/p/{slug}"
-                                          res_epic = requests.get(epic_url, headers=HEADERS, timeout=5)
+                                          
+                                          # ⚡ 核心修复 2：伪装成 Googlebot 绕过 Cloudflare 防火墙拦截！
+                                          bot_headers = {
+                                              'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+                                              'Accept-Language': 'zh-CN,zh;q=0.9'
+                                          }
+                                          res_epic = requests.get(epic_url, headers=bot_headers, timeout=8)
                                           if res_epic.status_code == 200:
                                               h = res_epic.text
                                               if not thumbnail:
@@ -448,7 +455,6 @@ jobs:
                               if dt < current_time: is_expired = True
                           except: pass
                       
-                      # ⚡ 不死金牌逻辑：只要是你加在 manager 里的，绝对不准踢除！
                       if is_expired:
                           if str(app_id) in FORCED_ADD:
                               is_expired = False
@@ -554,7 +560,6 @@ jobs:
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
           
-          # ⚡ 核心修复：按严格顺序先 commit 本地变动，再去 pull --rebase，彻底告别推送冲突！
           git add steam_db.json || true
           git commit -m "Auto Update ETL Database [skip ci]" || true
           git pull --rebase origin main || true
