@@ -70,59 +70,55 @@ jobs:
                                   m_epic = re.search(r'epicgames\.com/(?:[a-z]{2}-[a-zA-Z]{2}/)?p/([^/?#]+)', link)
                                   slug = m_epic.group(1) if m_epic else (link.split('/')[-1] if link else "")
                                   
-                                  # ⚡ 核心修复 1：优先拿中文名去搜，而不是拿长串乱码短链去搜！
-                                  keyword = name if name else slug
-                                  if not keyword: continue
-                                  
                                   thumbnail = str(item.get('thumbnail', '')).strip()
                                   desc = str(item.get('desc', item.get('description', ''))).strip()
                                   name_zh = name
                                   
-                                  # 第 1 层：GraphQL 官方搜寻
-                                  if not thumbnail or not desc or not slug:
-                                      try:
-                                          query = '''
-                                          query searchStoreQuery($keyword: String!) {
-                                            Catalog {
-                                              searchStore(allowCountries: "CN", count: 3, keywords: $keyword) {
-                                                elements {
-                                                  title
-                                                  description
-                                                  urlSlug
-                                                  productSlug
-                                                  catalogNs { mappings { pageSlug } }
-                                                  keyImages { type url }
+                                  # 第 1 层：GraphQL 官方搜寻 (中文名优先，带长短链组合攻击)
+                                  if not thumbnail or not desc or not name_zh:
+                                      keywords_to_try = [name, slug, slug.split('-')[0] if slug else ""]
+                                      for kw in keywords_to_try:
+                                          if not kw: continue
+                                          if thumbnail and desc and name_zh and name_zh != slug: break
+                                          try:
+                                              query = '''
+                                              query searchStoreQuery($keyword: String!) {
+                                                Catalog {
+                                                  searchStore(allowCountries: "CN", count: 3, keywords: $keyword) {
+                                                    elements {
+                                                      title
+                                                      description
+                                                      urlSlug
+                                                      productSlug
+                                                      catalogNs { mappings { pageSlug } }
+                                                      keyImages { type url }
+                                                    }
+                                                  }
                                                 }
                                               }
-                                            }
-                                          }
-                                          '''
-                                          res_epic = requests.post('https://graphql.epicgames.com/graphql', json={'query': query, 'variables': {'keyword': keyword}}, timeout=8).json()
-                                          elements = res_epic.get('data', {}).get('Catalog', {}).get('searchStore', {}).get('elements', [])
-                                          if elements:
-                                              best_match = elements[0]
-                                              if slug:
-                                                  for el in elements:
-                                                      page_slugs = [m.get('pageSlug') for m in el.get('catalogNs', {}).get('mappings', []) if m.get('pageSlug')]
-                                                      if slug == el.get('urlSlug') or slug == el.get('productSlug') or slug in page_slugs:
-                                                          best_match = el; break
-                                              
-                                              if not slug:
-                                                  page_slugs = [m.get('pageSlug') for m in best_match.get('catalogNs', {}).get('mappings', []) if m.get('pageSlug')]
-                                                  slug = page_slugs[0] if page_slugs else (best_match.get('productSlug') or best_match.get('urlSlug'))
-                                              
-                                              if not thumbnail:
-                                                  img = next((i['url'] for i in best_match.get('keyImages', []) if i['type'] in ['OfferImageWide', 'Thumbnail']), "")
-                                                  if img: thumbnail = img
-                                              if not desc: desc = best_match.get('description', '')
-                                              if not name_zh: name_zh = best_match.get('title', '')
-                                      except: pass
+                                              '''
+                                              res_epic = requests.post('https://graphql.epicgames.com/graphql', json={'query': query, 'variables': {'keyword': kw}}, timeout=8).json()
+                                              elements = res_epic.get('data', {}).get('Catalog', {}).get('searchStore', {}).get('elements', [])
+                                              if elements:
+                                                  best_match = elements[0]
+                                                  if slug:
+                                                      for el in elements:
+                                                          page_slugs = [m.get('pageSlug') for m in el.get('catalogNs', {}).get('mappings', []) if m.get('pageSlug')]
+                                                          if slug == el.get('urlSlug') or slug == el.get('productSlug') or slug in page_slugs:
+                                                              best_match = el; break
+                                                  
+                                                  if not thumbnail:
+                                                      img = next((i['url'] for i in best_match.get('keyImages', []) if i['type'] in ['OfferImageWide', 'Thumbnail']), "")
+                                                      if img: thumbnail = img
+                                                  if not desc: desc = best_match.get('description', '')
+                                                  if not name_zh or name_zh == slug: name_zh = best_match.get('title', '')
+                                          except: pass
                                   
                                   # 第 2 层：IPv4 无盾 API 兜底
                                   if (not thumbnail or not desc) and slug:
                                       try:
                                           res_rest = requests.get(f"https://store-content-ipv4.ak.epicgames.com/api/zh-CN/content/products/{slug}", headers=HEADERS, timeout=5).json()
-                                          if not name_zh: name_zh = res_rest.get('title', '')
+                                          if not name_zh or name_zh == slug: name_zh = res_rest.get('title', '')
                                           if not desc: desc = res_rest.get('description', '')
                                           if not thumbnail:
                                               pages = res_rest.get('pages', [])
@@ -131,31 +127,35 @@ jobs:
                                                   if img: thumbnail = img; break
                                       except: pass
                                       
-                                  # 第 3 层：强行扒取网页源代码 Meta 标签兜底
+                                  # 第 3 层：【终极破盾】强行扒取网页 Meta 标签 (伪装 Twitter 爬虫)
                                   if (not thumbnail or not desc) and slug:
                                       try:
                                           epic_url = link if link.startswith('http') else f"https://store.epicgames.com/zh-CN/p/{slug}"
-                                          
-                                          # ⚡ 核心修复 2：伪装成 Googlebot 绕过 Cloudflare 防火墙拦截！
+                                          # ⚡ 破盾核心：伪装成推特官方爬虫，Cloudflare 默认对此类 UA 绝对放行，以保证社交媒体预览图正常显示
                                           bot_headers = {
-                                              'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+                                              'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_1) AppleWebKit/601.2.4 (KHTML, like Gecko) Version/9.0.1 Safari/601.2.4 facebookexternalhit/1.1 Facebot Twitterbot/1.0',
                                               'Accept-Language': 'zh-CN,zh;q=0.9'
                                           }
                                           res_epic = requests.get(epic_url, headers=bot_headers, timeout=8)
-                                          if res_epic.status_code == 200:
-                                              h = res_epic.text
-                                              if not thumbnail:
-                                                  m_img = re.search(r'property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', h) or re.search(r'content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']', h)
-                                                  if m_img: thumbnail = m_img.group(1) or m_img.group(2)
-                                              if not desc:
-                                                  m_desc = re.search(r'property=["\']og:description["\'][^>]+content=["\']([^"\']+)["\']', h) or re.search(r'content=["\']([^"\']+)["\'][^>]+property=["\']og:description["\']', h)
-                                                  if m_desc: desc = (m_desc.group(1) or m_desc.group(2)).replace('Epic Games Store', '').strip()
-                                              if not name_zh:
-                                                  m_title = re.search(r'<title>([^<]+)</title>', h)
-                                                  if m_title: name_zh = m_title.group(1).split('|')[0].strip()
+                                          h = res_epic.text
+                                          
+                                          # ⚡ 修复了隐藏的 group(2) IndexError 越界 Bug
+                                          if not thumbnail:
+                                              m_img = re.search(r'<meta[^>]+property=[\'"]og:image[\'"][^>]+content=[\'"]([^\'"]+)[\'"]', h, re.IGNORECASE) or \
+                                                      re.search(r'<meta[^>]+content=[\'"]([^\'"]+)[\'"][^>]+property=[\'"]og:image[\'"]', h, re.IGNORECASE)
+                                              if m_img: thumbnail = m_img.group(1)
+                                          if not desc:
+                                              m_desc = re.search(r'<meta[^>]+property=[\'"]og:description[\'"][^>]+content=[\'"]([^\'"]+)[\'"]', h, re.IGNORECASE) or \
+                                                       re.search(r'<meta[^>]+content=[\'"]([^\'"]+)[\'"][^>]+property=[\'"]og:description[\'"]', h, re.IGNORECASE)
+                                              if m_desc: desc = m_desc.group(1).replace('Epic Games Store', '').strip()
+                                          if not name_zh or name_zh == slug:
+                                              m_title = re.search(r'<title>([^<]+)</title>', h, re.IGNORECASE)
+                                              if m_title: 
+                                                  extracted = m_title.group(1).split('|')[0].strip()
+                                                  if extracted and extracted != "Epic Games Store": name_zh = extracted
                                       except: pass
 
-                                  if not slug: slug = keyword
+                                  if not slug: slug = name if name else "unknown"
                                   if not thumbnail: thumbnail = "https://via.placeholder.com/600x300/121215/9F70FA?text=Epic+Game"
                                   if not desc: desc = "Epic 限时免费福利，建议立即入库体验。"
                                   if not name_zh: name_zh = slug
@@ -455,6 +455,7 @@ jobs:
                               if dt < current_time: is_expired = True
                           except: pass
                       
+                      # ⚡ 不死金牌逻辑：只要是你加在 manager 里的，绝对不准踢除！
                       if is_expired:
                           if str(app_id) in FORCED_ADD:
                               is_expired = False
