@@ -13,7 +13,8 @@
       "short_description": "结合策略与随机性的魔塔like+肉鸽lite游戏",
       "is_100_off": false,
       "is_weekend": false,
-      "end_date": "2026-06-01T17:00:00Z"
+      "end_date": "限免进行中",
+      "_is_forced": true
     }
   },
   "2366060": {
@@ -104,10 +105,11 @@
       "steam_id": "821380",
       "zh_title": "Project Scrapper",
       "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/821380/header.jpg?t=1753867381",
-      "short_description": "2026-04-09T23:59:59Z",
+      "short_description": "Project Scrapper is a casual 2D beat-'em-up where players manipulate gravity to accomplish objectives. Armed with just gravitational rivets and an anti-gravity jump, players will need to come up with their own strategies on the fly to succeed.",
       "is_100_off": false,
       "is_weekend": false,
-      "end_date": "限免进行中"
+      "end_date": "2026-04-09T00:00:00Z",
+      "_is_forced": true
     }
   }
 }
