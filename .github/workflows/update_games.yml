@@ -347,9 +347,9 @@ jobs:
               for app_id in scraped_ids:
                   if app_id not in db: db[app_id] = {"status": "pending"}
 
+              # ⚡ 修复强制配置缓存问题：只要是 manager.yml 里的游戏，每次运行都强制刷新数据
               for f_id in FORCED_ADD:
-                  if db.get(f_id, {}).get('status') != 'valid':
-                      db[f_id] = {"status": "pending"}
+                  db[f_id] = {"status": "pending"}
 
               pending_ids = [app_id for app_id, data in db.items() if data.get('status') == 'pending']
               pending_ids.sort(key=lambda x: 0 if x in FORCED_ADD else 1) 
