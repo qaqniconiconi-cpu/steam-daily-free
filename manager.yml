@@ -8,6 +8,7 @@ add:
   - link: "https://store.steampowered.com/app/4138970"
     name: "拾取宝石后意外觉醒了复制魔王力量的逆天技能"
     type: "to_paid"
+    end_date: "2026-05-15T23:59:00Z"
 
   - link: "https://store.steampowered.com/app/821380/Project_Scrapper/"
     name: "Project Scrapper"
