@@ -57,7 +57,7 @@
     }
   },
   "640700": {
-    "status": "valid",
+    "status": "invalid",
     "type": "100_off",
     "details": {
       "steam_id": "640700",
