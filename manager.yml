@@ -6,11 +6,6 @@
 add:
     # 类别必填: 100_off(喜加一) / to_paid(转付费) / weekend(免费玩)
     # 结束时间选填: 可以留空自动查，也可以写 "近期即将转付费" 或 "2026-03-30T17:00:00Z"
-  - link: "https://store.steampowered.com/app/640700"
-    name: "Narvas"
-    type: "100_off"
-    desc: "像素闯关射击"
-
   - link: "https://store.steampowered.com/app/4138970"
     name: "拾取宝石后意外觉醒了复制魔王力量的逆天技能"
     type: "to_paid"
@@ -18,9 +13,23 @@ add:
   - link: "https://store.steampowered.com/app/821380/Project_Scrapper/"
     name: "Project Scrapper"
     type: "to_paid"
-    desc: "2026-04-09T23:59:59Z"
+    endtime: "2026-04-09T23:59:59Z"
 
   # Epic 现在也支持盲搜了，只要附带完整链接，连图片系统都会自己去抓：（这个不准）
+  - link: "https://store.epicgames.com/zh-CN/p/symmetry-44cf24"
+    name: "Symmetry"
+    type: "100_off"
+    thumbnail: ""
+    dec: "对称 时间管理生存游戏"
+    endtime: "2026-04-1T6:00:00Z"
+
+ -  link: "https://store.epicgames.com/zh-CN/p/need-for-spirit-offroad-edition-7eee16"
+    name: "I Need Spirit! Off-Road Edition"
+    type: "100_off"
+    thumbnail: ""
+    dec: "对称 时间管理生存游戏"
+    endtime: "2026-04-2T15:00:00Z"
+  
   - link: "https://store.epicgames.com/zh-CN/p/rockman2000-eb2f84"
     name: "光明斗士"
     type: "100_off"
@@ -33,12 +42,6 @@ add:
     endtime: "2026-03-29T03:00:00Z"
     thumbnail: "https://cdn1.epicgames.com/spt-assets/19d68c58dfc747168f4e2922994679a5/wave-gods-ammo-night-374mh.png?resize=1&w=480&h=270&quality=medium"
     desc: "扫射僵尸"
-
-  - link: "https://store.epicgames.com/zh-CN/p/electrician-simulator-164e9f"
-    name: "电工模拟器"
-    type: "100_off"  
-    endtime: "2026-03-26T08:00:00Z"                        # end_date 也是可选的，如果不写系统会显示“限免进行中”
-    desc: "赛博修电工"
     
 
 # 🚫 黑名单 (不管是不是真的，只要在这里就绝对不会显示)
