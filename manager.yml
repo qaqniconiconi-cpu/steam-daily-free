@@ -12,7 +12,7 @@ add:
   - link: "https://store.steampowered.com/app/821380/Project_Scrapper/"
     name: "Project Scrapper"
     type: "to_paid"
-    end_date: "2026-04-09T23:59:59Z"
+    end_date: "2026-04-09T00:00:00Z"
 
   # Epic 游戏 (修复了缩进和键名)
   - link: "https://store.epicgames.com/zh-CN/p/symmetry-44cf24"
