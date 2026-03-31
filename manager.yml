@@ -36,12 +36,12 @@ add:
     thumbnail: "https://cdn1.epicgames.com/spt-assets/2880548a77eb4b0d951a9d174df0e408/brightgunner-logo-7921b.png?resize=1&w=480&h=270&quality=medium"
     end_date: "2026-03-30T21:00:00Z"
     
-  - link: "https://store.epicgames.com/zh-CN/p/wave-gods-ammo-night-7eb978"
-    name: "波神:弹药之夜"
+  - link: "https://store.epicgames.com/zh-CN/p/together-after-dark-fa0ce0"
+    name: "Together After Dark"
     type: "100_off"
-    thumbnail: "https://cdn1.epicgames.com/spt-assets/19d68c58dfc747168f4e2922994679a5/wave-gods-ammo-night-374mh.png?resize=1&w=480&h=270&quality=medium"
-    desc: "扫射僵尸"
-    end_date: "2026-03-29T03:00:00Z"
+    thumbnail: "https://cdn1.epicgames.com/spt-assets/42a9aa9f7d7f40d1a0c1aa5c69565757/together-after-dark-logo-8d7q1.png?resize=1&w=480&h=270&quality=medium"
+    desc: "恐怖生存游戏"
+    end_date: "2026-04-05T02:59:00Z"
 
 
 
