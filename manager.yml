@@ -29,13 +29,7 @@ add:
     thumbnail: "https://cdn1.epicgames.com/spt-assets/dd2b44b0fdf14396999f780b3b1d824f/need-for-spirit-offroad-edition-logo-t7h0x.png?resize=1&w=480&h=270&quality=medium"
     desc: "越野驾驶模拟"
     end_date: "2026-04-02T15:00:00Z"
-  
-  - link: "https://store.epicgames.com/zh-CN/p/rockman2000-eb2f84"
-    name: "光明斗士"
-    type: "100_off"
-    thumbnail: "https://cdn1.epicgames.com/spt-assets/2880548a77eb4b0d951a9d174df0e408/brightgunner-logo-7921b.png?resize=1&w=480&h=270&quality=medium"
-    end_date: "2026-03-30T21:00:00Z"
-    
+
   - link: "https://store.epicgames.com/zh-CN/p/together-after-dark-fa0ce0"
     name: "Together After Dark"
     type: "100_off"
