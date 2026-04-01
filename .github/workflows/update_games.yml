@@ -41,7 +41,7 @@ jobs:
           BLACKLIST = set()
           FORCED_ADD = {}
           FORCED_EPIC = []
-          SCRAPED_EPIC_SLUGS = set() # 自动从论坛抓取的Epic潜水限免
+          SCRAPED_EPIC_SLUGS = set()
 
           if os.path.exists('manager.yml'):
               print("🎛️ 发现手动管理菜单 manager.yml，正在加载规则...")
@@ -66,9 +66,7 @@ jobs:
                               link = str(item.get('link', item.get('id', ''))).strip()
                               name = str(item.get('name', '')).strip()
                               custom_thumbnail = str(item.get('thumbnail', '')).strip()
-                              # 容错处理：支持 desc, description, dec
                               custom_desc = str(item.get('desc', item.get('description', item.get('dec', '')))).strip()
-                              # 容错处理：支持 end_date, endtime, endDate
                               raw_date = item.get('end_date', item.get('endtime', item.get('endDate', '')))
                               
                               is_epic = 'epicgames.com' in link.lower() or str(item.get('platform', '')).lower() == 'epic'
@@ -89,7 +87,6 @@ jobs:
                                       res_epic = requests.get(epic_url, headers=bot_headers, timeout=10)
                                       h = res_epic.text
                                       
-                                      # 增强 Epic 信息抓取
                                       if not thumbnail:
                                           m_img = re.search(r'(?:property|name)=[\'"]og:image[\'"][^>]+content=[\'"]([^\'"]+)[\'"]', h, re.IGNORECASE) or re.search(r'content=[\'"]([^\'"]+)[\'"][^>]+(?:property|name)=[\'"]og:image[\'"]', h, re.IGNORECASE)
                                           if m_img: thumbnail = m_img.group(1)
@@ -116,7 +113,6 @@ jobs:
                                   })
                                   continue
                               
-                              # Steam 处理
                               app_id = ""
                               m = re.search(r'app/(\d+)', link)
                               if m: app_id = m.group(1)
@@ -152,21 +148,6 @@ jobs:
                   res.raise_for_status()
                   return res.json()
               except: return []
-
-          def post_update_with_sign(filename, data):
-              method, path, ver = 'POST', '/v1/update/steam-daily-free', '1773281024'
-              ua = HEADERS['User-Agent']
-              for attempt in range(3):
-                  nonce = ''.join(random.choices(string.ascii_letters + string.digits, k=32))
-                  ts = str(int(time.time()))
-                  sig = hashlib.sha256(f"{method}{API_BASE}{path}?ver={ver}&nonce={nonce}&ts={ts}&ua={ua}".encode('utf-8')).hexdigest()
-                  headers = {'sig': sig, 'ts': ts, 'nonce': nonce, 'ver': ver, 'User-Agent': ua, 'filename': filename, 'Content-Type': 'application/json'}
-                  try:
-                      res = requests.post(f"https://{API_BASE}{path}", headers=headers, json=data, timeout=20)
-                      if res.status_code == 200: 
-                          print(f"✅ 上传 {filename} 成功!")
-                          return
-                  except: time.sleep(3)
 
           def parse_date_smart(text):
               text = text.lower()
@@ -257,15 +238,12 @@ jobs:
                   game_type = "unknown"
                   if forced_info and forced_info.get('type'): game_type = forced_info.get('type')
                   elif is_100_off: game_type = "100_off"
-                  # 优化 Free Weekend 的判断逻辑
                   elif (has_free_license or (not is_free and is_100_off == False and price.get('final', 0) > 0)): 
-                      # 如果 Steam 没明确标定，但在周末有特殊折扣包
                       game_type = "weekend"
                   elif is_free and end_date != "N/A": game_type = "to_paid"
                   else: return {"status": "invalid"}
 
                   z_title = forced_info.get('name') if forced_info and forced_info.get('name') else d.get('name')
-                  
                   raw_desc = d.get('short_description', '') if d else ""
                   short_desc = forced_info.get('_custom_desc') if forced_info and forced_info.get('_custom_desc') else (raw_desc.strip().split('。')[0] if raw_desc else "福利放送中，建议立即入库体验")
                   thumbnail = forced_info.get('_custom_thumb') if forced_info and forced_info.get('_custom_thumb') else d.get('header_image')
@@ -278,10 +256,35 @@ jobs:
                           "steam_id": str(app_id), "zh_title": z_title, "thumbnail": thumbnail,
                           "short_description": short_desc,
                           "is_100_off": game_type == "100_off", "is_weekend": game_type == "weekend", "end_date": end_date,
-                          "_is_forced": bool(forced_info) # 记录是否为强制添加，用于后续清理
+                          "_is_forced": bool(forced_info)
                       }
                   }
               except Exception as e: return {"status": "invalid"}
+
+          # --- 新增的抓取打折游戏的方法 ---
+          def fetch_steam_deals():
+              print("🔥 开始抓取 Steam 实时热搜折扣...")
+              deals_list = []
+              try:
+                  url = f"https://store.steampowered.com/api/storesearch/?term=&l=schinese&cc=cn&category1=998&on_sale=1&v={int(time.time())}"
+                  res = requests.get(url, headers=HEADERS, timeout=15)
+                  if res.status_code == 200:
+                      data = res.json()
+                      if data.get('items'):
+                          for item in data['items']:
+                              deals_list.append({
+                                  "id": item['id'],
+                                  "name": item['name'],
+                                  "img": item.get('tiny_image', '').replace('capsule_sm_120', 'header'),
+                                  "discount": item.get('price', {}).get('discount_percent', 0),
+                                  "originalPrice": f"{item.get('price', {}).get('initial', 0) / 100:.2f}",
+                                  "finalPrice": f"{item.get('price', {}).get('final', 0) / 100:.2f}"
+                              })
+                  # 按折扣力度由大到小排序
+                  deals_list.sort(key=lambda x: x.get('discount', 0), reverse=True)
+              except Exception as e:
+                  print(f"⚠️ 抓取折扣失败: {e}")
+              return deals_list
 
           def main():
               db = {}
@@ -300,11 +303,9 @@ jobs:
                       with open(DB_FILE, 'r', encoding='utf-8') as f: db = json.load(f)
                   except: pass
 
-              # ⚡ 核心修复：清理已从 manager.yml 移除的 Steam 幽灵游戏
               for app_id, data in list(db.items()):
                   if data.get('status') == 'valid' and data.get('details', {}).get('_is_forced'):
                       if str(app_id) not in FORCED_ADD:
-                          # 如果曾经是强制添加的，但现在不在配置里了，重置状态去过一遍 Steam 真实验证
                           db[app_id] = {"status": "pending"}
 
               scraped_ids = set()
@@ -329,7 +330,6 @@ jobs:
                       res = requests.get(s, headers=HEADERS, timeout=10)
                       if res.status_code == 200: 
                           scraped_ids.update(re.findall(r'app/(\d+)', res.text))
-                          # 自动嗅探 Epic 隐藏限免链接
                           epic_matches = re.findall(r'store\.epicgames\.com/(?:[a-z]{2}-[a-zA-Z]{2}/)?p/([^/?#"\']+)', res.text)
                           SCRAPED_EPIC_SLUGS.update(epic_matches)
                   except: pass
@@ -347,7 +347,6 @@ jobs:
               for app_id in scraped_ids:
                   if app_id not in db: db[app_id] = {"status": "pending"}
 
-              # ⚡ 修复强制配置缓存问题：只要是 manager.yml 里的游戏，每次运行都强制刷新数据
               for f_id in FORCED_ADD:
                   db[f_id] = {"status": "pending"}
 
@@ -390,7 +389,6 @@ jobs:
                           elif g_type == "weekend": f_weekend.append(clean_details)
 
               upcoming_list = []
-              
               epic_urls = [
                   "https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=CN&allowCountries=CN", 
                   "https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=US&allowCountries=US"
@@ -474,25 +472,38 @@ jobs:
 
               epic_existing_slugs = {g.get('epic_slug') for g in active_games if g.get('epic_slug')}
               
-              # 注入从 Reddit 爬到的隐藏 Epic 游戏 (如果没有被官方API或GamerPower抓到)
               for scraped_slug in SCRAPED_EPIC_SLUGS:
                   if scraped_slug not in epic_existing_slugs and scraped_slug not in BLACKLIST:
-                      # 如果爬到了但不在常规API里，大概率是隐藏的100% off，我们可以构造一个基础版加入待验证或直接展示
-                      pass # 这里为了不产生脏数据，我们先依赖 GamerPower 和手动强制添加
+                      pass 
 
               for fe in FORCED_EPIC:
                   if fe['epic_slug'] not in epic_existing_slugs and fe['epic_slug'] not in BLACKLIST:
-                      # 清理内部字段再推给前端
                       clean_fe = {k: v for k, v in fe.items() if not k.startswith('_')}
                       active_games.append(clean_fe)
                       print(f"✨ 跨平台入库成功: [Epic上帝模式] {fe['zh_title']}")
 
-              post_update_with_sign("games.json", active_games)
-              post_update_with_sign("upcoming.json", upcoming_list)
-              post_update_with_sign("intel.json", {"to_paid": f_to_paid, "free_weekend": f_weekend})
+              # 🎯 调用新增的 Steam 折扣抓取
+              steam_deals = fetch_steam_deals()
+
+              # 🎯 将所有数据直接保存为本地 JSON 文件
+              print("💾 正在将数据保存到工作区目录...")
+              
+              with open('games.json', 'w', encoding='utf-8') as f:
+                  json.dump(active_games, f, ensure_ascii=False, indent=2)
+                  
+              with open('upcoming.json', 'w', encoding='utf-8') as f:
+                  json.dump(upcoming_list, f, ensure_ascii=False, indent=2)
+                  
+              with open('intel.json', 'w', encoding='utf-8') as f:
+                  json.dump({"to_paid": f_to_paid, "free_weekend": f_weekend}, f, ensure_ascii=False, indent=2)
+              
+              with open('deals.json', 'w', encoding='utf-8') as f:
+                  json.dump(steam_deals, f, ensure_ascii=False, indent=2)
 
               with open(DB_FILE, 'w', encoding='utf-8') as f:
                   json.dump(db, f, ensure_ascii=False, indent=2)
+                  
+              print("✅ 所有 JSON 数据生成完毕！")
 
           if __name__ == "__main__": main()
           EOF
@@ -502,7 +513,7 @@ jobs:
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
           
-          git add steam_db.json || true
+          git add steam_db.json games.json upcoming.json intel.json deals.json || true
           git commit -m "Auto Update ETL Database [skip ci]" || true
           git pull --rebase origin main || true
           git push
