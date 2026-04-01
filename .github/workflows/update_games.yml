@@ -313,6 +313,10 @@ jobs:
                                   m_orig = re.search(r'<div class="discount_original_price">[^0-9]*([\d\.,]+)', b)
                                   m_final = re.search(r'<div class="discount_final_price">[^0-9]*([\d\.,]+)', b)
                                   
+                                  # 💡 核心黑科技：从 HTML 的隐藏提示框中提取该游戏的历史总评测数！
+                                  m_reviews = re.search(r'([0-9,]+)\s*(?:篇|user reviews)', b)
+                                  review_count = int(m_reviews.group(1).replace(',', '')) if m_reviews else 0
+                                  
                                   if m_orig and m_final:
                                       orig = float(m_orig.group(1).replace(',', ''))
                                       final = float(m_final.group(1).replace(',', ''))
@@ -325,8 +329,7 @@ jobs:
                                               "discount": discount,
                                               "originalPrice": f"{orig:.2f}",
                                               "finalPrice": f"{final:.2f}",
-                                              # 💡 核心升级：记录它在热销榜单上的原始排名位置，用于“推荐”排序
-                                              "recommend_index": len(deals_list) 
+                                              "reviewCount": review_count # <--- 注入真实热度基因
                                           })
                                           seen_ids.add(app_id)
                               except Exception:
