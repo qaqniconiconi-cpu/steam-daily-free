@@ -114,5 +114,19 @@
   },
   "3360110": {
     "status": "invalid"
+  },
+  "1590840": {
+    "status": "valid",
+    "type": "100_off",
+    "details": {
+      "steam_id": "1590840",
+      "zh_title": "Depths Of Horror: Mushroom Day",
+      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1590840/header.jpg?t=1775059568",
+      "short_description": "这是一个3D第一人称冒险和恐怖游戏，让你沉浸在恐惧的深处",
+      "is_100_off": true,
+      "is_weekend": false,
+      "end_date": "2026-04-06T17:00:00Z",
+      "_is_forced": false
+    }
   }
 }
