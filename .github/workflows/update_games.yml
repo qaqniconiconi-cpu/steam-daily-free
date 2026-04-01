@@ -149,6 +149,21 @@ jobs:
                   return res.json()
               except: return []
 
+          def post_update_with_sign(filename, data):
+              method, path, ver = 'POST', '/v1/update/steam-daily-free', '1773281024'
+              ua = HEADERS['User-Agent']
+              for attempt in range(3):
+                  nonce = ''.join(random.choices(string.ascii_letters + string.digits, k=32))
+                  ts = str(int(time.time()))
+                  sig = hashlib.sha256(f"{method}{API_BASE}{path}?ver={ver}&nonce={nonce}&ts={ts}&ua={ua}".encode('utf-8')).hexdigest()
+                  headers = {'sig': sig, 'ts': ts, 'nonce': nonce, 'ver': ver, 'User-Agent': ua, 'filename': filename, 'Content-Type': 'application/json'}
+                  try:
+                      res = requests.post(f"https://{API_BASE}{path}", headers=headers, json=data, timeout=20)
+                      if res.status_code == 200: 
+                          print(f"✅ 上传 {filename} 成功!")
+                          return
+                  except: time.sleep(3)
+
           def parse_date_smart(text):
               text = text.lower()
               now = datetime.utcnow()
