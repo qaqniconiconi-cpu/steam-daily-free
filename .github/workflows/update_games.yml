@@ -334,8 +334,16 @@ jobs:
                                           seen_ids.add(app_id)
                               except Exception:
                                   pass
+                  
+                  # 💡 1. 质量提纯：在后端直接按“历史总评测数”由大到小全局排序
+                  deals_list.sort(key=lambda x: x.get('reviewCount', 0), reverse=True)
+                  
+                  # 💡 2. 数量控制：无情淘汰，只保留排名前 60 的绝对知名大作！
+                  deals_list = deals_list[:60]
+                  
               except Exception as e:
                   print(f"⚠️ 抓取折扣失败: {e}")
+                  
               return deals_list
 
           def main():
