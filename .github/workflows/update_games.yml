@@ -277,6 +277,7 @@ jobs:
               except Exception as e: return {"status": "invalid"}
 
           # --- 新增的抓取打折游戏的方法 ---
+          # --- 替换原有的 fetch_steam_deals 方法 ---
           def fetch_steam_deals():
               print("🔥 开始抓取 Steam 实时热搜折扣...")
               deals_list = []
@@ -287,14 +288,27 @@ jobs:
                       data = res.json()
                       if data.get('items'):
                           for item in data['items']:
-                              deals_list.append({
-                                  "id": item['id'],
-                                  "name": item['name'],
-                                  "img": item.get('tiny_image', '').replace('capsule_sm_120', 'header'),
-                                  "discount": item.get('price', {}).get('discount_percent', 0),
-                                  "originalPrice": f"{item.get('price', {}).get('initial', 0) / 100:.2f}",
-                                  "finalPrice": f"{item.get('price', {}).get('final', 0) / 100:.2f}"
-                              })
+                              # 安全获取价格字典
+                              price_info = item.get('price')
+                              
+                              # 如果没有价格字段，直接跳过
+                              if not price_info:
+                                  continue
+                                  
+                              discount = price_info.get('discount_percent', 0)
+                              initial_price = price_info.get('initial', 0)
+                              final_price = price_info.get('final', 0)
+
+                              # 🛑 核心过滤逻辑：只有折扣大于 0，且原价大于 0 的真实付费游戏才收录
+                              if discount > 0 and initial_price > 0:
+                                  deals_list.append({
+                                      "id": item['id'],
+                                      "name": item['name'],
+                                      "img": item.get('tiny_image', '').replace('capsule_sm_120', 'header'),
+                                      "discount": discount,
+                                      "originalPrice": f"{initial_price / 100:.2f}",
+                                      "finalPrice": f"{final_price / 100:.2f}"
+                                  })
                   # 按折扣力度由大到小排序
                   deals_list.sort(key=lambda x: x.get('discount', 0), reverse=True)
               except Exception as e:
