@@ -276,16 +276,15 @@ jobs:
                   }
               except Exception as e: return {"status": "invalid"}
 
-          # --- 替换为：高质量榜单 + 深度抓取版 ---
+          # --- 替换为：国区顶流大作专供版 ---
           def fetch_steam_deals():
-              print("🔥 开始抓取 Steam 实时热搜折扣 (高质量榜单版)...")
+              print("🔥 开始抓取 Steam 实时热搜折扣 (国区顶流大作版)...")
               deals_list = []
               seen_ids = set()
               try:
-                  # 循环抓取前 3 页（约 150 个热门高质量折扣游戏）
-                  for page in range(3):
-                      # 💡 核心升级：加入了 filter=topsellers，过滤掉所有无人问津的垃圾游戏
-                      search_url = f"https://store.steampowered.com/search/results/?query&start={page*50}&count=50&dynamic_data=&specials=1&infinite=1&cc=cn&l=schinese&filter=topsellers"
+                  # 💡 黑科技 1：改用 sort_by=Reviews_DESC，直接让 Steam 返回全网评测数最高的打折神作
+                  for page in range(2): # 抓前100名进行提纯足够了
+                      search_url = f"https://store.steampowered.com/search/results/?query&start={page*50}&count=50&dynamic_data=&specials=1&infinite=1&cc=cn&l=schinese&sort_by=Reviews_DESC"
                       res = requests.get(search_url, headers=HEADERS, timeout=15)
                       
                       if res.status_code == 200:
@@ -296,7 +295,6 @@ jobs:
                           for b in blocks:
                               try:
                                   app_id = b.split('"')[0]
-                                  # 去重保护
                                   if app_id in seen_ids: continue
                                   
                                   m_title = re.search(r'<span class="title">([^<]+)</span>', b)
@@ -313,15 +311,23 @@ jobs:
                                   m_orig = re.search(r'<div class="discount_original_price">[^0-9]*([\d\.,]+)', b)
                                   m_final = re.search(r'<div class="discount_final_price">[^0-9]*([\d\.,]+)', b)
                                   
-                                  # 💡 核心黑科技：从 HTML 的隐藏提示框中提取该游戏的历史总评测数！
-                                  m_reviews = re.search(r'([0-9,]+)\s*(?:篇|user reviews)', b)
-                                  review_count = int(m_reviews.group(1).replace(',', '')) if m_reviews else 0
+                                  # 💡 黑科技 2：精准提取评测数与“好评如潮”等口碑标签
+                                  m_review_data = re.search(r'data-tooltip-html="([^&]+)&lt;br&gt;[^0-9]*([0-9,]+) 篇', b)
+                                  review_count = 0
+                                  review_tier = "多半好评"
+                                  if m_review_data:
+                                      review_tier = m_review_data.group(1)
+                                      review_count = int(m_review_data.group(2).replace(',', ''))
+                                  else:
+                                      m_fallback = re.search(r'([0-9,]+)\s*(?:篇|user reviews)', b)
+                                      if m_fallback: review_count = int(m_fallback.group(1).replace(',', ''))
                                   
                                   if m_orig and m_final:
                                       orig = float(m_orig.group(1).replace(',', ''))
                                       final = float(m_final.group(1).replace(',', ''))
                                       
-                                      if discount > 0 and orig > 0:
+                                      # 🛑 铁血过滤：必须打折、必须不是免费游戏，且评测数必须大于 10,000！
+                                      if discount > 0 and orig > 0 and review_count > 10000:
                                           deals_list.append({
                                               "id": app_id,
                                               "name": title,
@@ -329,21 +335,24 @@ jobs:
                                               "discount": discount,
                                               "originalPrice": f"{orig:.2f}",
                                               "finalPrice": f"{final:.2f}",
-                                              "reviewCount": review_count # <--- 注入真实热度基因
+                                              "reviewCount": review_count,
+                                              "reviewTier": review_tier # 记录口碑
                                           })
                                           seen_ids.add(app_id)
                               except Exception:
                                   pass
                   
-                  # 💡 1. 质量提纯：在后端直接按“历史总评测数”由大到小全局排序
+                  # 再次确保按评测数绝对倒序
                   deals_list.sort(key=lambda x: x.get('reviewCount', 0), reverse=True)
-                  
-                  # 💡 2. 数量控制：无情淘汰，只保留排名前 60 的绝对知名大作！
+                  # 💡 数量控制：无情淘汰，只保留排名前 60 的绝对知名大作！
                   deals_list = deals_list[:60]
                   
+                  # 重新赋予推荐索引（以便前端智能推荐排序使用）
+                  for idx, deal in enumerate(deals_list):
+                      deal['recommend_index'] = idx
+                      
               except Exception as e:
                   print(f"⚠️ 抓取折扣失败: {e}")
-                  
               return deals_list
 
           def main():
