@@ -485,25 +485,20 @@ jobs:
               # 🎯 调用新增的 Steam 折扣抓取
               steam_deals = fetch_steam_deals()
 
-              # 🎯 将所有数据直接保存为本地 JSON 文件
-              print("💾 正在将数据保存到工作区目录...")
-              
-              with open('games.json', 'w', encoding='utf-8') as f:
-                  json.dump(active_games, f, ensure_ascii=False, indent=2)
-                  
-              with open('upcoming.json', 'w', encoding='utf-8') as f:
-                  json.dump(upcoming_list, f, ensure_ascii=False, indent=2)
-                  
-              with open('intel.json', 'w', encoding='utf-8') as f:
-                  json.dump({"to_paid": f_to_paid, "free_weekend": f_weekend}, f, ensure_ascii=False, indent=2)
-              
-              with open('deals.json', 'w', encoding='utf-8') as f:
-                  json.dump(steam_deals, f, ensure_ascii=False, indent=2)
+              # 🎯 统一将数据推送到你们的独立后端 (system.et-api.com)
+              print("🚀 正在将喜加一数据推送到后端 API...")
+              post_update_with_sign("games.json", active_games)
+              post_update_with_sign("upcoming.json", upcoming_list)
+              post_update_with_sign("intel.json", {"to_paid": f_to_paid, "free_weekend": f_weekend})
 
+              print("🚀 正在将特惠折扣数据推送到后端 API...")
+              post_update_with_sign("deals.json", steam_deals)
+
+              # 本地只保留 ETL 引擎用来查重和记录状态的数据库
               with open(DB_FILE, 'w', encoding='utf-8') as f:
                   json.dump(db, f, ensure_ascii=False, indent=2)
                   
-              print("✅ 所有 JSON 数据生成完毕！")
+              print("✅ 所有业务数据已成功更新至后端！")
 
           if __name__ == "__main__": main()
           EOF
