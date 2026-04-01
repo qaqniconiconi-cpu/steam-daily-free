@@ -277,14 +277,16 @@ jobs:
               except Exception as e: return {"status": "invalid"}
 
           # --- 替换为：国区顶流大作专供版 ---
+          # --- 替换为：官方热门榜单前 50 名精简版 ---
           def fetch_steam_deals():
-              print("🔥 开始抓取 Steam 实时热搜折扣 (国区顶流大作版)...")
+              print("🔥 开始抓取 Steam 实时热搜折扣 (官方热门前50版)...")
               deals_list = []
               seen_ids = set()
               try:
-                  # 💡 黑科技 1：改用 sort_by=Reviews_DESC，直接让 Steam 返回全网评测数最高的打折神作
-                  for page in range(2): # 抓前100名进行提纯足够了
-                      search_url = f"https://store.steampowered.com/search/results/?query&start={page*50}&count=50&dynamic_data=&specials=1&infinite=1&cc=cn&l=schinese&sort_by=Reviews_DESC"
+                  # 抓取前 3 页以确保过滤掉免费游戏后，依然能凑足纯净的 50 个
+                  for page in range(3): 
+                      # 💡 核心：使用 filter=topsellers，让 Steam 官方算法帮我们找出当下最热门的游戏
+                      search_url = f"https://store.steampowered.com/search/results/?query&start={page*50}&count=50&dynamic_data=&specials=1&infinite=1&cc=cn&l=schinese&filter=topsellers"
                       res = requests.get(search_url, headers=HEADERS, timeout=15)
                       
                       if res.status_code == 200:
@@ -311,7 +313,6 @@ jobs:
                                   m_orig = re.search(r'<div class="discount_original_price">[^0-9]*([\d\.,]+)', b)
                                   m_final = re.search(r'<div class="discount_final_price">[^0-9]*([\d\.,]+)', b)
                                   
-                                  # 💡 黑科技 2：精准提取评测数与“好评如潮”等口碑标签
                                   m_review_data = re.search(r'data-tooltip-html="([^&]+)&lt;br&gt;[^0-9]*([0-9,]+) 篇', b)
                                   review_count = 0
                                   review_tier = "多半好评"
@@ -326,8 +327,8 @@ jobs:
                                       orig = float(m_orig.group(1).replace(',', ''))
                                       final = float(m_final.group(1).replace(',', ''))
                                       
-                                      # 🛑 铁血过滤：必须打折、必须不是免费游戏，且评测数必须大于 10,000！
-                                      if discount > 0 and orig > 0 and review_count > 10000:
+                                      # 🛑 放弃硬性评测数门槛！只要它是真实打折的付费游戏，且在热销榜上，我们就收录。
+                                      if discount > 0 and orig > 0:
                                           deals_list.append({
                                               "id": app_id,
                                               "name": title,
@@ -336,18 +337,17 @@ jobs:
                                               "originalPrice": f"{orig:.2f}",
                                               "finalPrice": f"{final:.2f}",
                                               "reviewCount": review_count,
-                                              "reviewTier": review_tier # 记录口碑
+                                              "reviewTier": review_tier
                                           })
                                           seen_ids.add(app_id)
                               except Exception:
                                   pass
                   
-                  # 再次确保按评测数绝对倒序
-                  deals_list.sort(key=lambda x: x.get('reviewCount', 0), reverse=True)
-                  # 💡 数量控制：无情淘汰，只保留排名前 60 的绝对知名大作！
-                  deals_list = deals_list[:60]
+                  # 💡 数量控制：严格截取前 50 名
+                  # 注：这里不再使用 sort 进行强行重排，而是直接尊重 Steam 原生的热销顺位！
+                  deals_list = deals_list[:50]
                   
-                  # 重新赋予推荐索引（以便前端智能推荐排序使用）
+                  # 重新赋予推荐索引，让前端的“智能推荐”排序能够完美还原这个官方热度榜单
                   for idx, deal in enumerate(deals_list):
                       deal['recommend_index'] = idx
                       
