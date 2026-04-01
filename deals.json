@@ -1,0 +1,82 @@
+[
+  {
+    "id": 730,
+    "name": "Counter-Strike 2",
+    "img": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/730/capsule_231x87_schinese.jpg?t=1749053861",
+    "discount": 0,
+    "originalPrice": "0.00",
+    "finalPrice": "0.00"
+  },
+  {
+    "id": 3321460,
+    "name": "红色沙漠",
+    "img": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3321460/e9900549a42f555a8f644b88a2c9b86cd6df8a6e/capsule_231x87_schinese.jpg?t=1774868383",
+    "discount": 0,
+    "originalPrice": "268.00",
+    "finalPrice": "268.00"
+  },
+  {
+    "id": 2868840,
+    "name": "Slay the Spire 2",
+    "img": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2868840/fb0ad136e9eaa4297a1ab3440d88ecb7209f44a2/capsule_231x87.jpg?t=1773851542",
+    "discount": 0,
+    "originalPrice": "88.00",
+    "finalPrice": "88.00"
+  },
+  {
+    "id": 1808500,
+    "name": "ARC Raiders",
+    "img": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1808500/542a243d39bd7ed791359be9e96c82f419b81475/capsule_231x87.jpg?t=1772007651",
+    "discount": 0,
+    "originalPrice": "0.00",
+    "finalPrice": "0.00"
+  },
+  {
+    "id": 230410,
+    "name": "Warframe 星际战甲",
+    "img": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/230410/80dd2d83df77e9037b14b0076713d2e63666192d/capsule_231x87.jpg?t=1774467330",
+    "discount": 0,
+    "originalPrice": "0.00",
+    "finalPrice": "0.00"
+  },
+  {
+    "id": 1172470,
+    "name": "Apex Legends™",
+    "img": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1172470/b2163cc2e8d366e26d8d463d178d86690d9a402e/capsule_231x87.jpg?t=1770753360",
+    "discount": 0,
+    "originalPrice": "0.00",
+    "finalPrice": "0.00"
+  },
+  {
+    "id": 3764200,
+    "name": "Resident Evil Requiem",
+    "img": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3764200/64f506b9b6210df6055136e7017f2082957e5b22/capsule_231x87.jpg?t=1772587704",
+    "discount": 0,
+    "originalPrice": "348.00",
+    "finalPrice": "348.00"
+  },
+  {
+    "id": 578080,
+    "name": "PUBG: BATTLEGROUNDS",
+    "img": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/578080/14f42ab797699a9c9f137fda66582d8776da4330/capsule_231x87.jpg?t=1764817633",
+    "discount": 0,
+    "originalPrice": "0.00",
+    "finalPrice": "0.00"
+  },
+  {
+    "id": 3240220,
+    "name": "Grand Theft Auto V 增强版",
+    "img": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3240220/a318bd9affe8eee32984b18794b273c256e9b2d6/capsule_231x87.jpg?t=1765479644",
+    "discount": 0,
+    "originalPrice": "149.00",
+    "finalPrice": "74.50"
+  },
+  {
+    "id": 2767030,
+    "name": "漫威争锋",
+    "img": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2767030/af4c78a5eff5bd0847b2d6ef2eee37782221ebd4/capsule_231x87_schinese.jpg?t=1774000818",
+    "discount": 0,
+    "originalPrice": "0.00",
+    "finalPrice": "0.00"
+  }
+]
