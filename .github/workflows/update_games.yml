@@ -276,64 +276,61 @@ jobs:
                   }
               except Exception as e: return {"status": "invalid"}
 
-          # --- 新增的抓取打折游戏的方法 ---
-          # --- 替换原有的 fetch_steam_deals 方法 ---
-          # --- 替换原有的 fetch_steam_deals 方法（终极网页解析版） ---
+          # --- 替换为：高质量榜单 + 深度抓取版 ---
           def fetch_steam_deals():
-              print("🔥 开始抓取 Steam 实时热搜折扣 (网页防屏蔽版)...")
+              print("🔥 开始抓取 Steam 实时热搜折扣 (高质量榜单版)...")
               deals_list = []
+              seen_ids = set()
               try:
-                  # 使用 Steam 网页原生搜索接口，完美避开 api/storesearch 被机房 IP 封禁的问题
-                  search_url = "https://store.steampowered.com/search/results/?query&start=0&count=50&dynamic_data=&specials=1&infinite=1&cc=cn&l=schinese"
-                  res = requests.get(search_url, headers=HEADERS, timeout=15)
-                  
-                  if res.status_code == 200:
-                      data = res.json()
-                      html = data.get('results_html', '')
+                  # 循环抓取前 3 页（约 150 个热门高质量折扣游戏）
+                  for page in range(3):
+                      # 💡 核心升级：加入了 filter=topsellers，过滤掉所有无人问津的垃圾游戏
+                      search_url = f"https://store.steampowered.com/search/results/?query&start={page*50}&count=50&dynamic_data=&specials=1&infinite=1&cc=cn&l=schinese&filter=topsellers"
+                      res = requests.get(search_url, headers=HEADERS, timeout=15)
                       
-                      # 以游戏卡片切分 HTML 代码块
-                      blocks = html.split('data-ds-appid="')[1:]
-                      for b in blocks:
-                          try:
-                              app_id = b.split('"')[0]
-                              
-                              # 抓取标题
-                              m_title = re.search(r'<span class="title">([^<]+)</span>', b)
-                              if not m_title: continue
-                              title = m_title.group(1).strip()
-                              
-                              # 抓取大图
-                              m_img = re.search(r'<img src="([^"]+)"', b)
-                              img = m_img.group(1).replace('capsule_sm_120', 'header') if m_img else ""
-                              
-                              # 抓取折扣比例
-                              m_pct = re.search(r'<div class="discount_pct">\s*-(\d+)%\s*</div>', b)
-                              if not m_pct: continue
-                              discount = int(m_pct.group(1))
-                              
-                              # 抓取原价和现价（正则兼容可能出现的 strike 删除线标签等）
-                              m_orig = re.search(r'<div class="discount_original_price">[^0-9]*([\d\.,]+)', b)
-                              m_final = re.search(r'<div class="discount_final_price">[^0-9]*([\d\.,]+)', b)
-                              
-                              if m_orig and m_final:
-                                  orig = float(m_orig.group(1).replace(',', ''))
-                                  final = float(m_final.group(1).replace(',', ''))
+                      if res.status_code == 200:
+                          data = res.json()
+                          html = data.get('results_html', '')
+                          blocks = html.split('data-ds-appid="')[1:]
+                          
+                          for b in blocks:
+                              try:
+                                  app_id = b.split('"')[0]
+                                  # 去重保护
+                                  if app_id in seen_ids: continue
                                   
-                                  # 🛑 终极过滤：只保留真正打折且非免费的游戏
-                                  if discount > 0 and orig > 0:
-                                      deals_list.append({
-                                          "id": app_id,
-                                          "name": title,
-                                          "img": img,
-                                          "discount": discount,
-                                          "originalPrice": f"{orig:.2f}",
-                                          "finalPrice": f"{final:.2f}"
-                                      })
-                          except Exception:
-                              pass
-                  
-                  # 按折扣力度由大到小排序
-                  deals_list.sort(key=lambda x: x.get('discount', 0), reverse=True)
+                                  m_title = re.search(r'<span class="title">([^<]+)</span>', b)
+                                  if not m_title: continue
+                                  title = m_title.group(1).strip()
+                                  
+                                  m_img = re.search(r'<img src="([^"]+)"', b)
+                                  img = m_img.group(1).replace('capsule_sm_120', 'header') if m_img else ""
+                                  
+                                  m_pct = re.search(r'<div class="discount_pct">\s*-(\d+)%\s*</div>', b)
+                                  if not m_pct: continue
+                                  discount = int(m_pct.group(1))
+                                  
+                                  m_orig = re.search(r'<div class="discount_original_price">[^0-9]*([\d\.,]+)', b)
+                                  m_final = re.search(r'<div class="discount_final_price">[^0-9]*([\d\.,]+)', b)
+                                  
+                                  if m_orig and m_final:
+                                      orig = float(m_orig.group(1).replace(',', ''))
+                                      final = float(m_final.group(1).replace(',', ''))
+                                      
+                                      if discount > 0 and orig > 0:
+                                          deals_list.append({
+                                              "id": app_id,
+                                              "name": title,
+                                              "img": img,
+                                              "discount": discount,
+                                              "originalPrice": f"{orig:.2f}",
+                                              "finalPrice": f"{final:.2f}",
+                                              # 💡 核心升级：记录它在热销榜单上的原始排名位置，用于“推荐”排序
+                                              "recommend_index": len(deals_list) 
+                                          })
+                                          seen_ids.add(app_id)
+                              except Exception:
+                                  pass
               except Exception as e:
                   print(f"⚠️ 抓取折扣失败: {e}")
               return deals_list
