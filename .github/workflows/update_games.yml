@@ -281,111 +281,89 @@ jobs:
           # 💡 全新：大厂级多源聚合 API (CheapShark + SteamSpy + Steam底层)
           # ==========================================
           def fetch_steam_deals():
-            print("🔥 启动增强版 Steam 深度数据引擎...")
-            deals_list = []
-            seen_ids = set()
-        
-            search_url = "https://store.steampowered.com/search/results/?query&specials=1&filter=topsellers&cc=cn&l=schinese"
-            try:
-                res = requests.get(search_url, headers=HEADERS, timeout=15)
-                html = res.text
-                blocks = html.split('data-ds-appid="')[1:][:40] # 取前40名
-        
-                for idx, b in enumerate(blocks):
-                    app_id = b.split('"')[0]
-                    if app_id in seen_ids: continue
-        
-                    title = re.search(r'<span class="title">([^<]+)</span>', b).group(1)
-                    img = f"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{app_id}/header.jpg"
-        
-                    m_pct = re.search(r'-(\d+)%', b)
-                    discount = int(m_pct.group(1)) if m_pct else 0
-        
-                    m_final = re.search(r'discount_final_price">[^0-9]*([\d\.,]+)', b)
-                    final_price = float(m_final.group(1).replace(',', '')) if m_final else 0
-        
-                    # 提取发售日期
-                    m_date = re.search(r'search_released[^>]*>(.*?)</div>', b, re.DOTALL)
-                    release_date = "-"
-                    if m_date:
-                        clean_date = re.sub(r'<[^>]+>', '', m_date.group(1)).strip()
-                        if clean_date: release_date = clean_date
-        
-                    # --- 深度数据抓取 (官方 API) ---
-                    detail_url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=schinese&cc=cn"
-                    det_res = requests.get(detail_url, headers=HEADERS, timeout=10).json()
-        
-                    end_date = "-"
-                    tags = ["特惠强推"]
-                    estimated_sales = "数据计算中"
-        
-                    if det_res.get(app_id, {}).get('success'):
-                        data = det_res[app_id]['data']
-        
-                        # 优惠截止时间
-                        if data.get('price_overview', {}).get('discount_expiration'):
-                            ts = data['price_overview']['discount_expiration']
-                            end_date = datetime.fromtimestamp(ts).strftime('%m月%d日 %H:%M')
-        
-                        # 中文支持检测
-                        langs = data.get('supported_languages', '')
-                        if "Simplified Chinese" in langs or "简体中文" in langs:
-                            tags.append("支持中文")
-        
-                        # 标签完善
-                        if data.get('genres'):
-                            tags.extend([g['description'] for g in data['genres'][:3]])
-        
-                        # 销量预估
-                        if data.get('recommendations'):
-                            sales = data['recommendations'].get('total', 0) * 30 / 10000
-                            estimated_sales = f"{sales:.1f}万+"
-        
-                    # --- 实时在线人数 (Steam 底层接口) ---
-                    peak_online = "-"
-                    try:
-                        ccu_res = requests.get(f"https://api.steampowered.com/ISteamUserStats/GetNumberOfCurrentPlayers/v1/?appid={app_id}", timeout=5).json()
-                        if ccu_res.get('response', {}).get('result') == 1:
-                            peak_online = f"{ccu_res['response']['player_count']:,} 人"
-                    except: pass
-        
-                    deals_list.append({
-                        "id": app_id,
-                        "name": title,
-                        "img": img,
-                        "discount": discount,
-                        "finalPrice": final_price,
-                        "originalPrice": f"{final_price / (1 - discount/100):.2f}" if discount < 100 and discount > 0 else "0",
-                        "historyLow": "-", # 将在下面统一批量获取
-                        "releaseDate": release_date,
-                        "endDate": end_date,
-                        "globalRank": idx + 1,
-                        "tags": list(set(tags)),
-                        "peakOnline": peak_online,
-                        "estimatedSales": estimated_sales
-                    })
-                    seen_ids.add(app_id)
-                    time.sleep(0.5) # 防止被 Steam 封锁
-        
-                # --- 批量获取 CheapShark 史低 (比单次请求更稳，防止全是 - ) ---
-                if deals_list:
-                    try:
-                        ids_str = ",".join([str(d['id']) for d in deals_list])
-                        cs_res = requests.get(f"https://www.cheapshark.com/api/1.0/games?steamAppIDs={ids_str}", timeout=15).json()
-                        for deal in deals_list:
-                            app_id_str = str(deal['id'])
-                            if app_id_str in cs_res:
-                                price_usd = float(cs_res[app_id_str].get('cheapestPriceEver', {}).get('price', 0))
-                                if price_usd > 0:
-                                    deal['historyLow'] = f"¥{price_usd * 7.23:.2f} (约合)"
-                    except Exception as e:
-                        print(f"⚠️ CheapShark 批量请求失败: {e}")
-        
-            except Exception as e:
-                print(f"❌ 抓取失败: {e}")
-        
-            return deals_list
+              print("🔥 启动纯净版 Steam 数据引擎 (修复全部核心字段)...")
+              deals_list = []
+              seen_ids = set()
+              try:
+                  for page in range(3): 
+                      search_url = f"https://store.steampowered.com/search/results/?query&start={page*50}&count=50&dynamic_data=&specials=1&infinite=1&cc=cn&l=schinese&filter=topsellers"
+                      res = requests.get(search_url, headers=HEADERS, timeout=10)
+                      if res.status_code != 200:
+                          res = requests.get(f"https://api.allorigins.win/raw?url={urllib.parse.quote(search_url)}", headers=HEADERS, timeout=15)
                       
+                      if res.status_code == 200:
+                          blocks = res.json().get('results_html', '').split('data-ds-appid="')[1:]
+                          for b in blocks:
+                              try:
+                                  app_id = b.split('"')[0]
+                                  if app_id in seen_ids: continue
+                                  
+                                  m_title = re.search(r'<span class="title">([^<]+)</span>', b)
+                                  if not m_title: continue
+                                  title = m_title.group(1).strip()
+                                  img = f"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{app_id}/header.jpg"
+                                  
+                                  m_pct = re.search(r'<div class="discount_pct">\s*-(\d+)%\s*</div>', b)
+                                  discount = int(m_pct.group(1)) if m_pct else 0
+                                  m_orig = re.search(r'<div class="discount_original_price">[^0-9]*([\d\.,]+)', b)
+                                  m_final = re.search(r'<div class="discount_final_price">[^0-9]*([\d\.,]+)', b)
+                                  
+                                  # 💡 修复1：完美提取评测数 (用于前端计算真实销量)
+                                  m_review = re.search(r'data-tooltip-html="([^&]+)&lt;br&gt;[^0-9]*([0-9,]+) 篇', b)
+                                  review_count = int(m_review.group(2).replace(',', '')) if m_review else 0
+                                  review_tier = m_review.group(1) if m_review else "特别好评"
+                                  if review_count == 0:
+                                      m_fallback = re.search(r'([0-9,]+)\s*(?:篇|user reviews)', b)
+                                      if m_fallback: review_count = int(m_fallback.group(1).replace(',', ''))
+                                  
+                                  # 💡 修复2：提取真实发售日
+                                  m_date = re.search(r'search_released[^>]*>(.*?)</div>', b, re.DOTALL)
+                                  release_date = re.sub(r'<[^>]+>', '', m_date.group(1)).strip() if m_date else ""
+                                  
+                                  # 💡 修复3：提取 Steam 原生游戏标签
+                                  STEAM_TAGS = {"19":"动作","21":"冒险","122":"角色扮演","9":"策略","289":"独立","597":"休闲","599":"模拟","128":"多人联机","1774":"射击","1695":"开放世界","3859":"单人","3843":"在线合作","4166":"剧情丰富","4345":"恐怖","1662":"解谜","3942":"科幻","1663":"FPS","1667":"生存恐怖","7332":"城市营造","3839":"第一人称","4182":"二次元","113":"免费开玩"}
+                                  m_tags = re.search(r'data-ds-tagids="\[([\d,]+)\]"', b)
+                                  real_tags = [STEAM_TAGS.get(tid) for tid in m_tags.group(1).split(',')] if m_tags else []
+                                  real_tags = list(filter(None, real_tags))[:4]
+                                  
+                                  if discount > 0 and m_orig and m_final:
+                                      deals_list.append({
+                                          "id": app_id, "name": title, "img": img, "discount": discount,
+                                          "originalPrice": f"{float(m_orig.group(1).replace(',', '')):.2f}",
+                                          "finalPrice": f"{float(m_final.group(1).replace(',', '')):.2f}",
+                                          "reviewCount": review_count, "reviewTier": review_tier,
+                                          "releaseDate": release_date, "tags": real_tags
+                                      })
+                                      seen_ids.add(app_id)
+                              except Exception: pass
+                  
+                  deals_list = deals_list[:50]
+                  for idx, deal in enumerate(deals_list): deal['recommend_index'] = idx
+
+                  # 💡 修复4：提取 CheapShark 史低与商店页截止日期
+                  try:
+                      ids_str = ",".join([str(d['id']) for d in deals_list])
+                      cs_res = requests.get(f"https://www.cheapshark.com/api/1.0/games?steamAppIDs={ids_str}", timeout=15).json()
+                      for deal in deals_list:
+                          app_id = str(deal['id'])
+                          if app_id in cs_res:
+                              usd_price = float(cs_res[app_id].get('cheapestPriceEver', {}).get('price', 0))
+                              if usd_price > 0: deal['historicalLow'] = f"{usd_price * 7.23:.2f}"
+                  except Exception: pass
+
+                  for deal in deals_list:
+                      try:
+                          time.sleep(0.3)
+                          url = f"https://store.steampowered.com/app/{deal['id']}?l=schinese&cc=cn"
+                          res = requests.get(url, headers=HEADERS, cookies=COOKIES, timeout=5)
+                          m_date = re.search(r'class="game_purchase_discount_countdown"[^>]*>(.*?)<\/p>', res.text, re.IGNORECASE | re.DOTALL)
+                          if m_date: deal['endDate'] = re.sub(r'<[^>]+>', '', m_date.group(1)).replace('特价促销！', '').strip()
+                      except: pass
+
+              except Exception as e: print(f"⚠️ 抓取失败: {e}")
+              return deals_list
+
+          
           def main():
               db = {}
               if not os.path.exists(DB_FILE):
