@@ -353,7 +353,7 @@ jobs:
                         "globalRank": idx + 1,
                         "tags": list(set(tags)),
                         "peakOnline": "-", # 可保留原有的 GetNumberOfCurrentPlayers 逻辑
-                        "estimatedSales": f"{(data.get('recommendations', {}).get('total', 0) * 30 / 10000):.1ig}万+" if data.get('recommendations') else "数据收集中"
+                        "estimatedSales": f"{(data.get('recommendations', {}).get('total', 0) * 30 / 10000):.1f}万+"
                     })
                     seen_ids.add(app_id)
                     time.sleep(0.5) # 防止被 Steam 封 IP
