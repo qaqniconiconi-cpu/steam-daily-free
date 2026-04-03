@@ -287,7 +287,7 @@ jobs:
               try:
                   # 1. 抓取列表与基础数据
                   for page in range(3): 
-                      search_url = f"https://store.steampowered.com/search/results/?query&start={page*50}&count=50&dynamic_data=&specials=1&infinite=1&cc=cn&l=schinese&filter=topsellers&_t={int(time.time())}"
+                      search_url = f"https://store.steampowered.com/search/results/?query&start={page*50}&count=50&dynamic_data=&specials=1&infinite=1&cc=cn&l=schinese&filter=globaltopsellers&_t={int(time.time())}"
                       res = requests.get(search_url, headers=HEADERS, timeout=10)
                       
                       # ⚡ 核心修复：Steam 会用“假 200”风控，必须判断内容是否包含游戏特征码
