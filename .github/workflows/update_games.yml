@@ -347,39 +347,49 @@ jobs:
                       deal['recommend_index'] = idx
                       deal['globalRank'] = f"Top {idx + 1}"
 
-                 # 3. 提取史低 (使用 ScraperAPI 降维打击 Cloudflare 防爬盾)
-                  print("💰 正在调用专业代理池穿透提取史低数据...")
-                  try:
-                      # 👉 把这里的 YOUR_SCRAPER_API_KEY 换成你在官网注册拿到的真实 Key
-                      scraper_api_key = "YOUR_SCRAPER_API_KEY" 
-                      
-                      ids_str = ",".join([str(d['id']) for d in deals_list])
-                      target_url = f"https://www.cheapshark.com/api/1.0/games?steamAppIDs={ids_str}"
-                      
-                      # 组装穿透请求
-                      payload = {
-                          'api_key': scraper_api_key,
-                          'url': target_url,
-                          'render': 'false' # 纯 JSON 数据不需要渲染 JS
-                      }
-                      
-                      # 发送请求，ScraperAPI 会在后台帮你解决所有的封 IP 和验证码问题
-                      res_cs = requests.get('https://api.scraperapi.com/', params=payload, timeout=30)
-                      
-                      if res_cs.status_code == 200 and "{" in res_cs.text:
-                          cs_data = res_cs.json()
-                          for deal in deals_list:
-                              app_id = str(deal['id'])
-                              if app_id in cs_data:
-                                  usd_price = float(cs_data[app_id].get('cheapestPriceEver', {}).get('price', 0))
-                                  if usd_price > 0: 
-                                      deal['historicalLow'] = f"{(usd_price * 7.23):.2f}"
-                          print(f"✅ 史低数据穿透提取成功！")
-                      else:
-                          print(f"⚠️ 穿透失败，状态码: {res_cs.status_code}")
-                          
-                  except Exception as e: 
-                      print(f"⚠️ 史低提取彻底失败: {e}")
+                 # 3. 提取史低 (基于小黑盒原生 API 获取纯正国区 CNY 数据)
+                print("💰 正在提取原生国区史低数据...")
+                try:
+                    # 继续使用你的 ScraperAPI Key 突破网络限制
+                    scraper_api_key = "YOUR_SCRAPER_API_KEY" 
+                    
+                    for deal in deals_list:
+                        app_id = str(deal['id'])
+                        
+                        # 小黑盒 Web API：直接返回国区人民币数据，无须复杂鉴权
+                        xhh_url = f"https://api.xiaoheihe.cn/game/get_game_detail/?appid={app_id}"
+                        
+                        # 组装穿透请求，建议加上 country_code=cn 强制走国内节点，防止小黑盒风控海外 IP
+                        payload = {
+                            'api_key': scraper_api_key,
+                            'url': xhh_url,
+                            'country_code': 'cn',
+                            'render': 'false' 
+                        }
+                        
+                        res_xhh = requests.get('https://api.scraperapi.com/', params=payload, timeout=15)
+                        
+                        if res_xhh.status_code == 200 and "result" in res_xhh.text:
+                            xhh_data = res_xhh.json()
+                            # 精准提取史低价格字段
+                            price_info = xhh_data.get('result', {}).get('price', {})
+                            lowest_price = price_info.get('lowest_price')
+                            
+                            # 校验并写入数据
+                            if lowest_price is not None and float(lowest_price) >= 0:
+                                deal['historicalLow'] = f"{lowest_price}"
+                            else:
+                                deal['historicalLow'] = "-"
+                        else:
+                            deal['historicalLow'] = "-"
+                            
+                        # 适当延迟，保护 ScraperAPI 并发池
+                        time.sleep(0.5)
+                        
+                    print(f"✅ CNY 史低数据穿透提取成功！")
+                        
+                except Exception as e: 
+                    print(f"⚠️ 史低提取彻底失败: {e}")
 
                   # 4. 提取实时在线人数 (Steam底层无盾API)
                   print("👥 正在提取实时在线人数...")
