@@ -323,11 +323,30 @@ jobs:
                                       m_fallback = re.search(r'([0-9,]+)\s*(?:篇|user reviews)', b)
                                       if m_fallback: review_count = int(m_fallback.group(1).replace(',', ''))
                                   
+                                  # 💡 新增 1：提取真实发售日期
+                                  m_date = re.search(r'<div class="col search_released[^>]*>([^<]+)</div>', b)
+                                  release_date = m_date.group(1).strip() if m_date else "未知"
+                                  
+                                  # 💡 新增 2：提取并映射 Steam 官方原生游戏标签 (解析 data-ds-tagids)
+                                  STEAM_TAGS = {
+                                      "19": "动作", "21": "冒险", "122": "角色扮演", "9": "策略", "289": "独立",
+                                      "597": "休闲", "599": "模拟", "128": "多人联机", "1774": "射击",
+                                      "1695": "开放世界", "3859": "单人", "3843": "在线合作", "4166": "剧情丰富",
+                                      "4345": "恐怖", "1662": "解谜", "3942": "科幻", "1663": "FPS", "1667": "生存恐怖",
+                                      "7332": "城市营造", "3839": "第一人称", "4182": "二次元", "113": "免费开玩"
+                                  }
+                                  m_tags = re.search(r'data-ds-tagids="\[([\d,]+)\]"', b)
+                                  real_tags = []
+                                  if m_tags:
+                                      tag_ids = m_tags.group(1).split(',')
+                                      real_tags = [STEAM_TAGS.get(tid) for tid in tag_ids if tid in STEAM_TAGS]
+                                  real_tags = list(filter(None, real_tags))[:4] # 最多展示4个核心标签
+                                  if not real_tags: real_tags = ["热门大作"]
+                                  
                                   if m_orig and m_final:
                                       orig = float(m_orig.group(1).replace(',', ''))
                                       final = float(m_final.group(1).replace(',', ''))
                                       
-                                      # 🛑 放弃硬性评测数门槛！只要它是真实打折的付费游戏，且在热销榜上，我们就收录。
                                       if discount > 0 and orig > 0:
                                           deals_list.append({
                                               "id": app_id,
@@ -337,7 +356,9 @@ jobs:
                                               "originalPrice": f"{orig:.2f}",
                                               "finalPrice": f"{final:.2f}",
                                               "reviewCount": review_count,
-                                              "reviewTier": review_tier
+                                              "reviewTier": review_tier,
+                                              "releaseDate": release_date, # 👈 存入前端
+                                              "tags": real_tags            # 👈 存入前端
                                           })
                                           seen_ids.add(app_id)
                               except Exception:
