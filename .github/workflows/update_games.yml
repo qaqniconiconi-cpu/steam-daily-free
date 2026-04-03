@@ -374,27 +374,26 @@ jobs:
                           deal['peakOnline'] = "-"
 
                   # 💡 修复4：提取 CheapShark 史低与商店页截止日期
+                  print("💰 正在连线 CheapShark 提取全网史低数据...")
                   try:
                       ids_str = ",".join([str(d['id']) for d in deals_list])
-                      cs_res = requests.get(f"https://www.cheapshark.com/api/1.0/games?steamAppIDs={ids_str}", timeout=15).json()
+                      cs_url = f"https://www.cheapshark.com/api/1.0/games?steamAppIDs={ids_str}"
+                      res_cs = requests.get(cs_url, timeout=10)
+                      
+                      # 遇墙自动开启代理穿透
+                      if res_cs.status_code != 200 or not res_cs.text.strip() or "{" not in res_cs.text:
+                          proxy_url = f"https://api.allorigins.win/raw?url={urllib.parse.quote(cs_url)}"
+                          res_cs = requests.get(proxy_url, timeout=15)
+                          
+                      cs_data = res_cs.json()
                       for deal in deals_list:
                           app_id = str(deal['id'])
-                          if app_id in cs_res:
-                              usd_price = float(cs_res[app_id].get('cheapestPriceEver', {}).get('price', 0))
-                              if usd_price > 0: deal['historicalLow'] = f"{usd_price * 7.23:.2f}"
-                  except Exception: pass
-
-                  for deal in deals_list:
-                      try:
-                          time.sleep(0.3)
-                          url = f"https://store.steampowered.com/app/{deal['id']}?l=schinese&cc=cn"
-                          res = requests.get(url, headers=HEADERS, cookies=COOKIES, timeout=5)
-                          m_date = re.search(r'class="game_purchase_discount_countdown"[^>]*>(.*?)<\/p>', res.text, re.IGNORECASE | re.DOTALL)
-                          if m_date: deal['endDate'] = re.sub(r'<[^>]+>', '', m_date.group(1)).replace('特价促销！', '').strip()
-                      except: pass
-
-              except Exception as e: print(f"⚠️ 抓取失败: {e}")
-              return deals_list
+                          if app_id in cs_data:
+                              usd_price = float(cs_data[app_id].get('cheapestPriceEver', {}).get('price', 0))
+                              if usd_price > 0: 
+                                  deal['historicalLow'] = f"{usd_price * 7.23:.2f}"
+                  except Exception as e:
+                      print(f"⚠️ 史低提取失败: {e}")
 
           
           def main():
