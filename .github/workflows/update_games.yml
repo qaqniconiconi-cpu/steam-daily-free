@@ -353,7 +353,7 @@ jobs:
                       ids_str = ",".join([str(d['id']) for d in deals_list])
                       target_url = f"https://www.cheapshark.com/api/1.0/games?steamAppIDs={ids_str}"
                       
-                      # 代理轮盘池：依次尝试直连与三大跨域穿透节点
+                      # 代理轮盘池
                       proxies = [
                           target_url,
                           f"https://api.allorigins.win/raw?url={urllib.parse.quote(target_url)}",
@@ -364,8 +364,9 @@ jobs:
                       cs_data = None
                       for p_url in proxies:
                           try:
-                              res_cs = requests.get(p_url, timeout=10)
-                              # 严格校验：必须是 200 且返回的是 JSON 格式，才算穿透成功
+                              # 💡 核心修复：这里必须带上 headers=HEADERS 进行伪装，否则会被拦截盾秒杀！
+                              res_cs = requests.get(p_url, headers=HEADERS, timeout=10)
+                              
                               if res_cs.status_code == 200 and "{" in res_cs.text:
                                   cs_data = res_cs.json()
                                   print(f"✅ 史低节点穿透成功！")
