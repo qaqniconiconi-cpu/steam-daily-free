@@ -31,6 +31,7 @@ jobs:
           import string
           import os
           import yaml
+          import urllib.parse  # 💡 新增：用于 URL 编码，以配合代理穿透
           from datetime import datetime, timedelta
 
           HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Accept-Language': 'zh-CN,zh;q=0.9'}
@@ -276,7 +277,6 @@ jobs:
                   }
               except Exception as e: return {"status": "invalid"}
 
-          # --- 替换为：包含精确截止日期抓取的终极版 ---
           def fetch_steam_deals():
               print("🔥 开始抓取 Steam 实时热搜折扣 (带精准截止日期)...")
               deals_list = []
@@ -361,7 +361,7 @@ jobs:
                   deals_list = deals_list[:50]
                   
                   # ==========================================
-                  # 💡 核心升级：批量提取截止日期 (防封杀版)
+                  # 💡 核心升级：批量提取截止日期 (防封杀/智能代理穿透版)
                   # ==========================================
                   print("⏳ 正在为 Top 50 游戏批量抓取优惠截止日期...")
                   
@@ -379,7 +379,15 @@ jobs:
                       try:
                           time.sleep(1.5) # 批次间安全停顿，极其稳妥
                           api_url = f"https://store.steampowered.com/api/appdetails?appids={ids_str}&cc=cn&filters=price_overview"
+                          
+                          # 先尝试直连
                           res_api = requests.get(api_url, headers=HEADERS, timeout=10)
+                          
+                          # 如果遭遇 Steam 封杀屏蔽 (429/403 等非200状态)，立即切入代理穿透！
+                          if res_api.status_code != 200:
+                              print(f"⚠️ 直连被 Steam 拦截 (状态码: {res_api.status_code})，正在启用全球备用代理通道...")
+                              proxy_url = f"https://api.allorigins.win/raw?url={urllib.parse.quote(api_url)}"
+                              res_api = requests.get(proxy_url, headers=HEADERS, timeout=15)
                           
                           if res_api.status_code == 200:
                               api_data = res_api.json()
@@ -393,12 +401,15 @@ jobs:
                                       if exp_ts:
                                           exp_date = datetime.utcfromtimestamp(exp_ts + 28800).strftime('%Y年%m月%d日')
                                           deal['endDate'] = exp_date
+                          else:
+                              print(f"⚠️ 节点完全阻塞，最终状态码: {res_api.status_code}")
                       except Exception as e:
-                          pass
+                          print(f"⚠️ 批次异常跳过: {e}")
                   
               except Exception as e:
                   print(f"⚠️ 抓取折扣失败: {e}")
               return deals_list
+
           def main():
               db = {}
               if not os.path.exists(DB_FILE):
