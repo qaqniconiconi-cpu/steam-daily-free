@@ -290,11 +290,12 @@ jobs:
                       search_url = f"https://store.steampowered.com/search/results/?query&start={page*50}&count=50&dynamic_data=&specials=1&infinite=1&cc=cn&l=schinese&filter=topsellers&_t={int(time.time())}"
                       res = requests.get(search_url, headers=HEADERS, timeout=10)
                       
-                      # 代理穿透
-                      if res.status_code != 200:
+                      # ⚡ 核心修复：Steam 会用“假 200”风控，必须判断内容是否包含游戏特征码
+                      if res.status_code != 200 or 'data-ds-appid' not in res.text:
+                          print(f"⚠️ 触发 Steam 防爬盾 (Page {page})，自动切入代理池...")
                           res = requests.get(f"https://api.allorigins.win/raw?url={urllib.parse.quote(search_url)}", headers=HEADERS, timeout=15)
                       
-                      if res.status_code == 200:
+                      if res.status_code == 200 and 'data-ds-appid' in res.text:
                           blocks = res.json().get('results_html', '').split('data-ds-appid="')[1:]
                           for b in blocks:
                               try:
@@ -311,7 +312,6 @@ jobs:
                                   m_orig = re.search(r'<div class="discount_original_price">[^0-9]*([\d\.,]+)', b)
                                   m_final = re.search(r'<div class="discount_final_price">[^0-9]*([\d\.,]+)', b)
                                   
-                                  # 提取评测
                                   m_review = re.search(r'data-tooltip-html="([^&]+)&lt;br&gt;[^0-9]*([0-9,]+) 篇', b)
                                   review_count = int(m_review.group(2).replace(',', '')) if m_review else 0
                                   review_tier = m_review.group(1) if m_review else "特别好评"
@@ -319,11 +319,9 @@ jobs:
                                       m_fallback = re.search(r'([0-9,]+)\s*(?:篇|user reviews)', b)
                                       if m_fallback: review_count = int(m_fallback.group(1).replace(',', ''))
                                   
-                                  # 提取发售日期
                                   m_date = re.search(r'search_released[^>]*>(.*?)</div>', b, re.DOTALL)
                                   release_date = re.sub(r'<[^>]+>', '', m_date.group(1)).strip() if m_date else ""
                                   
-                                  # 提取原生标签
                                   STEAM_TAGS = {"19":"动作","21":"冒险","122":"角色扮演","9":"策略","289":"独立","597":"休闲","599":"模拟","128":"多人联机","1774":"射击","1695":"开放世界","3859":"单人","3843":"在线合作","4166":"剧情丰富","4345":"恐怖","1662":"解谜","3942":"科幻","1663":"FPS","1667":"生存恐怖","7332":"城市营造","3839":"第一人称","4182":"二次元","113":"免费开玩"}
                                   m_tags = re.search(r'data-ds-tagids="\[([\d,]+)\]"', b)
                                   real_tags = [STEAM_TAGS.get(tid) for tid in m_tags.group(1).split(',')] if m_tags else []
@@ -340,6 +338,7 @@ jobs:
                                       seen_ids.add(app_id)
                               except Exception: pass
                   
+                  print(f"✅ 成功抓取基础折扣游戏: {len(deals_list)} 款")
                   deals_list = deals_list[:50]
                   
                   # 2. 注入全球排行
@@ -351,33 +350,21 @@ jobs:
                   print("💰 正在提取原生国区史低数据...")
                   for deal in deals_list:
                       app_id = str(deal['id'])
-                      # 加上时间戳防止代理节点缓存死数据
                       xhh_url = f"https://api.xiaoheihe.cn/game/get_game_detail/?appid={app_id}&t={int(time.time())}"
-                      
                       try:
-                          # 第一步：尝试直接访问（如果 Actions IP 没被小黑盒风控就能通）
                           res_xhh = requests.get(xhh_url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}, timeout=10)
-                          
-                          # 第二步：如果被墙了，自动降级使用免费的 CORS 代理穿透
                           if res_xhh.status_code != 200 or "result" not in res_xhh.text:
                               proxy_url = f"https://api.allorigins.win/raw?url={urllib.parse.quote(xhh_url)}"
                               res_xhh = requests.get(proxy_url, headers=HEADERS, timeout=15)
                               
-                          # 解析并写入史低
                           if res_xhh.status_code == 200 and "result" in res_xhh.text:
                               xhh_data = res_xhh.json()
                               lowest_price = xhh_data.get('result', {}).get('price', {}).get('lowest_price')
-                              
                               if lowest_price is not None and float(lowest_price) >= 0:
                                   deal['historicalLow'] = f"{lowest_price}"
-                              else:
-                                  deal['historicalLow'] = "-"
-                          else:
-                              deal['historicalLow'] = "-"
-                      except Exception:
-                          deal['historicalLow'] = "-"
-                          
-                      # 延长休眠时间到 0.8 秒，保护免费代理池防断流
+                              else: deal['historicalLow'] = "-"
+                          else: deal['historicalLow'] = "-"
+                      except Exception: deal['historicalLow'] = "-"
                       time.sleep(0.8)
                       
                   print("✅ CNY 史低数据提取完成！")
@@ -391,11 +378,9 @@ jobs:
                           if ccu_res.get('response', {}).get('result') == 1:
                               players = ccu_res['response']['player_count']
                               deal['peakOnline'] = f"{players:,} 人"
-                          else:
-                              deal['peakOnline'] = "-"
+                          else: deal['peakOnline'] = "-"
                           time.sleep(0.2)
-                      except Exception:
-                          deal['peakOnline'] = "-"
+                      except Exception: deal['peakOnline'] = "-"
 
                   # 5. 提取优惠截止日期
                   print("📅 正在提取优惠截止日期...")
