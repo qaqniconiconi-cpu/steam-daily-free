@@ -284,40 +284,44 @@ jobs:
             print("🔥 启动增强版 Steam 深度数据引擎...")
             deals_list = []
             seen_ids = set()
-            
-            # 1. 抓取全球热销榜单（确保排名准确）
+        
             search_url = "https://store.steampowered.com/search/results/?query&specials=1&filter=topsellers&cc=cn&l=schinese"
             try:
                 res = requests.get(search_url, headers=HEADERS, timeout=15)
                 html = res.text
                 blocks = html.split('data-ds-appid="')[1:][:40] # 取前40名
-                
+        
                 for idx, b in enumerate(blocks):
                     app_id = b.split('"')[0]
                     if app_id in seen_ids: continue
-                    
-                    # 基础信息提取
+        
                     title = re.search(r'<span class="title">([^<]+)</span>', b).group(1)
                     img = f"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{app_id}/header.jpg"
-                    
+        
                     m_pct = re.search(r'-(\d+)%', b)
                     discount = int(m_pct.group(1)) if m_pct else 0
-                    
+        
                     m_final = re.search(r'discount_final_price">[^0-9]*([\d\.,]+)', b)
                     final_price = float(m_final.group(1).replace(',', '')) if m_final else 0
         
-                    # --- 深度数据抓取 ---
+                    # 提取发售日期
+                    m_date = re.search(r'search_released[^>]*>(.*?)</div>', b, re.DOTALL)
+                    release_date = "-"
+                    if m_date:
+                        clean_date = re.sub(r'<[^>]+>', '', m_date.group(1)).strip()
+                        if clean_date: release_date = clean_date
+        
+                    # --- 深度数据抓取 (官方 API) ---
                     detail_url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=schinese&cc=cn"
                     det_res = requests.get(detail_url, headers=HEADERS, timeout=10).json()
-                    
-                    history_low = "-"
+        
                     end_date = "-"
-                    tags = ["热门"]
-                    is_chinese = False
+                    tags = ["特惠强推"]
+                    estimated_sales = "数据计算中"
         
                     if det_res.get(app_id, {}).get('success'):
                         data = det_res[app_id]['data']
-                        
+        
                         # 优惠截止时间
                         if data.get('price_overview', {}).get('discount_expiration'):
                             ts = data['price_overview']['discount_expiration']
@@ -326,19 +330,23 @@ jobs:
                         # 中文支持检测
                         langs = data.get('supported_languages', '')
                         if "Simplified Chinese" in langs or "简体中文" in langs:
-                            is_chinese = True
                             tags.append("支持中文")
         
                         # 标签完善
                         if data.get('genres'):
-                            tags.extend([g['description'] for g in data['genres'][:2]])
+                            tags.extend([g['description'] for g in data['genres'][:3]])
         
-                    # --- 接入 CheapShark 获取史低 ---
+                        # 销量预估
+                        if data.get('recommendations'):
+                            sales = data['recommendations'].get('total', 0) * 30 / 10000
+                            estimated_sales = f"{sales:.1f}万+"
+        
+                    # --- 实时在线人数 (Steam 底层接口) ---
+                    peak_online = "-"
                     try:
-                        cs_res = requests.get(f"https://www.cheapshark.com/api/1.0/deals?steamAppID={app_id}&limit=1").json()
-                        if cs_res:
-                            # 简单汇率转换
-                            history_low = f"¥{float(cs_res[0]['retailPrice']) * 0.7}" # 这里仅作演示，实际可用更准逻辑
+                        ccu_res = requests.get(f"https://api.steampowered.com/ISteamUserStats/GetNumberOfCurrentPlayers/v1/?appid={app_id}", timeout=5).json()
+                        if ccu_res.get('response', {}).get('result') == 1:
+                            peak_online = f"{ccu_res['response']['player_count']:,} 人"
                     except: pass
         
                     deals_list.append({
@@ -347,20 +355,35 @@ jobs:
                         "img": img,
                         "discount": discount,
                         "finalPrice": final_price,
-                        "originalPrice": f"{final_price / (1 - discount/100):.2f}" if discount < 100 else "0",
-                        "historyLow": history_low,
+                        "originalPrice": f"{final_price / (1 - discount/100):.2f}" if discount < 100 and discount > 0 else "0",
+                        "historyLow": "-", # 将在下面统一批量获取
+                        "releaseDate": release_date,
                         "endDate": end_date,
                         "globalRank": idx + 1,
                         "tags": list(set(tags)),
-                        "peakOnline": "-", # 可保留原有的 GetNumberOfCurrentPlayers 逻辑
-                        "estimatedSales": f"{(data.get('recommendations', {}).get('total', 0) * 30 / 10000):.1f}万+"
+                        "peakOnline": peak_online,
+                        "estimatedSales": estimated_sales
                     })
                     seen_ids.add(app_id)
-                    time.sleep(0.5) # 防止被 Steam 封 IP
-                    
+                    time.sleep(0.5) # 防止被 Steam 封锁
+        
+                # --- 批量获取 CheapShark 史低 (比单次请求更稳，防止全是 - ) ---
+                if deals_list:
+                    try:
+                        ids_str = ",".join([str(d['id']) for d in deals_list])
+                        cs_res = requests.get(f"https://www.cheapshark.com/api/1.0/games?steamAppIDs={ids_str}", timeout=15).json()
+                        for deal in deals_list:
+                            app_id_str = str(deal['id'])
+                            if app_id_str in cs_res:
+                                price_usd = float(cs_res[app_id_str].get('cheapestPriceEver', {}).get('price', 0))
+                                if price_usd > 0:
+                                    deal['historyLow'] = f"¥{price_usd * 7.23:.2f} (约合)"
+                    except Exception as e:
+                        print(f"⚠️ CheapShark 批量请求失败: {e}")
+        
             except Exception as e:
                 print(f"❌ 抓取失败: {e}")
-                
+        
             return deals_list
                       
           def main():
