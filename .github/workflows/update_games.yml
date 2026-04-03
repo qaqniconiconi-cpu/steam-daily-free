@@ -278,16 +278,14 @@ jobs:
               except Exception as e: return {"status": "invalid"}
 
           def fetch_steam_deals():
-              print("🔥 开始抓取 Steam 实时热搜折扣 (全链路防封穿透版)...")
+              print("🔥 开始抓取 Steam 实时热搜折扣 (全链路防封+单页硬解版)...")
               deals_list = []
               seen_ids = set()
               try:
                   for page in range(3): 
-                      # 加入时间戳防止代理节点缓存老数据
                       search_url = f"https://store.steampowered.com/search/results/?query&start={page*50}&count=50&dynamic_data=&specials=1&infinite=1&cc=cn&l=schinese&filter=topsellers&_t={int(time.time())}"
                       
                       res = requests.get(search_url, headers=HEADERS, timeout=10)
-                      # 💡 全新升级：连“搜索列表”接口如果被封，也立刻走代理穿透！
                       if res.status_code != 200:
                           print(f"⚠️ 第 {page+1} 页列表被拦截 (状态码: {res.status_code})，启动代理引擎...")
                           proxy_url = f"https://api.allorigins.win/raw?url={urllib.parse.quote(search_url)}"
@@ -327,14 +325,12 @@ jobs:
                                       m_fallback = re.search(r'([0-9,]+)\s*(?:篇|user reviews)', b)
                                       if m_fallback: review_count = int(m_fallback.group(1).replace(',', ''))
                                   
-                                  # 💡 提取真实发售日期
                                   m_date = re.search(r'search_released[^>]*>(.*?)</div>', b, re.DOTALL)
                                   release_date = ""
                                   if m_date:
                                       clean_date = re.sub(r'<[^>]+>', '', m_date.group(1)).strip()
                                       if clean_date: release_date = clean_date
                                   
-                                  # 💡 提取官方标签
                                   STEAM_TAGS = {"19": "动作", "21": "冒险", "122": "角色扮演", "9": "策略", "289": "独立", "597": "休闲", "599": "模拟", "128": "多人联机", "1774": "射击", "1695": "开放世界", "3859": "单人", "3843": "在线合作", "4166": "剧情丰富", "4345": "恐怖", "1662": "解谜", "3942": "科幻", "1663": "FPS", "1667": "生存恐怖", "7332": "城市营造", "3839": "第一人称", "4182": "二次元", "113": "免费开玩"}
                                   m_tags = re.search(r'data-ds-tagids="\[([\d,]+)\]"', b)
                                   real_tags = []
@@ -367,12 +363,11 @@ jobs:
                   
                   deals_list = deals_list[:50]
                   
-                  # 💡 致命拦截校验：如果抓取数量为0，说明所有通道都被墙了，立刻暴露问题
                   if not deals_list:
-                      print("❌ 警告：未抓取到任何游戏！所有直连和代理均被 Steam 墙了！")
+                      print("❌ 警告：未抓取到任何游戏！")
                       return []
                   
-                 # ==========================================
+                  # ==========================================
                   # 💡 终极硬核方案：挨个请求商店网页提取真实截止日期
                   # ==========================================
                   print(f"✅ 成功抓取 {len(deals_list)} 款游戏，开始深入商店网页提取真实截止日期...")
@@ -403,7 +398,12 @@ jobs:
                                   deal['endDate'] = clean_text
                                   
                       except Exception as e:
-                          pass # 解析失败则静默跳过，前端会自动处理为空
+                          pass
+                          
+              except Exception as e:
+                  print(f"⚠️ 抓取折扣失败: {e}")
+              return deals_list
+              
           def main():
               db = {}
               if not os.path.exists(DB_FILE):
