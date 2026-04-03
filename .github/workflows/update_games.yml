@@ -323,9 +323,14 @@ jobs:
                                       m_fallback = re.search(r'([0-9,]+)\s*(?:篇|user reviews)', b)
                                       if m_fallback: review_count = int(m_fallback.group(1).replace(',', ''))
                                   
-                                  # 💡 新增 1：提取真实发售日期
-                                  m_date = re.search(r'<div class="col search_released[^>]*>([^<]+)</div>', b)
-                                  release_date = m_date.group(1).strip() if m_date else "未知"
+                                  # 💡 优化 1：强力提取真实发售日期（兼容 Steam 换行和嵌套标签）
+                                  m_date = re.search(r'search_released[^>]*>(.*?)</div>', b, re.DOTALL)
+                                  release_date = "以商店页为准"
+                                  if m_date:
+                                      # 剥离可能存在的内部 HTML 标签并去除首尾空格
+                                      clean_date = re.sub(r'<[^>]+>', '', m_date.group(1)).strip()
+                                      if clean_date:
+                                          release_date = clean_date
                                   
                                   # 💡 新增 2：提取并映射 Steam 官方原生游戏标签 (解析 data-ds-tagids)
                                   STEAM_TAGS = {
