@@ -338,7 +338,40 @@ jobs:
                               except Exception: pass
                   
                   deals_list = deals_list[:50]
-                  for idx, deal in enumerate(deals_list): deal['recommend_index'] = idx
+                  
+                  # 1. 注入全球销量排行 (基于 Steam 官方 filter=topsellers 的原生顺位)
+                  for idx, deal in enumerate(deals_list):
+                      deal['globalRank'] = f"Top {idx + 1}"
+
+                  # 2. 批量获取绝对史低价格 (通过 CheapShark API，无视 Steam 封锁)
+                  print("💰 正在提取全网史低数据...")
+                  try:
+                      ids_str = ",".join([str(d['id']) for d in deals_list])
+                      cs_res = requests.get(f"https://www.cheapshark.com/api/1.0/games?steamAppIDs={ids_str}", timeout=10).json()
+                      for deal in deals_list:
+                          app_id = str(deal['id'])
+                          if app_id in cs_res:
+                              usd_price = float(cs_res[app_id].get('cheapestPriceEver', {}).get('price', 0))
+                              if usd_price > 0:
+                                  # CheapShark 返回美元，按近似汇率折算为人民币史低参考
+                                  deal['historicalLow'] = f"¥{(usd_price * 7.23):.2f}"
+                  except Exception as e:
+                      print(f"⚠️ 史低提取失败: {e}")
+
+                  # 3. 逐个获取实时在线玩家数 (通过 Steam 官方无盾底层 API)
+                  print("👥 正在提取实时在线人数...")
+                  for deal in deals_list:
+                      try:
+                          app_id = str(deal['id'])
+                          ccu_res = requests.get(f"https://api.steampowered.com/ISteamUserStats/GetNumberOfCurrentPlayers/v1/?appid={app_id}", timeout=5).json()
+                          if ccu_res.get('response', {}).get('result') == 1:
+                              players = ccu_res['response']['player_count']
+                              deal['peakOnline'] = f"{players:,} 人"
+                          else:
+                              deal['peakOnline'] = "-"
+                          time.sleep(0.2) # 极微小延时防止触发单秒并发限制
+                      except Exception:
+                          deal['peakOnline'] = "-"
 
                   # 💡 修复4：提取 CheapShark 史低与商店页截止日期
                   try:
