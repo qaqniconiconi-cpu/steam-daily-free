@@ -276,16 +276,13 @@ jobs:
                   }
               except Exception as e: return {"status": "invalid"}
 
-          # --- 替换为：国区顶流大作专供版 ---
-          # --- 替换为：官方热门榜单前 50 名精简版 ---
+          # --- 替换为：包含精确截止日期抓取的终极版 ---
           def fetch_steam_deals():
-              print("🔥 开始抓取 Steam 实时热搜折扣 (官方热门前50版)...")
+              print("🔥 开始抓取 Steam 实时热搜折扣 (带精准截止日期)...")
               deals_list = []
               seen_ids = set()
               try:
-                  # 抓取前 3 页以确保过滤掉免费游戏后，依然能凑足纯净的 50 个
                   for page in range(3): 
-                      # 💡 核心：使用 filter=topsellers，让 Steam 官方算法帮我们找出当下最热门的游戏
                       search_url = f"https://store.steampowered.com/search/results/?query&start={page*50}&count=50&dynamic_data=&specials=1&infinite=1&cc=cn&l=schinese&filter=topsellers"
                       res = requests.get(search_url, headers=HEADERS, timeout=15)
                       
@@ -323,29 +320,21 @@ jobs:
                                       m_fallback = re.search(r'([0-9,]+)\s*(?:篇|user reviews)', b)
                                       if m_fallback: review_count = int(m_fallback.group(1).replace(',', ''))
                                   
-                                  # 💡 优化 1：强力提取真实发售日期（兼容 Steam 换行和嵌套标签）
+                                  # 💡 提取真实发售日期
                                   m_date = re.search(r'search_released[^>]*>(.*?)</div>', b, re.DOTALL)
-                                  release_date = "以商店页为准"
+                                  release_date = ""
                                   if m_date:
-                                      # 剥离可能存在的内部 HTML 标签并去除首尾空格
                                       clean_date = re.sub(r'<[^>]+>', '', m_date.group(1)).strip()
-                                      if clean_date:
-                                          release_date = clean_date
+                                      if clean_date: release_date = clean_date
                                   
-                                  # 💡 新增 2：提取并映射 Steam 官方原生游戏标签 (解析 data-ds-tagids)
-                                  STEAM_TAGS = {
-                                      "19": "动作", "21": "冒险", "122": "角色扮演", "9": "策略", "289": "独立",
-                                      "597": "休闲", "599": "模拟", "128": "多人联机", "1774": "射击",
-                                      "1695": "开放世界", "3859": "单人", "3843": "在线合作", "4166": "剧情丰富",
-                                      "4345": "恐怖", "1662": "解谜", "3942": "科幻", "1663": "FPS", "1667": "生存恐怖",
-                                      "7332": "城市营造", "3839": "第一人称", "4182": "二次元", "113": "免费开玩"
-                                  }
+                                  # 💡 提取官方标签
+                                  STEAM_TAGS = {"19": "动作", "21": "冒险", "122": "角色扮演", "9": "策略", "289": "独立", "597": "休闲", "599": "模拟", "128": "多人联机", "1774": "射击", "1695": "开放世界", "3859": "单人", "3843": "在线合作", "4166": "剧情丰富", "4345": "恐怖", "1662": "解谜", "3942": "科幻", "1663": "FPS", "1667": "生存恐怖", "7332": "城市营造", "3839": "第一人称", "4182": "二次元", "113": "免费开玩"}
                                   m_tags = re.search(r'data-ds-tagids="\[([\d,]+)\]"', b)
                                   real_tags = []
                                   if m_tags:
                                       tag_ids = m_tags.group(1).split(',')
                                       real_tags = [STEAM_TAGS.get(tid) for tid in tag_ids if tid in STEAM_TAGS]
-                                  real_tags = list(filter(None, real_tags))[:4] # 最多展示4个核心标签
+                                  real_tags = list(filter(None, real_tags))[:4]
                                   if not real_tags: real_tags = ["热门大作"]
                                   
                                   if m_orig and m_final:
@@ -362,25 +351,43 @@ jobs:
                                               "finalPrice": f"{final:.2f}",
                                               "reviewCount": review_count,
                                               "reviewTier": review_tier,
-                                              "releaseDate": release_date, # 👈 存入前端
-                                              "tags": real_tags            # 👈 存入前端
+                                              "releaseDate": release_date,
+                                              "tags": real_tags
                                           })
                                           seen_ids.add(app_id)
                               except Exception:
                                   pass
                   
-                  # 💡 数量控制：严格截取前 50 名
-                  # 注：这里不再使用 sort 进行强行重排，而是直接尊重 Steam 原生的热销顺位！
                   deals_list = deals_list[:50]
                   
-                  # 重新赋予推荐索引，让前端的“智能推荐”排序能够完美还原这个官方热度榜单
+                  # ==========================================
+                  # 💡 核心升级：为最终的 50 款游戏精准提取截止日期
+                  # ==========================================
+                  print("⏳ 正在为 Top 50 游戏抓取精确的优惠截止日期...")
                   for idx, deal in enumerate(deals_list):
                       deal['recommend_index'] = idx
-                      
+                      try:
+                          # 增加微小延时(0.4秒)，防止并发过快被 Steam 暂时封禁 IP
+                          time.sleep(0.4) 
+                          api_url = f"https://store.steampowered.com/api/appdetails?appids={deal['id']}&cc=cn&filters=price_overview"
+                          res_api = requests.get(api_url, headers=HEADERS, timeout=5)
+                          
+                          if res_api.status_code == 200:
+                              api_data = res_api.json()
+                              if api_data.get(str(deal['id']), {}).get('success'):
+                                  price_info = api_data[str(deal['id'])]['data'].get('price_overview', {})
+                                  exp_ts = price_info.get('discount_expiration')
+                                  
+                                  if exp_ts:
+                                      # 将 Unix 时间戳转换为 北京时间(UTC+8) 的 YYYY年MM月DD日 格式
+                                      exp_date = datetime.utcfromtimestamp(exp_ts + 28800).strftime('%Y年%m月%d日')
+                                      deal['endDate'] = exp_date
+                      except Exception as e:
+                          pass # 如果这一个游戏抓取失败，直接跳过，前端会完美留空 ("-")
+                  
               except Exception as e:
                   print(f"⚠️ 抓取折扣失败: {e}")
               return deals_list
-
           def main():
               db = {}
               if not os.path.exists(DB_FILE):
