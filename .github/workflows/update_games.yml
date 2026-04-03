@@ -372,50 +372,38 @@ jobs:
                       print("❌ 警告：未抓取到任何游戏！所有直连和代理均被 Steam 墙了！")
                       return []
                   
+                 # ==========================================
+                  # 💡 终极硬核方案：挨个请求商店网页提取真实截止日期
                   # ==========================================
-                  # 💡 核心升级：批量提取截止日期 (防封杀/智能代理穿透版)
-                  # ==========================================
-                  print(f"✅ 成功抓取 {len(deals_list)} 款游戏，开始获取优惠截止日期...")
+                  print(f"✅ 成功抓取 {len(deals_list)} 款游戏，开始深入商店网页提取真实截止日期...")
                   
                   for idx, deal in enumerate(deals_list):
                       deal['recommend_index'] = idx
-                      
-                  chunk_size = 10
-                  for i in range(0, len(deals_list), chunk_size):
-                      chunk_deals = deals_list[i:i+chunk_size]
-                      chunk_ids = [str(d['id']) for d in chunk_deals]
-                      ids_str = ",".join(chunk_ids)
+                      app_id_str = str(deal['id'])
                       
                       try:
-                          time.sleep(1.5)
-                          api_url = f"https://store.steampowered.com/api/appdetails?appids={ids_str}&cc=cn&filters=price_overview"
+                          time.sleep(1.0) # 挨个请求网页，停顿1秒防封
+                          store_url = f"https://store.steampowered.com/app/{app_id_str}?l=schinese&cc=cn"
+                          res_store = requests.get(store_url, headers=HEADERS, cookies=COOKIES, timeout=10)
                           
-                          res_api = requests.get(api_url, headers=HEADERS, timeout=10)
-                          if res_api.status_code != 200:
-                              print(f"⚠️ 日期接口被拦截 (状态码: {res_api.status_code})，启动代理引擎...")
-                              proxy_url = f"https://api.allorigins.win/raw?url={urllib.parse.quote(api_url)}"
-                              res_api = requests.get(proxy_url, headers=HEADERS, timeout=15)
-                          
-                          if res_api.status_code == 200:
-                              api_data = res_api.json()
-                              for deal in chunk_deals:
-                                  app_id_str = str(deal['id'])
-                                  if api_data.get(app_id_str, {}).get('success'):
-                                      price_info = api_data[app_id_str]['data'].get('price_overview', {})
-                                      exp_ts = price_info.get('discount_expiration')
-                                      
-                                      if exp_ts:
-                                          exp_date = datetime.utcfromtimestamp(exp_ts + 28800).strftime('%Y年%m月%d日')
-                                          deal['endDate'] = exp_date
+                          # 遇墙自动开启代理穿透
+                          if res_store.status_code != 200:
+                              proxy_url = f"https://api.allorigins.win/get?url={urllib.parse.quote(store_url)}"
+                              res_proxy = requests.get(proxy_url, headers=HEADERS, timeout=15)
+                              html = res_proxy.json().get('contents', '') if res_proxy.status_code == 200 else ''
                           else:
-                              print(f"⚠️ 节点完全阻塞，最终状态码: {res_api.status_code}")
+                              html = res_store.text
+                          
+                          # 正则暴力提取网页上的倒计时元素
+                          m_date = re.search(r'class="game_purchase_discount_countdown"[^>]*>(.*?)<\/p>', html, re.IGNORECASE | re.DOTALL)
+                          if m_date:
+                              # 清洗多余的 HTML 标签和修饰词，留下纯净日期 (例如: "4 月 12 日 截止")
+                              clean_text = re.sub(r'<[^>]+>', '', m_date.group(1)).replace('特价促销！', '').strip()
+                              if clean_text:
+                                  deal['endDate'] = clean_text
+                                  
                       except Exception as e:
-                          print(f"⚠️ 批次异常跳过: {e}")
-                  
-              except Exception as e:
-                  print(f"⚠️ 抓取折扣失败: {e}")
-              return deals_list
-
+                          pass # 解析失败则静默跳过，前端会自动处理为空
           def main():
               db = {}
               if not os.path.exists(DB_FILE):
