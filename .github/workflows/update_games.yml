@@ -351,7 +351,7 @@ jobs:
                   print("💰 正在调用专业代理池穿透提取史低数据...")
                   try:
                       # 👉 把这里的 YOUR_SCRAPER_API_KEY 换成你在官网注册拿到的真实 Key
-                      scraper_api_key = "9f0be666412cb05e1fe7660b0ebbbf7c" 
+                      scraper_api_key = "YOUR_SCRAPER_API_KEY" 
                       
                       ids_str = ",".join([str(d['id']) for d in deals_list])
                       target_url = f"https://www.cheapshark.com/api/1.0/games?steamAppIDs={ids_str}"
