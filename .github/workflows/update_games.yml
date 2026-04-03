@@ -278,16 +278,19 @@ jobs:
               except Exception as e: return {"status": "invalid"}
 
           # ==========================================
-          # 💡 全新：大厂级多源聚合 API (CheapShark + SteamSpy + Steam底层)
+          # 💡 完美数据抓取引擎：解决报错、补全所有数据
           # ==========================================
           def fetch_steam_deals():
-              print("🔥 启动纯净版 Steam 数据引擎 (修复全部核心字段)...")
+              print("🔥 启动全能版 Steam 数据引擎...")
               deals_list = []
               seen_ids = set()
               try:
+                  # 1. 抓取列表与基础数据
                   for page in range(3): 
-                      search_url = f"https://store.steampowered.com/search/results/?query&start={page*50}&count=50&dynamic_data=&specials=1&infinite=1&cc=cn&l=schinese&filter=topsellers"
+                      search_url = f"https://store.steampowered.com/search/results/?query&start={page*50}&count=50&dynamic_data=&specials=1&infinite=1&cc=cn&l=schinese&filter=topsellers&_t={int(time.time())}"
                       res = requests.get(search_url, headers=HEADERS, timeout=10)
+                      
+                      # 代理穿透
                       if res.status_code != 200:
                           res = requests.get(f"https://api.allorigins.win/raw?url={urllib.parse.quote(search_url)}", headers=HEADERS, timeout=15)
                       
@@ -308,7 +311,7 @@ jobs:
                                   m_orig = re.search(r'<div class="discount_original_price">[^0-9]*([\d\.,]+)', b)
                                   m_final = re.search(r'<div class="discount_final_price">[^0-9]*([\d\.,]+)', b)
                                   
-                                  # 💡 修复1：完美提取评测数 (用于前端计算真实销量)
+                                  # 提取评测
                                   m_review = re.search(r'data-tooltip-html="([^&]+)&lt;br&gt;[^0-9]*([0-9,]+) 篇', b)
                                   review_count = int(m_review.group(2).replace(',', '')) if m_review else 0
                                   review_tier = m_review.group(1) if m_review else "特别好评"
@@ -316,11 +319,11 @@ jobs:
                                       m_fallback = re.search(r'([0-9,]+)\s*(?:篇|user reviews)', b)
                                       if m_fallback: review_count = int(m_fallback.group(1).replace(',', ''))
                                   
-                                  # 💡 修复2：提取真实发售日
+                                  # 提取发售日期
                                   m_date = re.search(r'search_released[^>]*>(.*?)</div>', b, re.DOTALL)
                                   release_date = re.sub(r'<[^>]+>', '', m_date.group(1)).strip() if m_date else ""
                                   
-                                  # 💡 修复3：提取 Steam 原生游戏标签
+                                  # 提取原生标签
                                   STEAM_TAGS = {"19":"动作","21":"冒险","122":"角色扮演","9":"策略","289":"独立","597":"休闲","599":"模拟","128":"多人联机","1774":"射击","1695":"开放世界","3859":"单人","3843":"在线合作","4166":"剧情丰富","4345":"恐怖","1662":"解谜","3942":"科幻","1663":"FPS","1667":"生存恐怖","7332":"城市营造","3839":"第一人称","4182":"二次元","113":"免费开玩"}
                                   m_tags = re.search(r'data-ds-tagids="\[([\d,]+)\]"', b)
                                   real_tags = [STEAM_TAGS.get(tid) for tid in m_tags.group(1).split(',')] if m_tags else []
@@ -339,26 +342,32 @@ jobs:
                   
                   deals_list = deals_list[:50]
                   
-                  # 1. 注入全球销量排行 (基于 Steam 官方 filter=topsellers 的原生顺位)
-                  for idx, deal in enumerate(deals_list):
+                  # 2. 注入全球排行
+                  for idx, deal in enumerate(deals_list): 
+                      deal['recommend_index'] = idx
                       deal['globalRank'] = f"Top {idx + 1}"
 
-                  # 2. 批量获取绝对史低价格 (通过 CheapShark API，无视 Steam 封锁)
+                  # 3. 提取史低 (加入极致代理穿透，解决解析报错)
                   print("💰 正在提取全网史低数据...")
                   try:
                       ids_str = ",".join([str(d['id']) for d in deals_list])
-                      cs_res = requests.get(f"https://www.cheapshark.com/api/1.0/games?steamAppIDs={ids_str}", timeout=10).json()
+                      cs_url = f"https://www.cheapshark.com/api/1.0/games?steamAppIDs={ids_str}"
+                      res_cs = requests.get(cs_url, timeout=10)
+                      
+                      # 防火墙穿透机制
+                      if res_cs.status_code != 200 or not res_cs.text.strip() or "{" not in res_cs.text:
+                          proxy_url = f"https://api.allorigins.win/raw?url={urllib.parse.quote(cs_url)}"
+                          res_cs = requests.get(proxy_url, timeout=15)
+                          
+                      cs_data = res_cs.json()
                       for deal in deals_list:
                           app_id = str(deal['id'])
-                          if app_id in cs_res:
-                              usd_price = float(cs_res[app_id].get('cheapestPriceEver', {}).get('price', 0))
-                              if usd_price > 0:
-                                  # CheapShark 返回美元，按近似汇率折算为人民币史低参考
-                                  deal['historicalLow'] = f"¥{(usd_price * 7.23):.2f}"
-                  except Exception as e:
-                      print(f"⚠️ 史低提取失败: {e}")
+                          if app_id in cs_data:
+                              usd_price = float(cs_data[app_id].get('cheapestPriceEver', {}).get('price', 0))
+                              if usd_price > 0: deal['historicalLow'] = f"¥{(usd_price * 7.23):.2f}"
+                  except Exception as e: print(f"⚠️ 史低提取跳过: {e}")
 
-                  # 3. 逐个获取实时在线玩家数 (通过 Steam 官方无盾底层 API)
+                  # 4. 提取实时在线人数 (Steam底层无盾API)
                   print("👥 正在提取实时在线人数...")
                   for deal in deals_list:
                       try:
@@ -369,33 +378,24 @@ jobs:
                               deal['peakOnline'] = f"{players:,} 人"
                           else:
                               deal['peakOnline'] = "-"
-                          time.sleep(0.2) # 极微小延时防止触发单秒并发限制
+                          time.sleep(0.2)
                       except Exception:
                           deal['peakOnline'] = "-"
 
-                  # 💡 修复4：提取 CheapShark 史低与商店页截止日期
-                  print("💰 正在连线 CheapShark 提取全网史低数据...")
-                  try:
-                      ids_str = ",".join([str(d['id']) for d in deals_list])
-                      cs_url = f"https://www.cheapshark.com/api/1.0/games?steamAppIDs={ids_str}"
-                      res_cs = requests.get(cs_url, timeout=10)
-                      
-                      # 遇墙自动开启代理穿透
-                      if res_cs.status_code != 200 or not res_cs.text.strip() or "{" not in res_cs.text:
-                          proxy_url = f"https://api.allorigins.win/raw?url={urllib.parse.quote(cs_url)}"
-                          res_cs = requests.get(proxy_url, timeout=15)
-                          
-                      cs_data = res_cs.json()
-                      for deal in deals_list:
-                          app_id = str(deal['id'])
-                          if app_id in cs_data:
-                              usd_price = float(cs_data[app_id].get('cheapestPriceEver', {}).get('price', 0))
-                              if usd_price > 0: 
-                                  deal['historicalLow'] = f"{usd_price * 7.23:.2f}"
-                  except Exception as e:
-                      print(f"⚠️ 史低提取失败: {e}")
+                  # 5. 提取优惠截止日期
+                  print("📅 正在提取优惠截止日期...")
+                  for deal in deals_list:
+                      try:
+                          time.sleep(0.3)
+                          url = f"https://store.steampowered.com/app/{deal['id']}?l=schinese&cc=cn"
+                          res = requests.get(url, headers=HEADERS, cookies=COOKIES, timeout=5)
+                          m_date = re.search(r'class="game_purchase_discount_countdown"[^>]*>(.*?)<\/p>', res.text, re.IGNORECASE | re.DOTALL)
+                          if m_date: deal['endDate'] = re.sub(r'<[^>]+>', '', m_date.group(1)).replace('特价促销！', '').strip()
+                      except: pass
 
-          
+              except Exception as e: print(f"⚠️ 抓取折扣失败: {e}")
+              return deals_list
+
           def main():
               db = {}
               if not os.path.exists(DB_FILE):
