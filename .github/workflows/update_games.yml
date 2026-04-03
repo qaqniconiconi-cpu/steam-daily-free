@@ -296,19 +296,21 @@ jobs:
                           res = requests.get(f"https://api.allorigins.win/raw?url={urllib.parse.quote(search_url)}", headers=HEADERS, timeout=15)
                       
                       if res.status_code == 200 and 'data-ds-appid' in res.text:
+                         # 1. 抓取列表与基础数据
                           blocks = res.json().get('results_html', '').split('data-ds-appid="')[1:]
                           for b in blocks:
                               try:
-                                  raw_app_id = b.split('"')[0]
-                                  # ⚡ 核心修复：遇到合集包（多ID用逗号分隔），强制只取第一个本体 ID
-                                  app_id = raw_app_id.split(',')[0]
+                                  # ⚡ 核心修复：取出原始 ID 字符串后，强行取第一个 ID
+                                  raw_id_str = b.split('"')[0]
+                                  app_id = raw_id_str.split(',')[0] 
                                   
                                   if app_id in seen_ids: continue
                                   
                                   m_title = re.search(r'<span class="title">([^<]+)</span>', b)
                                   if not m_title: continue
                                   title = m_title.group(1).strip()
-                                  # 换用 steamcdn-a 节点，国内很多地区直连比 shared.akamai 稳得多
+                                  
+                                  # ⚡ 建议：换成更稳定的老版图片接口 (cdn-a 节点在国内连通率更高)
                                   img = f"https://steamcdn-a.akamaihd.net/steam/apps/{app_id}/header.jpg"
                                   
                                   m_pct = re.search(r'<div class="discount_pct">\s*-(\d+)%\s*</div>', b)
