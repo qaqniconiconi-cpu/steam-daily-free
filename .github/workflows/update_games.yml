@@ -347,42 +347,37 @@ jobs:
                       deal['recommend_index'] = idx
                       deal['globalRank'] = f"Top {idx + 1}"
 
-                  # 3. 提取史低 (极致多重代理轮盘，死磕 CheapShark)
-                  print("💰 正在连线提取全网史低数据...")
+                 # 3. 提取史低 (使用 ScraperAPI 降维打击 Cloudflare 防爬盾)
+                  print("💰 正在调用专业代理池穿透提取史低数据...")
                   try:
+                      # 👉 把这里的 YOUR_SCRAPER_API_KEY 换成你在官网注册拿到的真实 Key
+                      scraper_api_key = "YOUR_SCRAPER_API_KEY" 
+                      
                       ids_str = ",".join([str(d['id']) for d in deals_list])
                       target_url = f"https://www.cheapshark.com/api/1.0/games?steamAppIDs={ids_str}"
                       
-                      # 代理轮盘池
-                      proxies = [
-                          target_url,
-                          f"https://api.allorigins.win/raw?url={urllib.parse.quote(target_url)}",
-                          f"https://api.codetabs.com/v1/proxy/?quest={target_url}",
-                          f"https://corsproxy.io/?url={urllib.parse.quote(target_url)}"
-                      ]
+                      # 组装穿透请求
+                      payload = {
+                          'api_key': scraper_api_key,
+                          'url': target_url,
+                          'render': 'false' # 纯 JSON 数据不需要渲染 JS
+                      }
                       
-                      cs_data = None
-                      for p_url in proxies:
-                          try:
-                              # 💡 核心修复：这里必须带上 headers=HEADERS 进行伪装，否则会被拦截盾秒杀！
-                              res_cs = requests.get(p_url, headers=HEADERS, timeout=10)
-                              
-                              if res_cs.status_code == 200 and "{" in res_cs.text:
-                                  cs_data = res_cs.json()
-                                  print(f"✅ 史低节点穿透成功！")
-                                  break
-                          except:
-                              pass
-                              
-                      if cs_data and isinstance(cs_data, dict):
+                      # 发送请求，ScraperAPI 会在后台帮你解决所有的封 IP 和验证码问题
+                      res_cs = requests.get('https://api.scraperapi.com/', params=payload, timeout=30)
+                      
+                      if res_cs.status_code == 200 and "{" in res_cs.text:
+                          cs_data = res_cs.json()
                           for deal in deals_list:
                               app_id = str(deal['id'])
                               if app_id in cs_data:
                                   usd_price = float(cs_data[app_id].get('cheapestPriceEver', {}).get('price', 0))
                                   if usd_price > 0: 
                                       deal['historicalLow'] = f"{(usd_price * 7.23):.2f}"
+                          print(f"✅ 史低数据穿透提取成功！")
                       else:
-                          print("⚠️ 所有代理节点均被拦截，本次史低提取失败。")
+                          print(f"⚠️ 穿透失败，状态码: {res_cs.status_code}")
+                          
                   except Exception as e: 
                       print(f"⚠️ 史低提取彻底失败: {e}")
 
