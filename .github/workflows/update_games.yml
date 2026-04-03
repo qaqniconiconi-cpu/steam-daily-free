@@ -299,7 +299,10 @@ jobs:
                           blocks = res.json().get('results_html', '').split('data-ds-appid="')[1:]
                           for b in blocks:
                               try:
-                                  app_id = b.split('"')[0]
+                                  raw_app_id = b.split('"')[0]
+                                  # ⚡ 核心修复：遇到合集包（多ID用逗号分隔），强制只取第一个本体 ID
+                                  app_id = raw_app_id.split(',')[0]
+                                  
                                   if app_id in seen_ids: continue
                                   
                                   m_title = re.search(r'<span class="title">([^<]+)</span>', b)
