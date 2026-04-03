@@ -305,7 +305,8 @@ jobs:
                                   m_title = re.search(r'<span class="title">([^<]+)</span>', b)
                                   if not m_title: continue
                                   title = m_title.group(1).strip()
-                                  img = f"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{app_id}/header.jpg"
+                                  # 换用 steamcdn-a 节点，国内很多地区直连比 shared.akamai 稳得多
+                                  img = f"https://steamcdn-a.akamaihd.net/steam/apps/{app_id}/header.jpg"
                                   
                                   m_pct = re.search(r'<div class="discount_pct">\s*-(\d+)%\s*</div>', b)
                                   discount = int(m_pct.group(1)) if m_pct else 0
