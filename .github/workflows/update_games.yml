@@ -347,44 +347,42 @@ jobs:
                       deal['recommend_index'] = idx
                       deal['globalRank'] = f"Top {idx + 1}"
 
-                  # 3. 提取史低 (加入三重代理轮询防崩溃)
-                  print("💰 正在提取全网史低数据...")
+                  # 3. 提取史低 (极致多重代理轮盘，死磕 CheapShark)
+                  print("💰 正在连线提取全网史低数据...")
                   try:
                       ids_str = ",".join([str(d['id']) for d in deals_list])
-                      cs_url = f"https://www.cheapshark.com/api/1.0/games?steamAppIDs={ids_str}"
+                      target_url = f"https://www.cheapshark.com/api/1.0/games?steamAppIDs={ids_str}"
+                      
+                      # 代理轮盘池：依次尝试直连与三大跨域穿透节点
+                      proxies = [
+                          target_url,
+                          f"https://api.allorigins.win/raw?url={urllib.parse.quote(target_url)}",
+                          f"https://api.codetabs.com/v1/proxy/?quest={target_url}",
+                          f"https://corsproxy.io/?url={urllib.parse.quote(target_url)}"
+                      ]
                       
                       cs_data = None
-                      
-                      # 通道 1：直连尝试
-                      try:
-                          res1 = requests.get(cs_url, headers=HEADERS, timeout=8)
-                          if res1.status_code == 200 and "{" in res1.text: cs_data = res1.json()
-                      except: pass
-                      
-                      # 通道 2：AllOrigins 穿透节点
-                      if not cs_data:
+                      for p_url in proxies:
                           try:
-                              res2 = requests.get(f"https://api.allorigins.win/raw?url={urllib.parse.quote(cs_url)}", timeout=10)
-                              if res2.status_code == 200 and "{" in res2.text: cs_data = res2.json()
-                          except: pass
-                          
-                      # 通道 3：CodeTabs 穿透节点
-                      if not cs_data:
-                          try:
-                              res3 = requests.get(f"https://api.codetabs.com/v1/proxy/?quest={cs_url}", timeout=10)
-                              if res3.status_code == 200 and "{" in res3.text: cs_data = res3.json()
-                          except: pass
-                          
-                      # 解析与赋值 (加入严格的类型校验防止崩溃)
+                              res_cs = requests.get(p_url, timeout=10)
+                              # 严格校验：必须是 200 且返回的是 JSON 格式，才算穿透成功
+                              if res_cs.status_code == 200 and "{" in res_cs.text:
+                                  cs_data = res_cs.json()
+                                  print(f"✅ 史低节点穿透成功！")
+                                  break
+                          except:
+                              pass
+                              
                       if cs_data and isinstance(cs_data, dict):
                           for deal in deals_list:
                               app_id = str(deal['id'])
                               if app_id in cs_data:
                                   usd_price = float(cs_data[app_id].get('cheapestPriceEver', {}).get('price', 0))
-                                  if usd_price > 0: deal['historicalLow'] = f"{(usd_price * 7.23):.2f}"
+                                  if usd_price > 0: 
+                                      deal['historicalLow'] = f"{(usd_price * 7.23):.2f}"
                       else:
-                          print("⚠️ 所有代理通道均被 CheapShark 拦截，前端将显示横杠或当前新低。")
-                  except Exception as e:
+                          print("⚠️ 所有代理节点均被拦截，本次史低提取失败。")
+                  except Exception as e: 
                       print(f"⚠️ 史低提取彻底失败: {e}")
 
                   # 4. 提取实时在线人数 (Steam底层无盾API)
