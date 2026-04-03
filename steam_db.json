@@ -128,5 +128,19 @@
       "end_date": "2026-04-06T17:00:00Z",
       "_is_forced": false
     }
+  },
+  "613100": {
+    "status": "valid",
+    "type": "100_off",
+    "details": {
+      "steam_id": "613100",
+      "zh_title": "房产达人",
+      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/613100/header_schinese.jpg?t=1775231659",
+      "short_description": "《房产达人》让你实现单人装修房屋的梦想",
+      "is_100_off": true,
+      "is_weekend": false,
+      "end_date": "2026-04-06T17:00:00Z",
+      "_is_forced": false
+    }
   }
 }
