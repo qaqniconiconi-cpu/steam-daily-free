@@ -31,7 +31,7 @@ jobs:
           import string
           import os
           import yaml
-          import urllib.parse  # 💡 新增：用于 URL 编码，以配合代理穿透
+          import urllib.parse
           from datetime import datetime, timedelta
 
           HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Accept-Language': 'zh-CN,zh;q=0.9'}
@@ -278,13 +278,20 @@ jobs:
               except Exception as e: return {"status": "invalid"}
 
           def fetch_steam_deals():
-              print("🔥 开始抓取 Steam 实时热搜折扣 (带精准截止日期)...")
+              print("🔥 开始抓取 Steam 实时热搜折扣 (全链路防封穿透版)...")
               deals_list = []
               seen_ids = set()
               try:
                   for page in range(3): 
-                      search_url = f"https://store.steampowered.com/search/results/?query&start={page*50}&count=50&dynamic_data=&specials=1&infinite=1&cc=cn&l=schinese&filter=topsellers"
-                      res = requests.get(search_url, headers=HEADERS, timeout=15)
+                      # 加入时间戳防止代理节点缓存老数据
+                      search_url = f"https://store.steampowered.com/search/results/?query&start={page*50}&count=50&dynamic_data=&specials=1&infinite=1&cc=cn&l=schinese&filter=topsellers&_t={int(time.time())}"
+                      
+                      res = requests.get(search_url, headers=HEADERS, timeout=10)
+                      # 💡 全新升级：连“搜索列表”接口如果被封，也立刻走代理穿透！
+                      if res.status_code != 200:
+                          print(f"⚠️ 第 {page+1} 页列表被拦截 (状态码: {res.status_code})，启动代理引擎...")
+                          proxy_url = f"https://api.allorigins.win/raw?url={urllib.parse.quote(search_url)}"
+                          res = requests.get(proxy_url, headers=HEADERS, timeout=15)
                       
                       if res.status_code == 200:
                           data = res.json()
@@ -360,16 +367,19 @@ jobs:
                   
                   deals_list = deals_list[:50]
                   
+                  # 💡 致命拦截校验：如果抓取数量为0，说明所有通道都被墙了，立刻暴露问题
+                  if not deals_list:
+                      print("❌ 警告：未抓取到任何游戏！所有直连和代理均被 Steam 墙了！")
+                      return []
+                  
                   # ==========================================
                   # 💡 核心升级：批量提取截止日期 (防封杀/智能代理穿透版)
                   # ==========================================
-                  print("⏳ 正在为 Top 50 游戏批量抓取优惠截止日期...")
+                  print(f"✅ 成功抓取 {len(deals_list)} 款游戏，开始获取优惠截止日期...")
                   
-                  # 先赋予推荐排名索引
                   for idx, deal in enumerate(deals_list):
                       deal['recommend_index'] = idx
                       
-                  # 黑科技：将 50 个游戏切分成每批 10 个，总共只需发 5 次请求，彻底规避封锁！
                   chunk_size = 10
                   for i in range(0, len(deals_list), chunk_size):
                       chunk_deals = deals_list[i:i+chunk_size]
@@ -377,15 +387,12 @@ jobs:
                       ids_str = ",".join(chunk_ids)
                       
                       try:
-                          time.sleep(1.5) # 批次间安全停顿，极其稳妥
+                          time.sleep(1.5)
                           api_url = f"https://store.steampowered.com/api/appdetails?appids={ids_str}&cc=cn&filters=price_overview"
                           
-                          # 先尝试直连
                           res_api = requests.get(api_url, headers=HEADERS, timeout=10)
-                          
-                          # 如果遭遇 Steam 封杀屏蔽 (429/403 等非200状态)，立即切入代理穿透！
                           if res_api.status_code != 200:
-                              print(f"⚠️ 直连被 Steam 拦截 (状态码: {res_api.status_code})，正在启用全球备用代理通道...")
+                              print(f"⚠️ 日期接口被拦截 (状态码: {res_api.status_code})，启动代理引擎...")
                               proxy_url = f"https://api.allorigins.win/raw?url={urllib.parse.quote(api_url)}"
                               res_api = requests.get(proxy_url, headers=HEADERS, timeout=15)
                           
@@ -393,7 +400,6 @@ jobs:
                               api_data = res_api.json()
                               for deal in chunk_deals:
                                   app_id_str = str(deal['id'])
-                                  # 如果 Steam 成功返回了该游戏的数据
                                   if api_data.get(app_id_str, {}).get('success'):
                                       price_info = api_data[app_id_str]['data'].get('price_overview', {})
                                       exp_ts = price_info.get('discount_expiration')
