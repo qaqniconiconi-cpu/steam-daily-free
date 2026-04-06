@@ -116,7 +116,7 @@
     "status": "invalid"
   },
   "1590840": {
-    "status": "valid",
+    "status": "expired",
     "type": "100_off",
     "details": {
       "steam_id": "1590840",
@@ -130,7 +130,7 @@
     }
   },
   "613100": {
-    "status": "valid",
+    "status": "expired",
     "type": "100_off",
     "details": {
       "steam_id": "613100",
@@ -140,6 +140,20 @@
       "is_100_off": true,
       "is_weekend": false,
       "end_date": "2026-04-06T17:00:00Z",
+      "_is_forced": false
+    }
+  },
+  "2943780": {
+    "status": "valid",
+    "type": "100_off",
+    "details": {
+      "steam_id": "2943780",
+      "zh_title": "Chamber Survival",
+      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2943780/header.jpg?t=1775248437",
+      "short_description": "From a first person perspective, escape this terrifying room.",
+      "is_100_off": true,
+      "is_weekend": false,
+      "end_date": "2026-04-09T17:00:00Z",
       "_is_forced": false
     }
   }
