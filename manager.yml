@@ -16,19 +16,6 @@ add:
     end_date: "2026-04-09T00:00:00Z"
 
   # Epic 游戏 (修复了缩进和键名)
-  - link: "https://store.epicgames.com/zh-CN/p/together-after-dark-fa0ce0"
-    name: "Together After Dark"
-    type: "100_off"
-    thumbnail: "https://cdn1.epicgames.com/spt-assets/42a9aa9f7d7f40d1a0c1aa5c69565757/together-after-dark-logo-8d7q1.png?resize=1&w=480&h=270&quality=medium"
-    desc: "恐怖生存游戏"
-    end_date: "2026-04-05T02:59:00Z"
-
-  - link: "https://store.epicgames.com/en-US/p/vornyca-987482"
-    name: "Vornyca"
-    type: "100_off"
-    thumbnail: "https://cdn1.epicgames.com/spt-assets/52ac54ca754c42baa0c793dc8201ca07/vornyca-logo-mqm8i.png?resize=1&w=480&h=270&quality=medium"
-    desc: "横板机器人闯关"
-    end_date: "2026-04-04T15:00:00Z"
 
 
 # 🚫 黑名单
