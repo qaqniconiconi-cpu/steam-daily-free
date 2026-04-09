@@ -156,5 +156,19 @@
       "end_date": "2026-04-09T17:00:00Z",
       "_is_forced": false
     }
+  },
+  "599140": {
+    "status": "valid",
+    "type": "100_off",
+    "details": {
+      "steam_id": "599140",
+      "zh_title": "Graveyard Keeper",
+      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/599140/0671e75eab8e44cd3f22e0d9f5371304b5556f96/header_alt_assets_2.jpg?t=1775752903",
+      "short_description": "《守墓人》(Graveyard Keeper) 由《拳击俱乐部》(Punch Club) 创作团队的原班人马打造，是有史以来最不正经的中世纪墓地经营模拟游戏",
+      "is_100_off": true,
+      "is_weekend": false,
+      "end_date": "2026-04-13T17:00:00Z",
+      "_is_forced": false
+    }
   }
 }
