@@ -1,7 +1,7 @@
 # ==========================================
 # 喜加一情报站 · 手动管理控制台
 # ==========================================
-
+# 100_off | to_paid | thumbnail: "img src" | desc: ""
 # ➕ 强制添加区
 add:
   # Steam 游戏
@@ -16,7 +16,12 @@ add:
     end_date: "2026-04-09T00:00:00Z"
 
   # Epic 游戏 (修复了缩进和键名)
-
+  - link: "https://store.epicgames.com/zh-CN/p/tractor-racers-28ca5f"
+    name: "Tractor Racers"
+    type: "100_off"
+    thumbnail: "https://cdn1.epicgames.com/spt-assets/b98a9b2b7c364e7385f103538d86754c/tractor-racers-logo-1d1i4.png?resize=1&w=480&h=270&quality=medium"
+    end_date: "2026-04-11T23:29:00Z"
+    desc: "拖拉机赛车挑战"
 
 # 🚫 黑名单
 disable:
