@@ -496,9 +496,11 @@ jobs:
                           if slug in seen_epic_slugs: continue
                           seen_epic_slugs.add(slug)
                           
-                          img = next((i['url'] for i in item.get('keyImages', []) if i['type'] in ['OfferImageWide', 'Thumbnail']), "")
-                          desc = str(item.get('description') or item.get('shortDescription') or '').strip()
-                          if not desc or desc.lower() == item.get('title', '').lower(): desc = "Epic 限时免费福利，建议立即入库体验。"
+                          gp_desc = g.get('description', '').strip().split('\n')[0][:90]
+                              
+                              # 同样，只有当第三方 API 连英文都没抓到时，才给个兜底
+                              if not gp_desc: 
+                                  gp_desc = "Epic 独立隐藏限免 / 额外赠送福利"
                           
                           forced_info = next((f for f in FORCED_EPIC if f['epic_slug'] == slug), None)
                           if forced_info:
@@ -548,13 +550,15 @@ jobs:
                                   try: end_date = datetime.strptime(end_str, "%Y-%m-%d %H:%M:%S").strftime('%Y-%m-%dT%H:%M:%SZ')
                                   except: pass
                               
-                              if end_date == "N/A": continue
                               try:
                                   if datetime.strptime(end_date, '%Y-%m-%dT%H:%M:%SZ') < datetime.utcnow(): continue
                               except: pass
 
                               gp_desc = g.get('description', '').strip().split('\n')[0][:90]
-                              if not gp_desc: gp_desc = "Epic 独立隐藏限免 / 额外赠送"
+                              
+                              # 💡 新增：第三方 API 基本都是纯英文，一旦检测不到中文，立即替换
+                              if not gp_desc or not re.search(r'[\u4e00-\u9fa5]', gp_desc): 
+                                  gp_desc = f"《{title}》Epic 限免福利。"
 
                               forced_info = next((f for f in FORCED_EPIC if f['epic_slug'] == slug), None)
                               if forced_info:
