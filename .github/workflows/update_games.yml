@@ -496,8 +496,9 @@ jobs:
                           if slug in seen_epic_slugs: continue
                           seen_epic_slugs.add(slug)
                           
-                          gp_desc = g.get('description', '').strip().split('\n')[0][:90]
-                              if not gp_desc: gp_desc = "Epic 独立隐藏限免 / 额外赠送福利"
+                          img = next((i['url'] for i in item.get('keyImages', []) if i['type'] in ['OfferImageWide', 'Thumbnail']), "")
+                          desc = str(item.get('description') or item.get('shortDescription') or '').strip()
+                          if not desc or desc.lower() == item.get('title', '').lower(): desc = "Epic 限时免费福利，建议立即入库体验。"
                           
                           forced_info = next((f for f in FORCED_EPIC if f['epic_slug'] == slug), None)
                           if forced_info:
@@ -506,7 +507,6 @@ jobs:
 
                           is_active_free = False
                           
-                          # 1. 独立检测当前是否免费
                           if promos.get('promotionalOffers'):
                               try:
                                   offers = promos['promotionalOffers'][0]['promotionalOffers']
@@ -515,7 +515,6 @@ jobs:
                                       is_active_free = True
                               except: pass
                           
-                          # 2. 如果当前不免费，独立检测是否即将免费（去掉 elif，防止被前面的普通打折活动拦截）
                           if not is_active_free and promos.get('upcomingPromotionalOffers'):
                               try:
                                   offers = promos['upcomingPromotionalOffers'][0]['promotionalOffers']
@@ -547,15 +546,13 @@ jobs:
                                   try: end_date = datetime.strptime(end_str, "%Y-%m-%d %H:%M:%S").strftime('%Y-%m-%dT%H:%M:%SZ')
                                   except: pass
                               
+                              if end_date == "N/A": continue
                               try:
                                   if datetime.strptime(end_date, '%Y-%m-%dT%H:%M:%SZ') < datetime.utcnow(): continue
                               except: pass
 
                               gp_desc = g.get('description', '').strip().split('\n')[0][:90]
-                              
-                              # 💡 新增：第三方 API 基本都是纯英文，一旦检测不到中文，立即替换
-                              if not gp_desc or not re.search(r'[\u4e00-\u9fa5]', gp_desc): 
-                                  gp_desc = f"《{title}》Epic 限免福利。"
+                              if not gp_desc: gp_desc = "Epic 独立隐藏限免 / 额外赠送福利"
 
                               forced_info = next((f for f in FORCED_EPIC if f['epic_slug'] == slug), None)
                               if forced_info:
@@ -577,7 +574,6 @@ jobs:
 
               for fe in FORCED_EPIC:
                   if fe['epic_slug'] not in epic_existing_slugs and fe['epic_slug'] not in BLACKLIST:
-                      # 增加过期验证逻辑
                       end_date_str = fe.get('end_date')
                       is_expired = False
                       if end_date_str and end_date_str != "N/A" and end_date_str != "限免进行中":
@@ -591,10 +587,8 @@ jobs:
                           active_games.append(clean_fe)
                           print(f"✨ 跨平台入库成功: [Epic上帝模式] {fe['zh_title']}")
 
-              # 🎯 调用新增的 Steam 折扣抓取
               steam_deals = fetch_steam_deals()
 
-              # 🎯 统一将数据推送到你们的独立后端 (system.et-api.com)
               print("🚀 正在将喜加一数据推送到后端 API...")
               post_update_with_sign("games.json", active_games)
               post_update_with_sign("upcoming.json", upcoming_list)
@@ -603,7 +597,6 @@ jobs:
               print("🚀 正在将特惠折扣数据推送到后端 API...")
               post_update_with_sign("deals.json", steam_deals)
 
-              # 本地只保留 ETL 引擎用来查重和记录状态的数据库
               with open(DB_FILE, 'w', encoding='utf-8') as f:
                   json.dump(db, f, ensure_ascii=False, indent=2)
                   
