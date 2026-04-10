@@ -1,7 +1,9 @@
 # ==========================================
 # 喜加一情报站 · 手动管理控制台
 # ==========================================
-# 100_off | to_paid | thumbnail: "img src" | desc: ""
+# 100_off | to_paid | 
+# thumbnail: "img src" | desc: ""
+
 # ➕ 强制添加区
 add:
   # Steam 游戏
@@ -10,10 +12,10 @@ add:
     type: "to_paid"
     end_date: "2026-05-15T23:59:00Z"
 
-  - link: "https://store.steampowered.com/app/821380/Project_Scrapper/"
-    name: "Project Scrapper"
+  - link: "https://store.steampowered.com/app/2513440/eWorlds/"
+    name: "eWorlds"
     type: "to_paid"
-    end_date: "2026-04-09T00:00:00Z"
+    end_date: "2026-04-16T00:00:00Z"
 
   # Epic 游戏 (修复了缩进和键名)
   - link: "https://store.epicgames.com/zh-CN/p/tractor-racers-28ca5f"
