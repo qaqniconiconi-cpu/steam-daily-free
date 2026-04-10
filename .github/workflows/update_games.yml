@@ -471,8 +471,7 @@ jobs:
                           except: pass
                       
                       if is_expired:
-                          if str(app_id) in FORCED_ADD: is_expired = False
-                          else: db[app_id]['status'] = 'expired'
+                          db[app_id]['status'] = 'expired'
                       
                       if not is_expired:
                           clean_details = {k: v for k, v in details.items() if not k.startswith('_')}
@@ -509,15 +508,24 @@ jobs:
                               if forced_info.get('_custom_thumb'): img = forced_info['_custom_thumb']
                               if forced_info.get('_custom_desc'): desc = forced_info['_custom_desc']
 
-                          if promos.get('promotionalOffers'):
-                              offers = promos['promotionalOffers'][0]['promotionalOffers']
-                              if offers and offers[0].get('discountSetting', {}).get('discountPercentage') == 0:
-                                  active_games.append({"zh_title": item['title'], "thumbnail": img, "end_date": offers[0]['endDate'], "platform": "Epic Games", "epic_slug": slug, "short_description": desc})
+                          is_active_free = False
                           
-                          elif promos.get('upcomingPromotionalOffers'):
-                              offers = promos['upcomingPromotionalOffers'][0]['promotionalOffers']
-                              if offers and offers[0].get('discountSetting', {}).get('discountPercentage') == 0:
-                                  upcoming_list.append({"zh_title": item['title'], "image": img, "start_date": offers[0]['startDate'], "end_date": offers[0]['endDate'], "platform": "Epic Games", "epic_slug": slug, "short_description": desc})
+                          # 1. 独立检测当前是否免费
+                          if promos.get('promotionalOffers'):
+                              try:
+                                  offers = promos['promotionalOffers'][0]['promotionalOffers']
+                                  if offers and offers[0].get('discountSetting', {}).get('discountPercentage') == 0:
+                                      active_games.append({"zh_title": item['title'], "thumbnail": img, "end_date": offers[0]['endDate'], "platform": "Epic Games", "epic_slug": slug, "short_description": desc})
+                                      is_active_free = True
+                              except: pass
+                          
+                          # 2. 如果当前不免费，独立检测是否即将免费（去掉 elif，防止被前面的普通打折活动拦截）
+                          if not is_active_free and promos.get('upcomingPromotionalOffers'):
+                              try:
+                                  offers = promos['upcomingPromotionalOffers'][0]['promotionalOffers']
+                                  if offers and offers[0].get('discountSetting', {}).get('discountPercentage') == 0:
+                                      upcoming_list.append({"zh_title": item['title'], "image": img, "start_date": offers[0]['startDate'], "end_date": offers[0]['endDate'], "platform": "Epic Games", "epic_slug": slug, "short_description": desc})
+                              except: pass
                   except: continue
 
               official_epic_slugs = {g.get('epic_slug') for g in active_games if g.get('epic_slug')}
@@ -571,9 +579,19 @@ jobs:
 
               for fe in FORCED_EPIC:
                   if fe['epic_slug'] not in epic_existing_slugs and fe['epic_slug'] not in BLACKLIST:
-                      clean_fe = {k: v for k, v in fe.items() if not k.startswith('_')}
-                      active_games.append(clean_fe)
-                      print(f"✨ 跨平台入库成功: [Epic上帝模式] {fe['zh_title']}")
+                      # 增加过期验证逻辑
+                      end_date_str = fe.get('end_date')
+                      is_expired = False
+                      if end_date_str and end_date_str != "N/A" and end_date_str != "限免进行中":
+                          try:
+                              if datetime.strptime(end_date_str, '%Y-%m-%dT%H:%M:%SZ') < datetime.utcnow(): 
+                                  is_expired = True
+                          except: pass
+                      
+                      if not is_expired:
+                          clean_fe = {k: v for k, v in fe.items() if not k.startswith('_')}
+                          active_games.append(clean_fe)
+                          print(f"✨ 跨平台入库成功: [Epic上帝模式] {fe['zh_title']}")
 
               # 🎯 调用新增的 Steam 折扣抓取
               steam_deals = fetch_steam_deals()
