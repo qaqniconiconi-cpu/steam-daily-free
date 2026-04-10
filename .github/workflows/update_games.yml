@@ -214,9 +214,8 @@ jobs:
                           e_date = str(forced_info.get('end_date', '')).strip()
                           if not e_date or e_date.lower() == "none": e_date = "限免进行中"
                           z_title = forced_info.get('name') or f"神秘福利 {app_id}"
-                          # 将 thumbnail 逻辑更新为更稳健的地址
                           thumbnail_url = forced_info.get('_custom_thumb') or f"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{app_id}/header.jpg"
-                          return {"status": "valid", "type": forced_info.get('type', 'to_paid'), "details": {"steam_id": str(app_id), "zh_title": z_title, "thumbnail": thumbnail_url, ...
+                          return {"status": "valid", "type": forced_info.get('type', 'to_paid'), "details": {"steam_id": str(app_id), "zh_title": z_title, "thumbnail": thumbnail_url, "short_description": forced_info.get('_custom_desc') or "福利放送中，建议立即入库体验", "is_100_off": False, "is_weekend": False, "end_date": e_date, "_is_forced": True}}
                       return {"status": "invalid"}
 
                   price = d.get('price_overview', {})
@@ -264,7 +263,6 @@ jobs:
                   z_title = forced_info.get('name') if forced_info and forced_info.get('name') else d.get('name')
                   raw_desc = d.get('short_description', '') if d else ""
                   short_desc = forced_info.get('_custom_desc') if forced_info and forced_info.get('_custom_desc') else (raw_desc.strip().split('。')[0] if raw_desc else "福利放送中，建议立即入库体验")
-                  # 优先使用 API 返回的 header_image，这是目前最官方且会自动处理重定向的地址
                   thumbnail = forced_info.get('_custom_thumb') if forced_info and forced_info.get('_custom_thumb') else d.get('header_image', f"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{app_id}/header.jpg")
                   
                   if end_date == "N/A": end_date = "限免进行中"
@@ -288,22 +286,18 @@ jobs:
               deals_list = []
               seen_ids = set()
               try:
-                  # 1. 抓取列表与基础数据
                   for page in range(3): 
                       search_url = f"https://store.steampowered.com/search/results/?query&start={page*50}&count=50&dynamic_data=&specials=1&infinite=1&cc=cn&l=schinese&filter=globaltopsellers&_t={int(time.time())}"
                       res = requests.get(search_url, headers=HEADERS, timeout=10)
                       
-                      # ⚡ 核心修复：Steam 会用“假 200”风控，必须判断内容是否包含游戏特征码
                       if res.status_code != 200 or 'data-ds-appid' not in res.text:
                           print(f"⚠️ 触发 Steam 防爬盾 (Page {page})，自动切入代理池...")
                           res = requests.get(f"https://api.allorigins.win/raw?url={urllib.parse.quote(search_url)}", headers=HEADERS, timeout=15)
                       
                       if res.status_code == 200 and 'data-ds-appid' in res.text:
-                         # 1. 抓取列表与基础数据
                           blocks = res.json().get('results_html', '').split('data-ds-appid="')[1:]
                           for b in blocks:
                               try:
-                                  # ⚡ 核心修复：取出原始 ID 字符串后，强行取第一个 ID
                                   raw_id_str = b.split('"')[0]
                                   app_id = raw_id_str.split(',')[0] 
                                   
@@ -313,14 +307,10 @@ jobs:
                                   if not m_title: continue
                                   title = m_title.group(1).strip()
                                   
-                                  # ⚡ 核心修复：不再手动拼接，直接从 HTML 块中提取 Steam 当前渲染的真实图片地址
-                                  # 这可以抓取到带有 Hash 值的 Fastly 节点地址，彻底解决 404 问题
                                   img_match = re.search(r'<div class="search_capsule">.*?src="([^"]+)"', b, re.DOTALL)
                                   if img_match:
-                                      # 提取 src 并在必要时去掉查询参数 (如 ?t=xxx)
                                       img = img_match.group(1).split('?')[0]
                                   else:
-                                      # 兜底：如果正则没抓到，使用较新的静态资源域名
                                       img = f"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{app_id}/header.jpg"
                                   
                                   m_pct = re.search(r'<div class="discount_pct">\s*-(\d+)%\s*</div>', b)
@@ -357,12 +347,10 @@ jobs:
                   print(f"✅ 成功抓取基础折扣游戏: {len(deals_list)} 款")
                   deals_list = deals_list[:50]
                   
-                  # 2. 注入全球排行
                   for idx, deal in enumerate(deals_list): 
                       deal['recommend_index'] = idx
                       deal['globalRank'] = f"Top {idx + 1}"
 
-                  # 4. 提取实时在线人数 (Steam底层无盾API)
                   print("👥 正在提取实时在线人数...")
                   for deal in deals_list:
                       try:
@@ -375,7 +363,6 @@ jobs:
                           time.sleep(0.2)
                       except Exception: deal['peakOnline'] = "-"
 
-                  # 5. 提取优惠截止日期
                   print("📅 正在提取优惠截止日期...")
                   for deal in deals_list:
                       try:
