@@ -324,12 +324,27 @@ jobs:
                                       m_fallback = re.search(r'([0-9,]+)\s*(?:篇|user reviews)', b)
                                       if m_fallback: review_count = int(m_fallback.group(1).replace(',', ''))
                                   
+                                  # 💡 新增：提取精准好评百分比
+                                  m_percent = re.search(r'br&gt;(\d+)%', b)
+                                  review_percent = int(m_percent.group(1)) if m_percent else 0
+
+                                  # 💡 新增：提取发售日期
+                                  m_date = re.search(r'search_released[^>]*>\s*([^<]+?)\s*</div>', b)
+                                  release_date = m_date.group(1).strip() if m_date else ""
+
+                                  # 💡 新增：提取并汉化游戏核心标签
+                                  STEAM_TAGS = {"19":"动作","21":"冒险","122":"RPG","9":"策略","289":"独立","597":"休闲","599":"模拟","128":"多人联机","1774":"射击","1695":"开放世界","3859":"单人","3843":"合作","4166":"剧情丰富","4345":"恐怖","1662":"解谜","3942":"科幻","1663":"FPS","1667":"生存恐怖","7332":"城市营造","3839":"第一人称","4182":"二次元","113":"免费"}
+                                  m_tags = re.search(r'data-ds-tagids="\[([\d,]+)\]"', b)
+                                  real_tags = [STEAM_TAGS.get(tid) for tid in m_tags.group(1).split(',')] if m_tags else []
+                                  real_tags = list(filter(None, real_tags))[:3] # 精简排版，最多取前3个标签
+                                  
                                   if discount > 0 and m_orig and m_final:
                                       deals_list.append({
                                           "id": app_id, "name": title, "img": img, "discount": discount,
                                           "originalPrice": f"{float(m_orig.group(1).replace(',', '')):.2f}",
                                           "finalPrice": f"{float(m_final.group(1).replace(',', '')):.2f}",
-                                          "reviewCount": review_count, "reviewTier": review_tier
+                                          "reviewCount": review_count, "reviewTier": review_tier,
+                                          "reviewPercent": review_percent, "releaseDate": release_date, "tags": real_tags
                                       })
                                       seen_ids.add(app_id)
                               except Exception: pass
