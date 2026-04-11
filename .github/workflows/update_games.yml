@@ -324,8 +324,8 @@ jobs:
                                       m_fallback = re.search(r'([0-9,]+)\s*(?:篇|user reviews)', b)
                                       if m_fallback: review_count = int(m_fallback.group(1).replace(',', ''))
                                   
-                                  # 💡 新增：提取精准好评百分比
-                                  m_percent = re.search(r'br&gt;(\d+)%', b)
+                                  # 💡 优化：更强健的精准好评百分比提取
+                                  m_percent = re.search(r'data-tooltip-html="[^"]*?(\d+)%', b)
                                   review_percent = int(m_percent.group(1)) if m_percent else 0
 
                                   # 💡 新增：提取发售日期
