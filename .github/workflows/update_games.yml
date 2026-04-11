@@ -68,7 +68,13 @@ jobs:
                               name = str(item.get('name', '')).strip()
                               custom_thumbnail = str(item.get('thumbnail', '')).strip()
                               custom_desc = str(item.get('desc', item.get('description', item.get('dec', '')))).strip()
+                              
+                              # ⚡ 核心修复：防止 PyYAML 把标准 ISO 格式自动转成 datetime 对象，导致输出时丢失 T 和 Z 引起前端崩溃
                               raw_date = item.get('end_date', item.get('endtime', item.get('endDate', '')))
+                              if isinstance(raw_date, datetime): 
+                                  raw_date_str = raw_date.strftime('%Y-%m-%dT%H:%M:%SZ')
+                              else: 
+                                  raw_date_str = str(raw_date).strip() if raw_date else ""
                               
                               is_epic = 'epicgames.com' in link.lower() or str(item.get('platform', '')).lower() == 'epic'
                               if is_epic:
@@ -77,8 +83,7 @@ jobs:
                                   if not slug: slug = name
                                   if not slug: continue
                                   
-                                  if isinstance(raw_date, datetime): e_date = raw_date.strftime('%Y-%m-%dT%H:%M:%SZ')
-                                  else: e_date = str(raw_date).strip() if raw_date else ""
+                                  e_date = raw_date_str
 
                                   thumbnail, desc, name_zh = custom_thumbnail, custom_desc, name
 
@@ -128,7 +133,7 @@ jobs:
 
                               if app_id and app_id.isdigit():
                                   FORCED_ADD[app_id] = {
-                                      "type": item.get('type', 'to_paid'), "end_date": raw_date, "name": name,
+                                      "type": item.get('type', 'to_paid'), "end_date": raw_date_str, "name": name,
                                       "_custom_desc": custom_desc, "_custom_thumb": custom_thumbnail
                                   }
                           else:
@@ -198,8 +203,9 @@ jobs:
 
           def verify_steam_app(app_id):
               if str(app_id) in BLACKLIST: return {"status": "invalid"}
+              # 提前提取 forced_info，防止后续报错时获取不到
+              forced_info = FORCED_ADD.get(str(app_id))
               try:
-                  forced_info = FORCED_ADD.get(str(app_id))
                   url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=schinese&cc=CN"
                   res_raw = requests.get(url, headers=HEADERS, timeout=10)
                   if res_raw.status_code == 429 and not forced_info: return {"status": "rate_limit"}
@@ -276,7 +282,16 @@ jobs:
                           "_is_forced": bool(forced_info)
                       }
                   }
-              except Exception as e: return {"status": "invalid"}
+              except Exception as e: 
+                  # ⚡ 核心修复：由于 Github 服务器连接 Steam 有时会超时报错
+                  # 只要是你手动强制添加的游戏，依然绝对保送入库！
+                  if forced_info:
+                      e_date = str(forced_info.get('end_date', '')).strip()
+                      if not e_date or e_date.lower() == "none": e_date = "限免进行中"
+                      z_title = forced_info.get('name') or f"神秘福利 {app_id}"
+                      thumbnail_url = forced_info.get('_custom_thumb') or f"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{app_id}/header.jpg"
+                      return {"status": "valid", "type": forced_info.get('type', 'to_paid'), "details": {"steam_id": str(app_id), "zh_title": z_title, "thumbnail": thumbnail_url, "short_description": forced_info.get('_custom_desc') or "福利放送中，建议立即入库体验", "is_100_off": False, "is_weekend": False, "end_date": e_date, "_is_forced": True}}
+                  return {"status": "invalid"}
 
           # ==========================================
           # 💡 完美数据抓取引擎：解决报错、补全所有数据
