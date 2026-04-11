@@ -332,51 +332,45 @@ jobs:
                                   m_date = re.search(r'search_released[^>]*>\s*([^<]+?)\s*</div>', b)
                                   release_date = m_date.group(1).strip() if m_date else ""
 
-                                  # 💡 1. 深度语言判定：从编码后的 Tooltip 属性中挖掘
+                                  # 💡 1. 深度语言判定
                                   tooltip_content = b.lower()
-                                  # 检查常见的中文标识符（包含 HTML 转义和原始字符）
                                   has_chinese = any(x in tooltip_content for x in ["简体中文", "schinese", "chinese", "tchinese", "繁体中文"])
 
-                                  # 💡 2. 强化标签系统：使用大容量映射表 (覆盖 95% 以上热门游戏)
-                                  # 这样即使 Steam 没渲染文本，我们通过 ID 也能强行转换
+                                  # 💡 2. 核心模式识别 (单人/多人/合作) - 抓取官方分类 ID
+                                  m_cat_ids = re.search(r'data-ds-categoryids="\[([\d,]+)\]"', b)
+                                  cat_ids = m_cat_ids.group(1).split(',') if m_cat_ids else []
+                                  # ID 对应：1:多人, 2:单人, 9:合作, 36:在线多人, 38:在线合作
+                                  is_multi = any(c in ["1", "9", "36", "38", "49"] for c in cat_ids)
+                                  is_single = "2" in cat_ids
+
+                                  # 💡 3. 玩法风格标签 (ID 映射表)
                                   TAG_MAP = {
-                                      "19":"动作","21":"冒险","122":"RPG","9":"策略","289":"独立","597":"休闲","599":"模拟","128":"多人",
-                                      "1774":"射击","1695":"开放世界","3859":"单人","3843":"合作","4166":"剧情","4345":"恐怖","1662":"解谜",
-                                      "3942":"科幻","1663":"FPS","1667":"生存","7332":"建造","3839":"第一人称","4182":"二次元","113":"免费",
-                                      "1664":"竞技","1708":"战术","120":"视觉小说","1670":"类Rogue","1721":"赛车","123":"射击","1716":"格斗",
-                                      "1659":"恋爱","1643":"体育","1742":"动漫","1669":"潜行","1751":"平台","1756":"肉鸽","1654":"动作RPG",
-                                      "1738":"塔防","1666":"卡牌","1754":"恋爱模拟","1719":"团队","1710":"生存恐怖","1714":"大型多人"
+                                      "122":"RPG","9":"策略","289":"独立","597":"休闲","599":"模拟","1774":"射击",
+                                      "1695":"开放世界","4166":"剧情","4345":"恐怖","1662":"解谜","3942":"科幻",
+                                      "1663":"FPS","1667":"生存","7332":"建造","3839":"第一人称","4182":"二次元",
+                                      "113":"免费","1664":"竞技","1708":"战术","120":"视觉小说","1670":"类Rogue",
+                                      "1721":"赛车","1716":"格斗","1659":"恋爱","1643":"体育","1742":"动漫"
                                   }
-                                  
-                                  # 抓取游戏的所有标签 ID
                                   m_tag_ids = re.search(r'data-ds-tagids="\[([\d,]+)\]"', b)
                                   tag_ids = m_tag_ids.group(1).split(',') if m_tag_ids else []
-                                  
-                                  # 💡 3. 智能组合标签
+
+                                  # 💡 4. 智能组装标签 - 严格执行顺序：语言 -> 模式 -> 玩法
                                   final_tags = []
-                                  if has_chinese:
-                                      final_tags.append("中文")
                                   
-                                  # 从映射表中翻译标签，并过滤掉已有的“中文”
+                                  # (A) 第一优先级：语言
+                                  final_tags.append("中文" if has_chinese else "英文")
+
+                                  # (B) 第二优先级：多人/单人 (如果两个都支持，两个都显示)
+                                  if is_multi: final_tags.append("多人联机")
+                                  if is_single: final_tags.append("单人游玩")
+
+                                  # (C) 第三优先级：补充 2-3 个核心玩法标签
                                   for tid in tag_ids:
                                       tag_name = TAG_MAP.get(tid)
-                                      if tag_name and tag_name not in final_tags:
+                                      if tag_name and tag_name not in ["单人", "多人"] and tag_name not in final_tags:
                                           final_tags.append(tag_name)
                                   
-                                  # 确保即便没抓到，也至少有个“精品”标签，最多显示 5 个
-                                  final_tags = final_tags[:7] if final_tags else ["精品"]
-
-                                  # 💡 4. 最终数据压栈
-                                  if discount > 0 and m_orig and m_final:
-                                      deals_list.append({
-                                          "id": app_id, "name": title, "img": img, "discount": discount,
-                                          "originalPrice": f"{float(m_orig.group(1).replace(',', '')):.2f}",
-                                          "finalPrice": f"{float(m_final.group(1).replace(',', '')):.2f}",
-                                          "reviewCount": review_count, "reviewTier": review_tier,
-                                          "reviewPercent": review_percent, "releaseDate": release_date,
-                                          "tags": final_tags
-                                      })
-                                      seen_ids.add(app_id)
+                                  final_tags = final_tags[:6] # 适当增加上限到 6 个，保证信息完整
                               except Exception: pass
                   
                   deals_list = deals_list[:50]
