@@ -91,7 +91,6 @@ jobs:
                                   if not slug: slug = name.lower()
                                   if not slug: continue
                                   
-                                  # 💡 找回 Epic 页面爬虫逻辑
                                   thumb_final, desc_final, name_final = custom_thumbnail, custom_desc, name
                                   try:
                                       if not thumb_final or not desc_final:
@@ -252,7 +251,6 @@ jobs:
 
                   if not (is_free or is_100_off or has_free_license) and not forced_info: return {"status": "invalid"}
 
-                  # 💡 确定游戏的类型标识：已移除自动抓取 freeplay 的逻辑，仅保留给后台人工配置
                   game_type = "unknown"
                   if forced_info and forced_info.get('type'):
                       game_type = forced_info.get('type')
@@ -298,7 +296,6 @@ jobs:
                       res = requests.get(search_url, headers=HEADERS, timeout=10)
                       
                       if res.status_code != 200 or 'data-ds-appid' not in res.text:
-                          print(f"⚠️ 触发 Steam 防爬盾 (Page {page})，自动切入代理池...")
                           res = requests.get(f"https://api.allorigins.win/raw?url={urllib.parse.quote(search_url)}", headers=HEADERS, timeout=15)
                       
                       if res.status_code == 200 and 'data-ds-appid' in res.text:
@@ -337,14 +334,11 @@ jobs:
                                       seen_ids.add(app_id)
                               except Exception: pass
                   
-                  print(f"✅ 成功抓取基础折扣游戏: {len(deals_list)} 款")
                   deals_list = deals_list[:50]
-                  
                   for idx, deal in enumerate(deals_list): 
                       deal['recommend_index'] = idx
                       deal['globalRank'] = f"Top {idx + 1}"
 
-                  print("👥 正在提取实时在线人数...")
                   for deal in deals_list:
                       try:
                           app_id = str(deal['id'])
@@ -364,19 +358,7 @@ jobs:
           # ==========================================
           def main():
               db = {}
-              if not os.path.exists(DB_FILE):
-                  for fn in ["games.json", "upcoming.json", "intel.json"]:
-                      old = fetch_old_data(fn)
-                      if isinstance(old, dict) and 'data' in old: old = old['data']
-                      items = old.get('to_paid', []) + old.get('free_weekend', []) + old.get('freeplay', []) if fn == "intel.json" else (old if isinstance(old, list) else [])
-                      for i in items:
-                          app_id = i.get('steam_id')
-                          if app_id:
-                              if fn == "upcoming.json": g_type = "upcoming"
-                              elif fn == "games.json": g_type = "100_off"
-                              else: g_type = "freeplay" if i.get('is_freeplay') or i.get('is_weekend') else "to_paid"
-                              db[str(app_id)] = {"status": "valid", "type": g_type, "details": i}
-              else:
+              if os.path.exists(DB_FILE):
                   try:
                       with open(DB_FILE, 'r', encoding='utf-8') as f: db = json.load(f)
                   except: pass
@@ -428,7 +410,6 @@ jobs:
 
               # 💡 将数据重新各回各家，分流到不同列表
               final_games = []
-              final_upcoming = []
               final_intel = {"to_paid": [], "freeplay": []}
               
               processed_slugs = set()
@@ -446,7 +427,9 @@ jobs:
                       is_expired = False
                       if end_date_str != "N/A" and end_date_str != "限免进行中":
                           try:
-                              dt = datetime.strptime(end_date_str, '%Y-%m-%dT%H:%M:%SZ')
+                              # 容忍 .000Z 的情况
+                              dt_str = end_date_str.replace('.000Z', 'Z')
+                              dt = datetime.strptime(dt_str, '%Y-%m-%dT%H:%M:%SZ')
                               if dt < current_time: is_expired = True
                           except: pass
                       
@@ -456,8 +439,11 @@ jobs:
                           g_type = data.get('type', clean_details.get('type', '100_off'))
                           is_up = clean_details.get('is_upcoming', False)
                           
+                          # 💡 核心修复：把 upcoming 并回 games.json，带上 is_upcoming = True 标签
                           if is_up or g_type == 'upcoming':
-                              final_upcoming.append(clean_details)
+                              clean_details['is_upcoming'] = True
+                              clean_details['type'] = 'upcoming'
+                              final_games.append(clean_details)
                           elif g_type == '100_off':
                               final_games.append(clean_details)
                           elif g_type == 'to_paid':
@@ -512,9 +498,12 @@ jobs:
                                   "end_date": (forced_info.get('end_date') if forced_info and forced_info.get('end_date') else e_date),
                                   "platform": "Epic Games", "epic_slug": slug, "type": g_type, "is_upcoming": is_up
                               }
-                              # 严格分流
+                              
+                              # 把 upcoming 并入 games.json
                               if is_up or g_type == 'upcoming':
-                                  final_upcoming.append(game_obj)
+                                  game_obj['is_upcoming'] = True
+                                  game_obj['type'] = 'upcoming'
+                                  final_games.append(game_obj)
                               elif g_type == '100_off':
                                   final_games.append(game_obj)
                               elif g_type == 'to_paid':
@@ -532,7 +521,8 @@ jobs:
                       is_expired = False
                       if end_date_str and end_date_str != "N/A" and end_date_str != "限免进行中":
                           try:
-                              if datetime.strptime(end_date_str, '%Y-%m-%dT%H:%M:%SZ') < datetime.utcnow(): 
+                              dt_str = end_date_str.replace('.000Z', 'Z')
+                              if datetime.strptime(dt_str, '%Y-%m-%dT%H:%M:%SZ') < datetime.utcnow(): 
                                   is_expired = True
                           except: pass
                       
@@ -542,7 +532,9 @@ jobs:
                           is_up = fe.get('is_upcoming', g_type == 'upcoming')
                           
                           if is_up or g_type == 'upcoming':
-                              final_upcoming.append(clean_fe)
+                              clean_fe['is_upcoming'] = True
+                              clean_fe['type'] = 'upcoming'
+                              final_games.append(clean_fe)
                           elif g_type == '100_off':
                               final_games.append(clean_fe)
                           elif g_type == 'to_paid':
@@ -553,17 +545,17 @@ jobs:
               # D. 获取史低特惠数据
               steam_deals = fetch_steam_deals()
 
-              print(f"🚀 正在将喜加一数据推送至后端 API ({len(final_games)} 款)...")
+              print(f"🚀 正在将喜加一及预告数据推送至后端 API ({len(final_games)} 款)...")
               post_update("games.json", final_games)
-              
-              print(f"🚀 正在将预告数据推送至后端 API ({len(final_upcoming)} 款)...")
-              post_update("upcoming.json", final_upcoming)
               
               print(f"🚀 正在将情报数据推送至后端 API...")
               post_update("intel.json", final_intel)
 
               print(f"🚀 正在将特惠折扣数据推送到后端 API ({len(steam_deals)} 款)...")
               post_update("deals.json", steam_deals)
+              
+              # 清理残旧的 upcoming.json，以防后端返回旧缓存
+              post_update("upcoming.json", [])
 
               with open(DB_FILE, 'w', encoding='utf-8') as f:
                   json.dump(db, f, ensure_ascii=False, indent=2)
@@ -579,16 +571,10 @@ jobs:
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
           
-          # 1. 删除临时生成的 python 脚本，防止被误提交
           rm -f processor.py
+          git rm --ignore-unmatch upcoming.json || true
           
-          # 2. 安全删除旧文件（加入 --ignore-unmatch 防止文件不存在时报错）
-          git rm --ignore-unmatch intel.json upcoming.json || true
-          
-          # 3. 使用 -A 自动添加所有变动（包含修改、新建和删除的文件）
           git add -A
-          
-          # 4. 提交并推送
           git commit -m "Auto Update Full ETL Database [skip ci]" || true
           git pull --rebase origin main || true
           git push
