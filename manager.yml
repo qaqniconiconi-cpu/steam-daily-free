@@ -4,6 +4,8 @@ add:
     type: upcoming
     desc: 实时战术潜行
     end_date: '2026-04-16T00:00:00.000Z'
+    thumbnail: >-
+      https://cdn1.epicgames.com/spt-assets/8de621e8d91b473f892472024035dc22/the-stone-of-madness-logo-29e1b.png?resize=1&w=480&h=270&quality=medium
   - link: https://store.epicgames.com/zh-CN/p/propsumo-ca8bd7
     name: 道具相扑
     desc: 欢乐格斗游戏
