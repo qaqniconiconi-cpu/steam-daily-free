@@ -509,27 +509,16 @@ jobs:
                           seen_epic_slugs.add(slug)
                           img = next((i['url'] for i in item.get('keyImages', []) if i['type'] in ['OfferImageWide', 'Thumbnail']), "")
                           desc = str(item.get('description') or item.get('shortDescription') or '').strip()
-
-                          # ✨ 新增：检查是否有手动覆盖规则
+                          
+                          # ✨ 新增：在这里拦截并应用你的后台手动修改 [cite: 100, 103]
+                          # 遍历 FORCED_EPIC 看看有没有匹配当前 slug 的手动规则 [cite: 116]
                           forced_info = next((f for f in FORCED_EPIC if f['epic_slug'] == slug), None)
                           if forced_info:
-                              if forced_info.get('zh_title'): item['title'] = forced_info['zh_title']
-                              if forced_info.get('_custom_desc'): desc = forced_info['_custom_desc']
-                              if forced_info.get('_custom_thumb'): img = forced_info['_custom_thumb']
-                          
-                          # 1. 检测当前正在进行的免费
-                          if promos.get('promotionalOffers'):
-                              # ... 保持原有的 offers 提取逻辑
-                              active_games.append({
-                                  "zh_title": item['title'], 
-                                  "thumbnail": img, 
-                                  "end_date": offers[0]['endDate'], 
-                                  "platform": "Epic Games", 
-                                  "epic_slug": slug, 
-                                  "short_description": desc
-                              })
-                          
-                          # 1. 检测当前正在进行的免费
+                              if forced_info.get('zh_title'): item['title'] = forced_info['zh_title'] # 覆盖标题 
+                              if forced_info.get('_custom_desc'): desc = forced_info['_custom_desc'] # 覆盖描述 
+                              if forced_info.get('_custom_thumb'): img = forced_info['_custom_thumb'] # 覆盖缩略图 
+
+                          # 1. 检测当前正在进行的免费 [cite: 104]
                           if promos.get('promotionalOffers'):
                               try:
                                   offers = promos['promotionalOffers'][0]['promotionalOffers']
@@ -537,19 +526,17 @@ jobs:
                                       active_games.append({"zh_title": item['title'], "thumbnail": img, "end_date": offers[0]['endDate'], "platform": "Epic Games", "epic_slug": slug, "short_description": desc})
                               except: pass
                           
-                          # 2. 检测即将开始的免费
+                          # 2. 检测即将开始的免费（扒到就直接进主列表！）
                           elif promos.get('upcomingPromotionalOffers'):
-                              # ... 原有逻辑
-                              active_games.append({
-                                  "zh_title": item['title'], 
-                                  "thumbnail": img, 
-                                  "start_date": offers[0]['startDate'], 
-                                  "end_date": offers[0]['endDate'], 
-                                  "platform": "Epic Games", 
-                                  "epic_slug": slug, 
-                                  "short_description": desc,
-                                  "is_upcoming": True 
-                              })
+                              try:
+                                  offers = promos['upcomingPromotionalOffers'][0]['promotionalOffers']
+                                  if offers and offers[0].get('discountSetting', {}).get('discountPercentage') == 0:
+                                      active_games.append({
+                                          "zh_title": item['title'], "thumbnail": img, 
+                                          "start_date": offers[0]['startDate'], "end_date": offers[0]['endDate'], 
+                                          "platform": "Epic Games", "epic_slug": slug, "short_description": desc,
+                                          "is_upcoming": True # 💡 这里的标签供前端显示“即将到来”
+                                      })
                               except: pass
                   except: continue
 
