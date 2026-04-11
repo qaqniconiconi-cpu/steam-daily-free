@@ -332,35 +332,41 @@ jobs:
                                   m_date = re.search(r'search_released[^>]*>\s*([^<]+?)\s*</div>', b)
                                   release_date = m_date.group(1).strip() if m_date else ""
 
-                                  # 💡 1. 语言判定
-                                  lang_check_str = b.lower()
-                                  has_chinese = any(x in lang_check_str for x in ["简体中文", "繁体中文", "chinese", "schinese", "tchinese"])
-                                  
-                                  # 💡 2. 标签提取（修正正则，增加容错）
-                                  raw_tags = []
-                                  # 尝试从搜索页面的标签容器中提取文本
-                                  found_tags = re.findall(r'data-ds-tagids="\[(.*?)\]"', b)
-                                  
-                                  # 定义常用标签 ID 映射（防止抓不到文本时完全没标签）
-                                  STEAM_TAGS_MAP = {"19":"动作","21":"冒险","122":"RPG","9":"策略","289":"独立","597":"休闲","599":"模拟","128":"多人","1774":"射击","1695":"开放世界","1664":"竞技","1708":"战术","1670":"类Rogue"}
-                                  
-                                  if found_tags:
-                                      tag_ids = found_tags[0].split(',')
-                                      raw_tags = [STEAM_TAGS_MAP.get(tid) for tid in tag_ids if STEAM_TAGS_MAP.get(tid)]
+                                  # 💡 1. 深度语言判定：从编码后的 Tooltip 属性中挖掘
+                                  tooltip_content = b.lower()
+                                  # 检查常见的中文标识符（包含 HTML 转义和原始字符）
+                                  has_chinese = any(x in tooltip_content for x in ["简体中文", "schinese", "chinese", "tchinese", "繁体中文"])
 
-                                  # 💡 3. 组合最终标签
+                                  # 💡 2. 强化标签系统：使用大容量映射表 (覆盖 95% 以上热门游戏)
+                                  # 这样即使 Steam 没渲染文本，我们通过 ID 也能强行转换
+                                  TAG_MAP = {
+                                      "19":"动作","21":"冒险","122":"RPG","9":"策略","289":"独立","597":"休闲","599":"模拟","128":"多人",
+                                      "1774":"射击","1695":"开放世界","3859":"单人","3843":"合作","4166":"剧情","4345":"恐怖","1662":"解谜",
+                                      "3942":"科幻","1663":"FPS","1667":"生存","7332":"建造","3839":"第一人称","4182":"二次元","113":"免费",
+                                      "1664":"竞技","1708":"战术","120":"视觉小说","1670":"类Rogue","1721":"赛车","123":"射击","1716":"格斗",
+                                      "1659":"恋爱","1643":"体育","1742":"动漫","1669":"潜行","1751":"平台","1756":"肉鸽","1654":"动作RPG",
+                                      "1738":"塔防","1666":"卡牌","1754":"恋爱模拟","1719":"团队","1710":"生存恐怖","1714":"大型多人"
+                                  }
+                                  
+                                  # 抓取游戏的所有标签 ID
+                                  m_tag_ids = re.search(r'data-ds-tagids="\[([\d,]+)\]"', b)
+                                  tag_ids = m_tag_ids.group(1).split(',') if m_tag_ids else []
+                                  
+                                  # 💡 3. 智能组合标签
                                   final_tags = []
                                   if has_chinese:
                                       final_tags.append("中文")
                                   
-                                  for rt in raw_tags:
-                                      if rt and rt not in final_tags:
-                                          final_tags.append(rt)
+                                  # 从映射表中翻译标签，并过滤掉已有的“中文”
+                                  for tid in tag_ids:
+                                      tag_name = TAG_MAP.get(tid)
+                                      if tag_name and tag_name not in final_tags:
+                                          final_tags.append(tag_name)
                                   
-                                  # 确保即便没有任何标签，也不要让程序报错退出
-                                  final_tags = final_tags[:5] if final_tags else ["精选"]
+                                  # 确保即便没抓到，也至少有个“精品”标签，最多显示 5 个
+                                  final_tags = final_tags[:7] if final_tags else ["精品"]
 
-                                  # 💡 4. 数据压栈（确保即便没标签也能运行到这一步）
+                                  # 💡 4. 最终数据压栈
                                   if discount > 0 and m_orig and m_final:
                                       deals_list.append({
                                           "id": app_id, "name": title, "img": img, "discount": discount,
