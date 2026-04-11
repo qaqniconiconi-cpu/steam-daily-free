@@ -1,4 +1,9 @@
 add:
+  - link: https://store.epicgames.com/zh-CN/p/the-stone-of-madness-7b22f3
+    name: 疯狂之石
+    type: upcoming
+    desc: 实时战术潜行
+    end_date: '2026-04-16T00:00:00.000Z'
   - link: https://store.epicgames.com/zh-CN/p/propsumo-ca8bd7
     name: 道具相扑
     desc: 欢乐格斗游戏
