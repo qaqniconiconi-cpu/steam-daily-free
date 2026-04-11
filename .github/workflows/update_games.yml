@@ -152,23 +152,21 @@ jobs:
                               if app_id.isdigit(): FORCED_ADD[app_id] = {"type": "to_paid", "end_date": "", "name": ""}
               except Exception as e: print(f"⚠️ 解析 manager.yml 失败: {e}")
 
-          def fetch_old_data_with_sign(filename):
-              try:
-                  res = requests.get(f"https://{API_BASE}/v1/get/steam-daily-free?filename={filename}", headers=HEADERS, timeout=10)
-                  res.raise_for_status()
-                  return res.json()
-              except: return []
+          def fetch_old_data(filename):
+          try:
+              res = requests.get(f"https://{API_BASE}/v1/get/steam-daily-free?filename={filename}", headers=HEADERS, timeout=10)
+              return res.json()
+          except: return []
 
-          def post_update_with_sign(filename, data):
-              # 组合默认头部和上传必备的参数
-              headers = {**HEADERS, 'filename': filename, 'Content-Type': 'application/json'}
-              for attempt in range(3):
-                  try:
-                      res = requests.post(f"https://{API_BASE}/v1/update/steam-daily-free", headers=headers, json=data, timeout=20)
-                      if res.status_code == 200: 
-                          print(f"✅ 上传 {filename} 成功!")
-                          return
-                  except: time.sleep(3)
+          def post_update(filename, data):
+          headers = {**HEADERS, 'filename': filename, 'Content-Type': 'application/json'}
+          for attempt in range(3):
+              try:
+                  res = requests.post(f"https://{API_BASE}/v1/update/steam-daily-free", headers=headers, json=data, timeout=20)
+                  if res.status_code == 200: 
+                      print(f"✅ 上传 {filename} 成功!")
+                      return
+              except: time.sleep(3)
 
           def parse_date_smart(text):
               text = text.lower()
@@ -395,7 +393,7 @@ jobs:
               db = {}
               if not os.path.exists(DB_FILE):
                   for fn in ["games.json", "intel.json"]:
-                      old = fetch_old_data_with_sign(fn)
+                      old = fetch_old_data(fn)
                       if isinstance(old, dict) and 'data' in old: old = old['data']
                       items = old if isinstance(old, list) else (old.get('to_paid', []) + old.get('free_weekend', []))
                       for i in items:
@@ -499,44 +497,35 @@ jobs:
               ]
               seen_epic_slugs = set()
               
-              # 💡 核心优化：处理 Epic 正在进行和即将开始的游戏
-          for e_url in epic_urls:
-              try:
-                  res = requests.get(e_url, timeout=10).json()
-                  for item in res['data']['Catalog']['searchStore']['elements']:
-                      promos = item.get('promotions')
-                      if not promos: continue
-                      slug = item.get('catalogNs', {}).get('mappings', [{}])[0].get('pageSlug') or item.get('productSlug') or "free"
-                      
-                      if slug in BLACKLIST or slug in seen_epic_slugs: continue
-                      seen_epic_slugs.add(slug)
-                      
-                      img = next((i['url'] for i in item.get('keyImages', []) if i['type'] in ['OfferImageWide', 'Thumbnail']), "")
-                      desc = str(item.get('description') or item.get('shortDescription') or '').strip()
-                      
-                      # 1. 处理当前正在进行的免费
-                      if promos.get('promotionalOffers'):
-                          try:
-                              offers = promos['promotionalOffers'][0]['promotionalOffers']
-                              if offers and offers[0].get('discountSetting', {}).get('discountPercentage') == 0:
-                                  active_games.append({"zh_title": item['title'], "thumbnail": img, "end_date": offers[0]['endDate'], "platform": "Epic Games", "epic_slug": slug, "short_description": desc})
-                          except: pass
-                      
-                      # 💡 2. 处理即将到来的预告游戏（直接塞进 active_games 并在前端展示）
-                      elif promos.get('upcomingPromotionalOffers'):
-                          try:
-                              offers = promos['upcomingPromotionalOffers'][0]['promotionalOffers']
-                              if offers and offers[0].get('discountSetting', {}).get('discountPercentage') == 0:
-                                  game_data = {
-                                      "zh_title": item['title'], "thumbnail": img, 
-                                      "start_date": offers[0]['startDate'], "end_date": offers[0]['endDate'], 
-                                      "platform": "Epic Games", "epic_slug": slug, "short_description": desc,
-                                      "is_upcoming": True # 💡 打上预告标签
-                                  }
-                                  active_games.append(game_data)
-                                  upcoming_list.append(game_data)
-                          except: pass
-              except: continue
+              for e_url in epic_urls:
+                  try:
+                      res = requests.get(e_url, timeout=10).json()
+                      for item in res['data']['Catalog']['searchStore']['elements']:
+                          promos = item.get('promotions')
+                          if not promos: continue
+                          slug = item.get('catalogNs', {}).get('mappings', [{}])[0].get('pageSlug') or item.get('productSlug') or "free"
+                          if slug in BLACKLIST or slug in seen_epic_slugs: continue
+                          seen_epic_slugs.add(slug)
+                          img = next((i['url'] for i in item.get('keyImages', []) if i['type'] in ['OfferImageWide', 'Thumbnail']), "")
+                          desc = str(item.get('description') or item.get('shortDescription') or '').strip()
+
+                          if promos.get('promotionalOffers'):
+                              try:
+                                  offers = promos['promotionalOffers'][0]['promotionalOffers']
+                                  if offers and offers[0].get('discountSetting', {}).get('discountPercentage') == 0:
+                                      active_games.append({"zh_title": item['title'], "thumbnail": img, "end_date": offers[0]['endDate'], "platform": "Epic Games", "epic_slug": slug, "short_description": desc})
+                              except: pass
+
+                          # 💡 核心修改：即将到来的免费也塞进 active_games 并打标
+                          elif promos.get('upcomingPromotionalOffers'):
+                              try:
+                                  offers = promos['upcomingPromotionalOffers'][0]['promotionalOffers']
+                                  if offers and offers[0].get('discountSetting', {}).get('discountPercentage') == 0:
+                                      game_data = {"zh_title": item['title'], "thumbnail": img, "start_date": offers[0]['startDate'], "end_date": offers[0]['endDate'], "platform": "Epic Games", "epic_slug": slug, "short_description": desc, "is_upcoming": True}
+                                      active_games.append(game_data)
+                                      upcoming_list.append(game_data)
+                              except: pass
+                  except: continue
 
               official_epic_slugs = {g.get('epic_slug') for g in active_games if g.get('epic_slug')}
               try:
@@ -605,12 +594,12 @@ jobs:
               steam_deals = fetch_steam_deals()
 
               print("🚀 正在将喜加一数据推送到后端 API...")
-              post_update_with_sign("games.json", active_games)
-              post_update_with_sign("upcoming.json", upcoming_list)
-              post_update_with_sign("intel.json", {"to_paid": f_to_paid, "free_weekend": f_weekend})
+              post_update("games.json", active_games)
+              post_update("upcoming.json", upcoming_list)
+              post_update("intel.json", {"to_paid": f_to_paid, "free_weekend": f_weekend})
 
               print("🚀 正在将特惠折扣数据推送到后端 API...")
-              post_update_with_sign("deals.json", steam_deals)
+              post_update("deals.json", steam_deals)
 
               with open(DB_FILE, 'w', encoding='utf-8') as f:
                   json.dump(db, f, ensure_ascii=False, indent=2)
