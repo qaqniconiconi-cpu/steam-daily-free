@@ -133,6 +133,38 @@ jobs:
                   }
               except: return {"status": "invalid"}
 
+          # --- 特惠折扣处理 (Deals) ---
+          def fetch_steam_deals():
+              print("🔥 启动 Steam 折扣特惠数据抓取...")
+              deals = []
+              seen_ids = set()
+              try:
+                  for page in range(3):
+                      url = f"https://store.steampowered.com/search/results/?query&start={page*50}&count=50&specials=1&cc=cn&l=schinese&filter=globaltopsellers"
+                      res = requests.get(url, headers=HEADERS, timeout=10)
+                      if res.status_code != 200:
+                          res = requests.get(f"https://api.allorigins.win/raw?url={urllib.parse.quote(url)}", headers=HEADERS, timeout=15)
+                      
+                      if res.status_code == 200 and 'data-ds-appid' in res.text:
+                          blocks = res.json().get('results_html', '').split('data-ds-appid="')[1:]
+                          for b in blocks:
+                              try:
+                                  aid = b.split('"')[0].split(',')[0]
+                                  if aid in seen_ids: continue
+                                  title = re.search(r'<span class="title">([^<]+)</span>', b).group(1)
+                                  img = f"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{aid}/header.jpg"
+                                  m_pct = re.search(r'-(\d+)%', b)
+                                  m_final = re.search(r'discount_final_price">[^0-9]*([\d\.,]+)', b)
+                                  if m_pct and m_final:
+                                      deals.append({
+                                          "id": aid, "name": title, "img": img, 
+                                          "discount": int(m_pct.group(1)), "finalPrice": m_final.group(1)
+                                      })
+                                      seen_ids.add(aid)
+                              except: pass
+              except Exception as e: print(f"⚠️ Deals 抓取失败: {e}")
+              return deals[:50]
+
           def main():
               db = {}
               if os.path.exists(DB_FILE):
@@ -210,7 +242,18 @@ jobs:
                       db[aid] = res
 
               # --- 推送与保存 ---
+              print(f"🚀 推送整合版福利: {len(active_games)} 款")
               post_update("games.json", active_games)
+              
+              print("🚀 推送折扣信息 (Deals)")
+              steam_deals = fetch_steam_deals()
+              post_update("deals.json", steam_deals)
+              
+              # 🧹 ✨ 清理残留的旧数据文件缓冲，防止后端返回重复废弃数据
+              print("🧹 清理后端残旧的 intel.json / upcoming.json 缓存...")
+              post_update("intel.json", {"to_paid": [], "free_weekend": []})
+              post_update("upcoming.json", [])
+
               with open(DB_FILE, 'w', encoding='utf-8') as f:
                   json.dump(db, f, ensure_ascii=False, indent=2)
               print("✅ ETL 流程完成！")
@@ -223,7 +266,11 @@ jobs:
         run: |
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
-          git add steam_db.json games.json || true
-          git commit -m "Auto Update ETL Database [skip ci]" || true
+          
+          # ✨ 核心修复点：显式将已废弃的文件从 Git 仓库中删除，防止前端读到历史遗留文件
+          git rm intel.json upcoming.json || true
+          
+          git add steam_db.json games.json deals.json || true
+          git commit -m "Auto Update ETL Database and Clean legacy files [skip ci]" || true
           git pull --rebase origin main || true
           git push
