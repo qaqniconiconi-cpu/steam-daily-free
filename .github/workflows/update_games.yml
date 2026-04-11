@@ -295,24 +295,23 @@ jobs:
                       search_url = f"https://store.steampowered.com/search/results/?query&start={page*50}&count=50&dynamic_data=&specials=1&infinite=1&cc=cn&l=schinese&filter=globaltopsellers&_t={int(time.time())}"
                       res = requests.get(search_url, headers=HEADERS, timeout=10)
                       
-                      if res.status_code != 200 or 'data-ds-appid' not in res.text:
+                      if res.status_code != 200 or 'data-ds-appid' in res.text == False:
                           res = requests.get(f"https://api.allorigins.win/raw?url={urllib.parse.quote(search_url)}", headers=HEADERS, timeout=15)
                       
                       if res.status_code == 200 and 'data-ds-appid' in res.text:
-                          # 💡 缩进修正：以下所有行均比 if 语句多出 4 个空格
                           raw_html = res.json().get('results_html', '')
-                          # 💡 核心修复：改用正则拆分，保留完整的 <a> 标签属性（解决中文识别问题）
-                          blocks = re.split(r'<a [^>]*?search_result_row', raw_html)[1:]
+                          # 💡 核心修复：改用正则提取完整的 <a> 标签块，确保保留所有 data 属性（语言、分类、ID）
+                          blocks = re.findall(r'<a[^>]*?search_result_row.*?</a>', raw_html, re.DOTALL)
                           
                           for b in blocks:
                               try:
-                                  # 1. 精准提取 App ID
+                                  # 1. 提取 App ID
                                   m_id = re.search(r'data-ds-appid="(\d+)"', b)
                                   if not m_id: continue
                                   app_id = m_id.group(1)
                                   if app_id in seen_ids: continue
                                   
-                                  # 2. 提取基础信息
+                                  # 2. 提取标题、图片、价格
                                   m_title = re.search(r'<span class="title">([^<]+)</span>', b)
                                   if not m_title: continue
                                   title = m_title.group(1).strip()
@@ -325,26 +324,24 @@ jobs:
                                   m_orig = re.search(r'<div class="discount_original_price">[^0-9]*([\d\.,]+)', b)
                                   m_final = re.search(r'<div class="discount_final_price">[^0-9]*([\d\.,]+)', b)
                                   
-                                  # 3. 评价与发售日期
-                                  m_rv = re.search(r'data-tooltip-html="([^&]+)&lt;br&gt;[^0-9]*([0-9,]+)\s*(?:篇|user)', b)
-                                  review_count = int(m_rv.group(2).replace(',', '')) if m_rv else 0
-                                  review_tier = m_rv.group(1) if m_rv else "特别好评"
+                                  # 3. 提取评价信息与日期
                                   m_per = re.search(r'data-tooltip-html="[^"]*?(\d+)%', b)
                                   review_percent = int(m_per.group(1)) if m_per else 0
                                   m_date = re.search(r'search_released[^>]*>\s*([^<]+?)\s*</div>', b)
                                   release_date = m_date.group(1).strip() if m_date else ""
 
-                                  # 💡 4. 深度判定：语言与模式（修复怪物猎人中文识别）
+                                  # 💡 4. 深度判定：语言与模式 (重点解决怪物猎人问题)
                                   lang_check = b.lower()
+                                  # 涵盖所有可能的中文标识符
                                   has_chinese = any(x in lang_check for x in ["简体中文", "繁体中文", "schinese", "tchinese", "chinese", "zh-cn"])
                                   
+                                  # 核心模式识别：1:多人, 2:单人, 9:合作, 36:在线多人, 38:在线合作
                                   m_cat_ids = re.search(r'data-ds-categoryids="\[([\d,]+)\]"', b)
                                   cat_ids = m_cat_ids.group(1).split(',') if m_cat_ids else []
-                                  # 识别多人联机与单人模式
                                   is_multi = any(c in ["1", "9", "36", "38", "49"] for c in cat_ids)
                                   is_single = "2" in cat_ids
 
-                                  # 💡 5. 组装标签
+                                  # 💡 5. 组装标签 (严格顺序：语言 > 模式 > 玩法)
                                   final_tags = []
                                   final_tags.append("中文" if has_chinese else "英文")
                                   if is_multi: final_tags.append("多人联机")
@@ -357,13 +354,12 @@ jobs:
                                       tag_name = TAG_MAP.get(tid)
                                       if tag_name and tag_name not in final_tags: final_tags.append(tag_name)
                                   
-                                  # 💡 6. 最终存入列表
+                                  # 💡 6. 数据入库
                                   if discount > 0 and m_orig and m_final:
                                       deals_list.append({
                                           "id": app_id, "name": title, "img": img, "discount": discount,
                                           "originalPrice": f"{float(m_orig.group(1).replace(',', '')):.2f}",
                                           "finalPrice": f"{float(m_final.group(1).replace(',', '')):.2f}",
-                                          "reviewCount": review_count, "reviewTier": review_tier,
                                           "reviewPercent": review_percent, "releaseDate": release_date,
                                           "tags": final_tags[:6], "peakOnline": "-"
                                       })
@@ -371,20 +367,14 @@ jobs:
                               except Exception: continue
                   
                   deals_list = deals_list[:50]
-                  for idx, deal in enumerate(deals_list): 
-                      deal['recommend_index'] = idx
-                      deal['globalRank'] = f"Top {idx + 1}"
-
                   for deal in deals_list:
                       try:
                           app_id = str(deal['id'])
                           ccu_res = requests.get(f"https://api.steampowered.com/ISteamUserStats/GetNumberOfCurrentPlayers/v1/?appid={app_id}", timeout=5).json()
                           if ccu_res.get('response', {}).get('result') == 1:
-                              players = ccu_res['response']['player_count']
-                              deal['peakOnline'] = f"{players:,} 人"
-                          else: deal['peakOnline'] = "-"
-                          time.sleep(0.2)
-                      except Exception: deal['peakOnline'] = "-"
+                              deal['peakOnline'] = f"{ccu_res['response']['player_count']:,} 人"
+                          time.sleep(0.1)
+                      except Exception: pass
 
               except Exception as e: print(f"⚠️ 抓取折扣失败: {e}")
               return deals_list
