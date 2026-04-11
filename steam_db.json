@@ -10,12 +10,10 @@
       "steam_id": "4138970",
       "zh_title": "拾取宝石后意外觉醒了复制魔王力量的逆天技能",
       "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4138970/fc8c0781c1e772dad60b9173ae67d0ee8a361bc8/header.jpg?t=1773072175",
-      "short_description": "结合策略与随机性的魔塔like+肉鸽lite游戏",
-      "is_100_off": false,
-      "is_weekend": false,
+      "short_description": "结合策略与随机性的魔塔like+肉鸽lite游戏。玩家将操控角色妖狐，魅惑&amp;幻化各个NPC，利用复制敌人攻击力的独特技能与其他特殊技能，击败各个强敌，挑战魔王。",
       "end_date": "2026-05-15T23:59:00Z",
-      "type": "to_paid",
-      "_is_forced": true
+      "platform": "Steam",
+      "type": "to_paid"
     }
   },
   "2366060": {
@@ -155,11 +153,9 @@
       "zh_title": "守墓人",
       "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/599140/0671e75eab8e44cd3f22e0d9f5371304b5556f96/header_alt_assets_2.jpg?t=1775752903",
       "short_description": "由《拳击俱乐部》创作团队的原班人马打造，是有史以来最不正经的中世纪墓地经营模拟游戏",
-      "is_100_off": true,
-      "is_weekend": false,
       "end_date": "2026-04-13T17:00:00Z",
-      "type": "100_off",
-      "_is_forced": true
+      "platform": "Steam",
+      "type": "100_off"
     }
   },
   "2513440": {
@@ -169,12 +165,10 @@
       "steam_id": "2513440",
       "zh_title": "eWorlds",
       "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2513440/header.jpg?t=1775829041",
-      "short_description": "在一次事故中，你的飞船坠落在一座未知的岛屿上，这是世界交汇的节点",
-      "is_100_off": false,
-      "is_weekend": false,
+      "short_description": "在一次事故中，你的飞船坠落在一座未知的岛屿上，这是世界交汇的节点。探索不可能的景观，克服陷阱和谜题，收回失落的 Loops，看看你能否在这款 3D 平台叙事冒险中找到传说中的 Golden Loop。",
       "end_date": "2026-04-16T00:00:00Z",
-      "type": "to_paid",
-      "_is_forced": true
+      "platform": "Steam",
+      "type": "to_paid"
     }
   },
   "3027490": {
@@ -185,11 +179,9 @@
       "zh_title": "LivingForest",
       "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3027490/header.jpg?t=1775248291",
       "short_description": "森林生存",
-      "is_100_off": true,
-      "is_weekend": false,
       "end_date": "2026-04-13T17:00:00Z",
-      "type": "100_off",
-      "_is_forced": true
+      "platform": "Steam",
+      "type": "100_off"
     }
   },
   "2779120": {
