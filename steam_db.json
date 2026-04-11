@@ -151,13 +151,13 @@
     "type": "100_off",
     "details": {
       "steam_id": "599140",
-      "zh_title": "Graveyard Keeper",
+      "zh_title": "守墓人",
       "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/599140/0671e75eab8e44cd3f22e0d9f5371304b5556f96/header_alt_assets_2.jpg?t=1775752903",
-      "short_description": "《守墓人》(Graveyard Keeper) 由《拳击俱乐部》(Punch Club) 创作团队的原班人马打造，是有史以来最不正经的中世纪墓地经营模拟游戏",
+      "short_description": "由《拳击俱乐部》创作团队的原班人马打造，是有史以来最不正经的中世纪墓地经营模拟游戏",
       "is_100_off": true,
       "is_weekend": false,
       "end_date": "2026-04-13T17:00:00Z",
-      "_is_forced": false
+      "_is_forced": true
     }
   },
   "2513440": {
@@ -181,11 +181,11 @@
       "steam_id": "3027490",
       "zh_title": "LivingForest",
       "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3027490/header.jpg?t=1775248291",
-      "short_description": "From a first or third person perspective, living this forest.",
+      "short_description": "森林生存",
       "is_100_off": true,
       "is_weekend": false,
       "end_date": "2026-04-13T17:00:00Z",
-      "_is_forced": false
+      "_is_forced": true
     }
   }
 }
