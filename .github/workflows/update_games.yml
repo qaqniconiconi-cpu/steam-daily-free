@@ -257,12 +257,18 @@ jobs:
                   if not (is_free or is_100_off or has_free_license) and not forced_info: return {"status": "invalid"}
 
                   game_type = "unknown"
-                  if forced_info and forced_info.get('type'): game_type = forced_info.get('type')
-                  elif is_100_off: game_type = "100_off"
+                  # ✨ 修复：优先使用强制指定的类型，如果没有才根据抓取结果判定
+                  if forced_info and forced_info.get('type'):
+                      game_type = forced_info.get('type')
+                  elif is_100_off:
+                      game_type = "100_off"
                   elif (has_free_license or (not is_free and is_100_off == False and price.get('final', 0) > 0)): 
                       game_type = "weekend"
-                  elif is_free and end_date != "N/A": game_type = "to_paid"
-                  else: return {"status": "invalid"}
+                  elif is_free and end_date != "N/A":
+                      game_type = "to_paid"
+                  else:
+                      # 如果既没有强制类型，抓取结果也不符合任何免费特征，才判定无效
+                      return {"status": "invalid"}
 
                   z_title = forced_info.get('name') if forced_info and forced_info.get('name') else d.get('name')
                   raw_desc = d.get('short_description', '') if d else ""
