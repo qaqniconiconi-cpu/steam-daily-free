@@ -499,44 +499,44 @@ jobs:
               ]
               seen_epic_slugs = set()
               
-              for e_url in epic_urls:
-                  try:
-                      res = requests.get(e_url, timeout=10).json()
-                      for item in res['data']['Catalog']['searchStore']['elements']:
-                          promos = item.get('promotions')
-                          if not promos: continue
-                          slug = item.get('catalogNs', {}).get('mappings', [{}])[0].get('pageSlug') or item.get('productSlug') or "free"
-                          
-                          if slug in BLACKLIST: continue
-                          if slug in seen_epic_slugs: continue
-                          seen_epic_slugs.add(slug)
-                          
-                          img = next((i['url'] for i in item.get('keyImages', []) if i['type'] in ['OfferImageWide', 'Thumbnail']), "")
-                          desc = str(item.get('description') or item.get('shortDescription') or '').strip()
-                          if not desc or desc.lower() == item.get('title', '').lower(): desc = "Epic 限时免费福利，建议立即入库体验。"
-                          
-                          forced_info = next((f for f in FORCED_EPIC if f['epic_slug'] == slug), None)
-                          if forced_info:
-                              if forced_info.get('_custom_thumb'): img = forced_info['_custom_thumb']
-                              if forced_info.get('_custom_desc'): desc = forced_info['_custom_desc']
-
-                          is_active_free = False
-                          
-                          if promos.get('promotionalOffers'):
-                              try:
-                                  offers = promos['promotionalOffers'][0]['promotionalOffers']
-                                  if offers and offers[0].get('discountSetting', {}).get('discountPercentage') == 0:
-                                      active_games.append({"zh_title": item['title'], "thumbnail": img, "end_date": offers[0]['endDate'], "platform": "Epic Games", "epic_slug": slug, "short_description": desc})
-                                      is_active_free = True
-                              except: pass
-                          
-                          if not is_active_free and promos.get('upcomingPromotionalOffers'):
-                              try:
-                                  offers = promos['upcomingPromotionalOffers'][0]['promotionalOffers']
-                                  if offers and offers[0].get('discountSetting', {}).get('discountPercentage') == 0:
-                                      upcoming_list.append({"zh_title": item['title'], "image": img, "start_date": offers[0]['startDate'], "end_date": offers[0]['endDate'], "platform": "Epic Games", "epic_slug": slug, "short_description": desc})
-                              except: pass
-                  except: continue
+              # 💡 核心优化：处理 Epic 正在进行和即将开始的游戏
+          for e_url in epic_urls:
+              try:
+                  res = requests.get(e_url, timeout=10).json()
+                  for item in res['data']['Catalog']['searchStore']['elements']:
+                      promos = item.get('promotions')
+                      if not promos: continue
+                      slug = item.get('catalogNs', {}).get('mappings', [{}])[0].get('pageSlug') or item.get('productSlug') or "free"
+                      
+                      if slug in BLACKLIST or slug in seen_epic_slugs: continue
+                      seen_epic_slugs.add(slug)
+                      
+                      img = next((i['url'] for i in item.get('keyImages', []) if i['type'] in ['OfferImageWide', 'Thumbnail']), "")
+                      desc = str(item.get('description') or item.get('shortDescription') or '').strip()
+                      
+                      # 1. 处理当前正在进行的免费
+                      if promos.get('promotionalOffers'):
+                          try:
+                              offers = promos['promotionalOffers'][0]['promotionalOffers']
+                              if offers and offers[0].get('discountSetting', {}).get('discountPercentage') == 0:
+                                  active_games.append({"zh_title": item['title'], "thumbnail": img, "end_date": offers[0]['endDate'], "platform": "Epic Games", "epic_slug": slug, "short_description": desc})
+                          except: pass
+                      
+                      # 💡 2. 处理即将到来的预告游戏（直接塞进 active_games 并在前端展示）
+                      elif promos.get('upcomingPromotionalOffers'):
+                          try:
+                              offers = promos['upcomingPromotionalOffers'][0]['promotionalOffers']
+                              if offers and offers[0].get('discountSetting', {}).get('discountPercentage') == 0:
+                                  game_data = {
+                                      "zh_title": item['title'], "thumbnail": img, 
+                                      "start_date": offers[0]['startDate'], "end_date": offers[0]['endDate'], 
+                                      "platform": "Epic Games", "epic_slug": slug, "short_description": desc,
+                                      "is_upcoming": True # 💡 打上预告标签
+                                  }
+                                  active_games.append(game_data)
+                                  upcoming_list.append(game_data)
+                          except: pass
+              except: continue
 
               official_epic_slugs = {g.get('epic_slug') for g in active_games if g.get('epic_slug')}
               try:
