@@ -1,26 +1,27 @@
 add:
-  - link: p/propsumo-ca8bd7
+  - link: https://store.epicgames.com/zh-CN/p/propsumo-ca8bd7
     name: 道具相扑
     desc: 欢乐格斗游戏
     thumbnail: >-
       https://cdn1.epicgames.com/spt-assets/a965174568cb492ca3ebbe7a95886261/propsumo-1inog.jpg
     type: 100_off
     end_date: '2026-04-16T15:00:00.000Z'
-  - link: p/tomak-save-the-earth-regeneration-c1207c
+  - link: >-
+      https://store.epicgames.com/zh-CN/p/tomak-save-the-earth-regeneration-c1207c
     name: 'TOMAK: Save the Earth Regeneration'
     desc: 猎奇向养成游戏
     thumbnail: >-
       https://cdn1.epicgames.com/spt-assets/603c0097f96047c38bc199331b5cf95b/tomak--save-the-earth-regeneration-1dr6j.png
     type: 100_off
     end_date: '2026-04-16T15:00:00.000Z'
-  - link: app/599140
+  - link: https://store.steampowered.com/app/599140
     name: 守墓人
     desc: 由《拳击俱乐部》创作团队的原班人马打造，是有史以来最不正经的中世纪墓地经营模拟游戏
     thumbnail: >-
       https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/599140/0671e75eab8e44cd3f22e0d9f5371304b5556f96/header_alt_assets_2.jpg?t=1775752903
     type: 100_off
     end_date: '2026-04-13T17:00:00Z'
-  - link: app/3027490
+  - link: https://store.steampowered.com/app/3027490
     name: LivingForest
     desc: 森林生存
     thumbnail: >-
