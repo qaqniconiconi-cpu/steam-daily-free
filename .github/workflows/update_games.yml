@@ -332,44 +332,36 @@ jobs:
                                   m_date = re.search(r'search_released[^>]*>\s*([^<]+?)\s*</div>', b)
                                   release_date = m_date.group(1).strip() if m_date else ""
 
-                                  # 💡 1. 强化语言判定：在整个搜索块中查找中文关键字
-                                  # Steam 的 HTML 中，中文通常写在 data-tooltip-html 或直接的文本节点中
+                                  # 💡 1. 强化语言判定
                                   lang_check_str = b.lower()
                                   has_chinese = any(x in lang_check_str for x in ["简体中文", "繁体中文", "chinese", "schinese", "tchinese"])
                                   
-                                  # 💡 2. 核心玩法标签库（补全更多常用标签）
-                                  STEAM_TAGS = {
-                                      "19":"动作","21":"冒险","122":"RPG","9":"策略","289":"独立","597":"休闲","599":"模拟","128":"多人","1774":"射击","1695":"开放世界",
-                                      "3859":"单人","3843":"合作","4166":"剧情","4345":"恐怖","1662":"解谜","3942":"科幻","1663":"FPS","1667":"生存恐怖",
-                                      "7332":"城市营造","3839":"第一人称","4182":"二次元","113":"免费","1664":"竞技","1708":"战术","120":"视觉小说","1670":"类Rogue"
-                                  }
-                                  m_tags = re.search(r'data-ds-tagids="\[([\d,]+)\]"', b)
-                                  tag_ids = m_tags.group(1).split(',') if m_tags else []
-                                  
-                                  # 过滤并翻译标签
-                                  real_tags = [STEAM_TAGS.get(tid) for tid in tag_ids if STEAM_TAGS.get(tid)]
-                                  
-                                  # 💡 3. 组合最终标签（中文排第一，后面多跟几个玩法标签）
+                                  # 💡 2. 直接抓取 glance_tags 里的文本 (如果没有，则从 tagids 兜底)
+                                  # 搜索列表中的标签通常在 title 属性或隐藏的 span 里
+                                  raw_tags = []
+                                  # 尝试直接从 HTML 块中抓取所有类似标签的文本
+                                  found_tags = re.findall(r'<span class="top_tag">([^<]+)</span>', b)
+                                  if not found_tags:
+                                      # 兜底：如果直接抓不到文本标签，再用之前的 ID 匹配逻辑
+                                      STEAM_TAGS_MAP = {"19":"动作","21":"冒险","122":"RPG","9":"策略","289":"独立","597":"休闲","599":"模拟","128":"多人","1774":"射击","1695":"开放世界","1664":"竞技","1708":"战术","1670":"类Rogue"}
+                                      m_tag_ids = re.search(r'data-ds-tagids="\[([\d,]+)\]"', b)
+                                      tag_ids = m_tag_ids.group(1).split(',') if m_tag_ids else []
+                                      raw_tags = [STEAM_TAGS_MAP.get(tid) for tid in tag_ids if STEAM_TAGS_MAP.get(tid)]
+                                  else:
+                                      raw_tags = [t.strip() for t in found_tags]
+
+                                  # 💡 3. 组合最终标签列表 (中文必出且排第一)
                                   final_tags = []
                                   if has_chinese:
                                       final_tags.append("中文")
                                   
-                                  # 补充玩法标签（最多再加 3 个，总共 4 个左右比较美观）
-                                  final_tags.extend(real_tags[:3])
+                                  # 把抓到的原始标签排在后面，去重并过滤掉“中文”字样（避免重复）
+                                  for rt in raw_tags:
+                                      if rt and rt not in ["中文", "简体中文", "繁体中文"] and rt not in final_tags:
+                                          final_tags.append(rt)
                                   
-                                  # 如果连一个玩法标签都没有，手动兜底一个
-                                  if not final_tags:
-                                      final_tags.append("精品")
-                                  
-                                  if discount > 0 and m_orig and m_final:
-                                      deals_list.append({
-                                          "id": app_id, "name": title, "img": img, "discount": discount,
-                                          "originalPrice": f"{float(m_orig.group(1).replace(',', '')):.2f}",
-                                          "finalPrice": f"{float(m_final.group(1).replace(',', '')):.2f}",
-                                          "reviewCount": review_count, "reviewTier": review_tier,
-                                          "reviewPercent": review_percent, "releaseDate": release_date, "tags": real_tags
-                                      })
-                                      seen_ids.add(app_id)
+                                  # 限制总数，保证 UI 美观
+                                  final_tags = final_tags[:7]
                               except Exception: pass
                   
                   deals_list = deals_list[:50]
