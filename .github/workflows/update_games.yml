@@ -20,6 +20,9 @@ jobs:
         run: pip install requests pyyaml
 
       - name: Run ETL Processor
+        env:
+          # 这样会把 GitHub Secrets 里的值注入到系统的环境变量中
+          API_BASE: ${{ secrets.API_BASE }}
         run: |
           cat <<'EOF' > processor.py
           import requests
@@ -36,7 +39,14 @@ jobs:
 
           HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Accept-Language': 'zh-CN,zh;q=0.9'}
           COOKIES = {'birthtime': '283993201', 'wants_mature_content': '1'}
-          API_BASE = 'system.et-api.com'
+          
+          # 💡 核心安全修复：不再把地址写死在代码里，而是从运行时环境获取
+          API_BASE = os.environ.get('API_BASE', '') 
+          if not API_BASE:
+              print("⚠️ 未检测到 API_BASE 环境变量，请在 GitHub Secrets 中配置！")
+              # 如果没有配置，可以直接给个假地址或者退出，防止暴露真实地址
+              API_BASE = 'localhost'
+              
           DB_FILE = 'steam_db.json'
 
           BLACKLIST = set()
@@ -144,27 +154,18 @@ jobs:
               except Exception as e: print(f"⚠️ 解析 manager.yml 失败: {e}")
 
           def fetch_old_data_with_sign(filename):
-              method, path, ver = 'GET', '/v1/get/steam-daily-free', '1773281024'
-              nonce = ''.join(random.choices(string.ascii_letters + string.digits, k=32))
-              ts = str(int(time.time()))
-              ua = HEADERS['User-Agent']
-              sig = hashlib.sha256(f"{method}{API_BASE}{path}?ver={ver}&nonce={nonce}&ts={ts}&ua={ua}".encode('utf-8')).hexdigest()
               try:
-                  res = requests.get(f"https://{API_BASE}{path}?filename={filename}", headers={'sig': sig, 'ts': ts, 'nonce': nonce, 'ver': ver, 'User-Agent': ua}, timeout=10)
+                  res = requests.get(f"https://{API_BASE}/v1/get/steam-daily-free?filename={filename}", headers=HEADERS, timeout=10)
                   res.raise_for_status()
                   return res.json()
               except: return []
 
           def post_update_with_sign(filename, data):
-              method, path, ver = 'POST', '/v1/update/steam-daily-free', '1773281024'
-              ua = HEADERS['User-Agent']
+              # 组合默认头部和上传必备的参数
+              headers = {**HEADERS, 'filename': filename, 'Content-Type': 'application/json'}
               for attempt in range(3):
-                  nonce = ''.join(random.choices(string.ascii_letters + string.digits, k=32))
-                  ts = str(int(time.time()))
-                  sig = hashlib.sha256(f"{method}{API_BASE}{path}?ver={ver}&nonce={nonce}&ts={ts}&ua={ua}".encode('utf-8')).hexdigest()
-                  headers = {'sig': sig, 'ts': ts, 'nonce': nonce, 'ver': ver, 'User-Agent': ua, 'filename': filename, 'Content-Type': 'application/json'}
                   try:
-                      res = requests.post(f"https://{API_BASE}{path}", headers=headers, json=data, timeout=20)
+                      res = requests.post(f"https://{API_BASE}/v1/update/steam-daily-free", headers=headers, json=data, timeout=20)
                       if res.status_code == 200: 
                           print(f"✅ 上传 {filename} 成功!")
                           return
