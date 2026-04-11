@@ -371,6 +371,18 @@ jobs:
                                           final_tags.append(tag_name)
                                   
                                   final_tags = final_tags[:6] # 适当增加上限到 6 个，保证信息完整
+                                  
+                                  # 💡 关键修复：确保抓到价格后将数据存入列表
+                                  if discount > 0 and m_orig and m_final:
+                                      deals_list.append({
+                                          "id": app_id, "name": title, "img": img, "discount": discount,
+                                          "originalPrice": f"{float(m_orig.group(1).replace(',', '')):.2f}",
+                                          "finalPrice": f"{float(m_final.group(1).replace(',', '')):.2f}",
+                                          "reviewCount": review_count, "reviewTier": review_tier,
+                                          "reviewPercent": review_percent, "releaseDate": release_date,
+                                          "tags": final_tags
+                                      })
+                                      seen_ids.add(app_id)
                               except Exception: pass
                   
                   deals_list = deals_list[:50]
