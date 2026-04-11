@@ -288,7 +288,7 @@ jobs:
                   return {"status": "invalid"}
 
           # ==========================================
-          # 3. Steam 特惠折扣抓取 (彻底重构正则，防止漏抓)
+          # 3. Steam 特惠折扣抓取
           # ==========================================
           def fetch_steam_deals():
               print("🔥 启动强健版 Steam 特惠数据引擎...")
@@ -299,7 +299,6 @@ jobs:
                       search_url = f"https://store.steampowered.com/search/results/?query&start={page*50}&count=50&dynamic_data=&specials=1&infinite=1&cc=cn&l=schinese&filter=globaltopsellers&_t={int(time.time())}"
                       res = requests.get(search_url, headers=HEADERS, timeout=10)
                       
-                      # 触发防爬或数据异常时，走代理
                       if res.status_code != 200 or 'data-ds-appid' not in res.text:
                           print(f"⚠️ 触发 Steam 防爬盾 (Page {page})，自动切入代理池...")
                           res = requests.get(f"https://api.allorigins.win/raw?url={urllib.parse.quote(search_url)}", headers=HEADERS, timeout=15)
@@ -318,7 +317,6 @@ jobs:
                                   img_match = re.search(r'<div class="search_capsule">.*?src="([^"]+)"', b, re.DOTALL)
                                   img = img_match.group(1).split('?')[0] if img_match else f"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{app_id}/header.jpg"
                                   
-                                  # 💡 放宽折扣正则，匹配数字即可
                                   m_pct = re.search(r'<div class="discount_pct">[^0-9]*-(\d+)%[^<]*</div>', b)
                                   discount = int(m_pct.group(1)) if m_pct else 0
                                   m_orig = re.search(r'<div class="discount_original_price">[^0-9]*([\d\.,]+)', b)
@@ -364,32 +362,31 @@ jobs:
               return deals_list
 
           # ==========================================
-          # 4. 主程序：大一统数据流
+          # 4. 主程序：分发数据流
           # ==========================================
           def main():
               db = {}
               if not os.path.exists(DB_FILE):
-                  # 初始化，兼容历史数据，迁移至新的大一统格式
-                  for fn in ["games.json", "intel.json"]:
+                  for fn in ["games.json", "upcoming.json", "intel.json"]:
                       old = fetch_old_data(fn)
                       if isinstance(old, dict) and 'data' in old: old = old['data']
-                      items = old if isinstance(old, list) else (old.get('to_paid', []) + old.get('free_weekend', []) + old.get('freeplay', []))
+                      items = old.get('to_paid', []) + old.get('free_weekend', []) + old.get('freeplay', []) if fn == "intel.json" else (old if isinstance(old, list) else [])
                       for i in items:
                           app_id = i.get('steam_id')
                           if app_id:
-                              g_type = "100_off" if fn == "games.json" else ("freeplay" if i.get('is_freeplay') or i.get('is_weekend') else "to_paid")
+                              if fn == "upcoming.json": g_type = "upcoming"
+                              elif fn == "games.json": g_type = "100_off"
+                              else: g_type = "freeplay" if i.get('is_freeplay') or i.get('is_weekend') else "to_paid"
                               db[str(app_id)] = {"status": "valid", "type": g_type, "details": i}
               else:
                   try:
                       with open(DB_FILE, 'r', encoding='utf-8') as f: db = json.load(f)
                   except: pass
 
-              # 强制校验手动添加的游戏
               for app_id, data in list(db.items()):
                   if data.get('status') == 'valid' and data.get('details', {}).get('_is_forced'):
                       if str(app_id) not in FORCED_ADD: db[app_id] = {"status": "pending"}
 
-              # 搜刮池
               scraped_ids = set()
               try:
                   res_gp = requests.get("https://www.gamerpower.com/api/giveaways?platform=steam", headers=HEADERS, timeout=10)
@@ -431,12 +428,15 @@ jobs:
                   db[app_id] = res
                   time.sleep(1.5)
 
-              # 💡 大一统数据池 (所有福利进这里)
-              active_games = []
+              # 💡 将数据重新各回各家，分流到不同列表
+              final_games = []
+              final_upcoming = []
+              final_intel = {"to_paid": [], "freeplay": []}
+              
               processed_slugs = set()
               current_time = datetime.utcnow()
               
-              # 收集 Steam
+              # A. 收集并分发 Steam 数据
               for app_id, data in list(db.items()):
                   if data.get('status') == 'valid':
                       if str(app_id) in BLACKLIST:
@@ -455,9 +455,19 @@ jobs:
                       if is_expired: db[app_id]['status'] = 'expired'
                       else:
                           clean_details = {k: v for k, v in details.items() if not k.startswith('_')}
-                          active_games.append(clean_details)
+                          g_type = data.get('type', clean_details.get('type', '100_off'))
+                          is_up = clean_details.get('is_upcoming', False)
+                          
+                          if is_up or g_type == 'upcoming':
+                              final_upcoming.append(clean_details)
+                          elif g_type == '100_off':
+                              final_games.append(clean_details)
+                          elif g_type == 'to_paid':
+                              final_intel['to_paid'].append(clean_details)
+                          elif g_type == 'freeplay':
+                              final_intel['freeplay'].append(clean_details)
 
-              # 收集 Epic
+              # B. 收集并分发 Epic 官方数据
               epic_urls = ["https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=CN&allowCountries=CN"]
               for e_url in epic_urls:
                   try:
@@ -499,15 +509,25 @@ jobs:
                               except: pass
                           
                           if e_date != "N/A":
-                              active_games.append({
+                              game_obj = {
                                   "zh_title": title, "thumbnail": img, "short_description": desc,
                                   "end_date": (forced_info.get('end_date') if forced_info and forced_info.get('end_date') else e_date),
                                   "platform": "Epic Games", "epic_slug": slug, "type": g_type, "is_upcoming": is_up
-                              })
+                              }
+                              # 严格分流
+                              if is_up or g_type == 'upcoming':
+                                  final_upcoming.append(game_obj)
+                              elif g_type == '100_off':
+                                  final_games.append(game_obj)
+                              elif g_type == 'to_paid':
+                                  final_intel['to_paid'].append(game_obj)
+                              elif g_type == 'freeplay':
+                                  final_intel['freeplay'].append(game_obj)
+                                  
                               processed_slugs.add(slug)
                   except: continue
 
-              # Epic 兜底：处理仅仅写在 manager.yml 但 API 里没有的游戏
+              # C. 处理 Epic 上帝模式兜底数据
               for fe in FORCED_EPIC:
                   if fe['epic_slug'] not in processed_slugs and fe['epic_slug'] not in BLACKLIST:
                       end_date_str = fe.get('end_date')
@@ -520,25 +540,37 @@ jobs:
                       
                       if not is_expired:
                           clean_fe = {k: v for k, v in fe.items() if not k.startswith('_')}
-                          active_games.append(clean_fe)
+                          g_type = fe.get('type', '100_off')
+                          is_up = fe.get('is_upcoming', g_type == 'upcoming')
+                          
+                          if is_up or g_type == 'upcoming':
+                              final_upcoming.append(clean_fe)
+                          elif g_type == '100_off':
+                              final_games.append(clean_fe)
+                          elif g_type == 'to_paid':
+                              final_intel['to_paid'].append(clean_fe)
+                          elif g_type == 'freeplay':
+                              final_intel['freeplay'].append(clean_fe)
 
-              # 获取史低特惠
+              # D. 获取史低特惠数据
               steam_deals = fetch_steam_deals()
 
-              print(f"🚀 正在将整合后所有的免费福利推送至后端 API ({len(active_games)} 款)...")
-              post_update("games.json", active_games)
+              print(f"🚀 正在将喜加一数据推送至后端 API ({len(final_games)} 款)...")
+              post_update("games.json", final_games)
+              
+              print(f"🚀 正在将预告数据推送至后端 API ({len(final_upcoming)} 款)...")
+              post_update("upcoming.json", final_upcoming)
+              
+              print(f"🚀 正在将情报数据推送至后端 API...")
+              post_update("intel.json", final_intel)
 
               print(f"🚀 正在将特惠折扣数据推送到后端 API ({len(steam_deals)} 款)...")
               post_update("deals.json", steam_deals)
-              
-              print("🧹 执行服务器大扫除：清空后端残旧的 intel.json / upcoming.json 缓存...")
-              post_update("intel.json", [])
-              post_update("upcoming.json", [])
 
               with open(DB_FILE, 'w', encoding='utf-8') as f:
                   json.dump(db, f, ensure_ascii=False, indent=2)
                   
-              print("✅ ETL 全能引擎运行完毕，完美收工！")
+              print("✅ ETL 全能引擎分流完毕，完美收工！")
 
           if __name__ == "__main__": main()
           EOF
@@ -549,10 +581,7 @@ jobs:
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
           
-          # 彻底埋葬历史包袱，清空冗余 JSON
-          git rm intel.json upcoming.json || true
-          
-          git add steam_db.json games.json deals.json || true
-          git commit -m "Auto Update ETL Database and Clean legacy files [skip ci]" || true
+          git add steam_db.json games.json upcoming.json intel.json deals.json || true
+          git commit -m "Auto Update Full ETL Database [skip ci]" || true
           git pull --rebase origin main || true
           git push
