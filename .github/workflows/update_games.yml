@@ -579,7 +579,16 @@ jobs:
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
           
-          git add steam_db.json games.json upcoming.json intel.json deals.json || true
+          # 1. 删除临时生成的 python 脚本，防止被误提交
+          rm -f processor.py
+          
+          # 2. 安全删除旧文件（加入 --ignore-unmatch 防止文件不存在时报错）
+          git rm --ignore-unmatch intel.json upcoming.json || true
+          
+          # 3. 使用 -A 自动添加所有变动（包含修改、新建和删除的文件）
+          git add -A
+          
+          # 4. 提交并推送
           git commit -m "Auto Update Full ETL Database [skip ci]" || true
           git pull --rebase origin main || true
           git push
