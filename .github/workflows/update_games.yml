@@ -94,7 +94,7 @@ jobs:
                                   slug = m_e.group(1) if m_e else (link.split('/')[-1] if link else "")
                                   if not slug: continue
                                   
-                                  # ✨ 核心修复：找回 Epic 页面爬虫逻辑，确保即使没填图片也能自动抓取
+                                  # 核心寻找：找回 Epic 页面爬虫逻辑
                                   thumb_final, desc_final, name_final = custom_thumb, custom_desc, name
                                   try:
                                       if not thumb_final or not desc_final:
@@ -117,8 +117,8 @@ jobs:
                                       "epic_slug": slug, "zh_title": name_final or slug, "end_date": raw_date_str or "限免进行中",
                                       "platform": "Epic Games", "type": item.get('type', '100_off'),
                                       "thumbnail": thumb_final or "https://via.placeholder.com/600x300?text=Epic+Games",
-                                      "short_description": desc_final or "Epic 隐藏限时免费福利",
-                                      "_custom_desc": custom_desc, "_custom_thumb": custom_thumb # 存一份用于后续拦截器对比
+                                      "short_description": desc_final or "Epic 福利放送中",
+                                      "_custom_desc": custom_desc, "_custom_thumb": custom_thumb
                                   })
                                   continue
                               
@@ -178,7 +178,7 @@ jobs:
                   has_free = any(sub.get('is_free_license') for group in d.get('package_groups', []) for sub in group.get('subs', []))
                   if not is_100 and has_free and price.get('final', 0) == 0 and not is_free: is_100 = True
                   
-                  # 判定类型：优先后台手动设定
+                  # 判定类型：优先后台手动设定，整合进 games.json
                   g_type = "100_off"
                   if forced and forced.get('type'): g_type = forced['type']
                   elif is_100: g_type = "100_off"
@@ -236,53 +236,45 @@ jobs:
                                       })
                                       seen_ids.add(aid)
                               except: pass
-                  # 补充 CCU 和在线人数
                   for d in deals[:50]:
                       try:
                           ccu = requests.get(f"https://api.steampowered.com/ISteamUserStats/GetNumberOfCurrentPlayers/v1/?appid={d['id']}", timeout=5).json()
                           d['peakOnline'] = f"{ccu['response']['player_count']:,} 人" if ccu.get('response', {}).get('result') == 1 else "-"
                       except: d['peakOnline'] = "-"
-              except Exception as e: print(f"⚠️ Deals 抓取失败: {e}")
+              except: pass
               return deals[:50]
 
           # ==========================================
-          # 4. 主程序：完整 ETL 流程
+          # 4. 主程序：去中心化整合处理
           # ==========================================
           def main():
               db = {}
               if os.path.exists(DB_FILE):
                   with open(DB_FILE, 'r', encoding='utf-8') as f: db = json.load(f)
 
-              final_games = [] # 100% OFF 列表
-              final_intel = {"to_paid": [], "free_weekend": []}
-              
+              # ✨ 整合池：所有福利（100% off, to_paid, weekend）统一放入此列表，最终推送到 games.json
+              active_games = [] 
               scraped_steam_ids = set(FORCED_ADD.keys())
 
-              # A. 搜刮全网 Steam 福利源
-              print("🕵️ 正在全网搜刮 Steam 福利 (Reddit/Keylol/GP)...")
-              sources = [
-                  "https://www.gamerpower.com/api/giveaways?platform=steam",
-                  "https://keylol.com/forum.php?mod=rss&fid=319",
-                  "https://www.reddit.com/r/FreeGameFindings/new.json?limit=100"
-              ]
+              # A. 全网搜刮福利源
+              print("🕵️ 正在全网搜刮福利源...")
+              sources = ["https://www.gamerpower.com/api/giveaways?platform=steam", "https://keylol.com/forum.php?mod=rss&fid=319", "https://www.reddit.com/r/FreeGameFindings/new.json?limit=100"]
               for s in sources:
                   try:
                       r = requests.get(s, headers=HEADERS, timeout=10)
                       scraped_steam_ids.update(re.findall(r'app/(\d+)', r.text))
                   except: pass
               
-              # B. 验证 Steam 游戏并归类
+              # B. 验证 Steam 游戏并统一入库
               for aid in scraped_steam_ids:
                   res = verify_steam_app(aid)
                   if res['status'] == 'valid':
-                      item, g_type = res['details'], res['type']
-                      if g_type == "100_off": final_games.append(item)
-                      elif g_type == "weekend": final_intel["free_weekend"].append(item)
-                      else: final_intel["to_paid"].append(item)
+                      item = res['details']
+                      active_games.append(item)
                       db[aid] = res
 
-              # C. 处理 Epic 官方 API 数据
-              print("🕵️ 同步 Epic 官方数据并应用拦截器...")
+              # C. 处理 Epic 数据并应用拦截器
+              print("🕵️ 同步 Epic 数据并应用拦截器...")
               epic_api = "https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=CN&allowCountries=CN"
               try:
                   res = requests.get(epic_api, timeout=10).json()
@@ -290,12 +282,11 @@ jobs:
                       slug = item.get('catalogNs', {}).get('mappings', [{}])[0].get('pageSlug') or item.get('productSlug')
                       if not slug or slug in BLACKLIST: continue
                       
-                      # 基础官方数据
                       title = item['title']
                       img = next((i['url'] for i in item.get('keyImages', []) if i['type'] in ['OfferImageWide', 'Thumbnail']), "")
                       desc = str(item.get('description', '')).strip()
                       
-                      # ✨ 核心拦截器：如果该游戏在后台有改写，强制覆盖
+                      # ✨ 核心拦截逻辑：应用 manager.yml 的手动修改
                       forced = next((f for f in FORCED_EPIC if f['epic_slug'] == slug), None)
                       g_type = "100_off"
                       if forced:
@@ -318,35 +309,25 @@ jobs:
                               is_up = True
                       
                       if e_date != "N/A":
-                          game_obj = {
+                          active_games.append({
                               "zh_title": title, "thumbnail": img, "short_description": desc,
                               "end_date": (forced.get('end_date') if forced and forced.get('end_date') else e_date),
                               "platform": "Epic Games", "epic_slug": slug, "type": g_type, "is_upcoming": is_up
-                          }
-                          # 归类
-                          if g_type == "100_off": final_games.append(game_obj)
-                          elif g_type == "weekend": final_intel["free_weekend"].append(game_obj)
-                          else: final_intel["to_paid"].append(game_obj)
+                          })
               except: pass
 
-              # D. 处理 Epic 上帝模式 (处理那些 API 里没抓到但后台手动加的游戏)
-              processed_epic_slugs = {g.get('epic_slug') for g in (final_games + final_intel['to_paid'] + final_intel['free_weekend']) if g.get('epic_slug')}
+              # D. 处理 Epic 上帝模式 (不在官方 API 列表的游戏)
+              processed_epic_slugs = {g.get('epic_slug') for g in active_games if g.get('epic_slug')}
               for fe in FORCED_EPIC:
                   if fe['epic_slug'] not in processed_epic_slugs and fe['epic_slug'] not in BLACKLIST:
-                      # 清洗掉临时字段
                       clean_item = {k: v for k, v in fe.items() if not k.startswith('_')}
-                      g_type = fe.get('type', '100_off')
-                      if g_type == "100_off": final_games.append(clean_item)
-                      elif g_type == "weekend": final_intel["free_weekend"].append(clean_item)
-                      else: final_intel["to_paid"].append(clean_item)
+                      active_games.append(clean_item)
 
-              # E. 数据持久化与分发
-              print(f"🚀 推送喜加一 (games.json): {len(final_games)} 款")
-              post_update("games.json", final_games)
+              # E. 最终分发：福利统一进 games.json，折扣进 deals.json
+              print(f"🚀 统一推送 {len(active_games)} 款福利游戏到 games.json")
+              post_update("games.json", active_games)
               
-              print(f"🚀 推送福利情报 (intel.json)")
-              post_update("intel.json", final_intel)
-              
+              # 保持 deals.json 独立，只放折扣收费游戏
               deals = fetch_steam_deals()
               post_update("deals.json", deals)
 
@@ -362,7 +343,7 @@ jobs:
         run: |
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
-          git add steam_db.json games.json intel.json deals.json || true
-          git commit -m "Auto Update Full ETL Database [skip ci]" || true
+          git add steam_db.json games.json deals.json || true
+          git commit -m "Auto Update ETL Database [skip ci]" || true
           git pull --rebase origin main || true
           git push
