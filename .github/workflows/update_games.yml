@@ -252,14 +252,12 @@ jobs:
 
                   if not (is_free or is_100_off or has_free_license) and not forced_info: return {"status": "invalid"}
 
-                  # 💡 确定游戏的类型标识
+                  # 💡 确定游戏的类型标识：已移除自动抓取 freeplay 的逻辑，仅保留给后台人工配置
                   game_type = "unknown"
                   if forced_info and forced_info.get('type'):
                       game_type = forced_info.get('type')
                   elif is_100_off:
                       game_type = "100_off"
-                  elif (has_free_license or (not is_free and is_100_off == False and price.get('final', 0) > 0)): 
-                      game_type = "freeplay"
                   elif is_free and end_date != "N/A":
                       game_type = "to_paid"
                   else:
