@@ -299,69 +299,72 @@ jobs:
                           res = requests.get(f"https://api.allorigins.win/raw?url={urllib.parse.quote(search_url)}", headers=HEADERS, timeout=15)
                       
                       if res.status_code == 200 and 'data-ds-appid' in res.text:
-                          # 💡 确保下面这一行的缩进比上面的 if 多 4 个空格
-                          raw_data = res.json()
-                          blocks = raw_data.get('results_html', '').split('data-ds-appid="')[1:]
-                          
-                          for b in blocks:
-                              try:
-                                  app_id = b.split('"')[0].split(',')[0]
-                                  if app_id in seen_ids: continue
-                                  
-                                  m_title = re.search(r'<span class="title">([^<]+)</span>', b)
-                                  if not m_title: continue
-                                  title = m_title.group(1).strip()
-                                  
-                                  img_match = re.search(r'<div class="search_capsule">.*?src="([^"]+)"', b, re.DOTALL)
-                                  img = img_match.group(1).split('?')[0] if img_match else f"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{app_id}/header.jpg"
-                                  
-                                  m_pct = re.search(r'<div class="discount_pct">[^0-9]*-(\d+)%[^<]*</div>', b)
-                                  discount = int(m_pct.group(1)) if m_pct else 0
-                                  m_orig = re.search(r'<div class="discount_original_price">[^0-9]*([\d\.,]+)', b)
-                                  m_final = re.search(r'<div class="discount_final_price">[^0-9]*([\d\.,]+)', b)
-                                  
-                                  m_review = re.search(r'data-tooltip-html="([^&]+)&lt;br&gt;[^0-9]*([0-9,]+)\s*(?:篇|user)', b)
-                                  review_count = int(m_review.group(2).replace(',', '')) if m_review else 0
-                                  review_tier = m_review.group(1) if m_review else "特别好评"
-                                  
-                                  m_percent = re.search(r'data-tooltip-html="[^"]*?(\d+)%', b)
-                                  review_percent = int(m_percent.group(1)) if m_percent else 0
-                                  m_date = re.search(r'search_released[^>]*>\s*([^<]+?)\s*</div>', b)
-                                  release_date = m_date.group(1).strip() if m_date else ""
+                raw_html = res.json().get('results_html', '')
+                blocks = re.split(r'<a [^>]*?search_result_row', raw_html)[1:]
+                
+                for b in blocks:
+                    try:
+                        # 1. 重新提取 App ID
+                        m_id = re.search(r'data-ds-appid="(\d+)"', b)
+                        if not m_id: continue
+                        app_id = m_id.group(1)
+                        if app_id in seen_ids: continue
+                        
+                        # 2. 提取基础信息 (标题、图片、价格、评价)
+                        m_title = re.search(r'<span class="title">([^<]+)</span>', b)
+                        if not m_title: continue
+                        title = m_title.group(1).strip()
+                        
+                        img_m = re.search(r'<div class="search_capsule">.*?src="([^"]+)"', b, re.DOTALL)
+                        img = img_m.group(1).split('?')[0] if img_m else f"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{app_id}/header.jpg"
+                        
+                        m_pct = re.search(r'<div class="discount_pct">[^0-9]*-(\d+)%[^<]*</div>', b)
+                        discount = int(m_pct.group(1)) if m_pct else 0
+                        m_orig = re.search(r'<div class="discount_original_price">[^0-9]*([\d\.,]+)', b)
+                        m_final = re.search(r'<div class="discount_final_price">[^0-9]*([\d\.,]+)', b)
+                        
+                        # 3. 评价与日期
+                        m_rv = re.search(r'data-tooltip-html="([^&]+)&lt;br&gt;[^0-9]*([0-9,]+)\s*(?:篇|user)', b)
+                        review_count = int(m_rv.group(2).replace(',', '')) if m_rv else 0
+                        review_tier = m_rv.group(1) if m_rv else "特别好评"
+                        m_per = re.search(r'data-tooltip-html="[^"]*?(\d+)%', b)
+                        review_percent = int(m_per.group(1)) if m_per else 0
+                        m_date = re.search(r'search_released[^>]*>\s*([^<]+?)\s*</div>', b)
+                        release_date = m_date.group(1).strip() if m_date else ""
 
-                                  tooltip_content = b.lower()
-                                  has_chinese = any(x in tooltip_content for x in ["简体中文", "schinese", "chinese", "tchinese", "繁体中文"])
+                        # 💡 4. 深度语言与模式判定
+                        lang_check = b.lower()
+                        has_chinese = any(x in lang_check for x in ["简体中文", "繁体中文", "schinese", "tchinese", "chinese", "zh-cn"])
+                        m_cat_ids = re.search(r'data-ds-categoryids="\[([\d,]+)\]"', b)
+                        cat_ids = m_cat_ids.group(1).split(',') if m_cat_ids else []
+                        is_multi = any(c in ["1", "9", "36", "38", "49"] for c in cat_ids)
+                        is_single = "2" in cat_ids
 
-                                  m_cat_ids = re.search(r'data-ds-categoryids="\[([\d,]+)\]"', b)
-                                  cat_ids = m_cat_ids.group(1).split(',') if m_cat_ids else []
-                                  is_multi = any(c in ["1", "9", "36", "38", "49"] for c in cat_ids)
-                                  is_single = "2" in cat_ids
-
-                                  TAG_MAP = {"122":"RPG","9":"策略","289":"独立","597":"休闲","599":"模拟","1774":"射击","1695":"开放世界","4166":"剧情","4345":"恐怖","1662":"解谜","3942":"科幻"}
-                                  m_tag_ids = re.search(r'data-ds-tagids="\[([\d,]+)\]"', b)
-                                  tag_ids = m_tag_ids.group(1).split(',') if m_tag_ids else []
-
-                                  final_tags = []
-                                  final_tags.append("中文" if has_chinese else "英文")
-                                  if is_multi: final_tags.append("多人联机")
-                                  if is_single: final_tags.append("单人游玩")
-                                  for tid in tag_ids:
-                                      tag_name = TAG_MAP.get(tid)
-                                      if tag_name and tag_name not in final_tags: final_tags.append(tag_name)
-                                  
-                                  final_tags = final_tags[:6]
-
-                                  if discount > 0 and m_orig and m_final:
-                                      deals_list.append({
-                                          "id": app_id, "name": title, "img": img, "discount": discount,
-                                          "originalPrice": f"{float(m_orig.group(1).replace(',', '')):.2f}",
-                                          "finalPrice": f"{float(m_final.group(1).replace(',', '')):.2f}",
-                                          "reviewCount": review_count, "reviewTier": review_tier,
-                                          "reviewPercent": review_percent, "releaseDate": release_date,
-                                          "tags": final_tags
-                                      })
-                                      seen_ids.add(app_id)
-                              except Exception: pass
+                        # 💡 5. 组装标签 (语言 > 模式 > 玩法)
+                        final_tags = []
+                        final_tags.append("中文" if has_chinese else "英文")
+                        if is_multi: final_tags.append("多人联机")
+                        if is_single: final_tags.append("单人游玩")
+                        
+                        TAG_MAP = {"122":"RPG","9":"策略","289":"独立","597":"休闲","599":"模拟","1695":"开放世界","4166":"剧情","4345":"恐怖","1662":"解谜","3942":"科幻"}
+                        m_tag_ids = re.search(r'data-ds-tagids="\[([\d,]+)\]"', b)
+                        tag_ids = m_tag_ids.group(1).split(',') if m_tag_ids else []
+                        for tid in tag_ids:
+                            tag_name = TAG_MAP.get(tid)
+                            if tag_name and tag_name not in final_tags: final_tags.append(tag_name)
+                        
+                        # 💡 6. 数据压栈
+                        if discount > 0 and m_orig and m_final:
+                            deals_list.append({
+                                "id": app_id, "name": title, "img": img, "discount": discount,
+                                "originalPrice": f"{float(m_orig.group(1).replace(',', '')):.2f}",
+                                "finalPrice": f"{float(m_final.group(1).replace(',', '')):.2f}",
+                                "reviewCount": review_count, "reviewTier": review_tier,
+                                "reviewPercent": review_percent, "releaseDate": release_date,
+                                "tags": final_tags[:6], "peakOnline": "-"
+                            })
+                            seen_ids.add(app_id)
+                    except Exception: continue
                   
                   deals_list = deals_list[:50]
                   for idx, deal in enumerate(deals_list): 
