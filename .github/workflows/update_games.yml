@@ -21,7 +21,6 @@ jobs:
 
       - name: Run ETL Processor
         env:
-          # 这样会把 GitHub Secrets 里的值注入到系统的环境变量中
           API_BASE: ${{ secrets.API_BASE }}
         run: |
           cat <<'EOF' > processor.py
