@@ -324,9 +324,13 @@ jobs:
                                   m_orig = re.search(r'<div class="discount_original_price">[^0-9]*([\d\.,]+)', b)
                                   m_final = re.search(r'<div class="discount_final_price">[^0-9]*([\d\.,]+)', b)
                                   
-                                  # 3. 提取评价信息与日期
-                                  m_per = re.search(r'data-tooltip-html="[^"]*?(\d+)%', b)
-                                  review_percent = int(m_per.group(1)) if m_per else 0
+                                  # 3. 提取评价信息与日期 (包含评价等级与数量)
+                                  m_review = re.search(r'data-tooltip-html="([^&<]+).*?(\d+)%.*?([\d,]+)\s*篇', b)
+                                  review_tier = m_review.group(1).strip() if m_review else ""
+                                  review_percent = int(m_review.group(2)) if m_review else 0
+                                  review_count_str = m_review.group(3).replace(',', '') if m_review else "0"
+                                  review_count = int(review_count_str) if review_count_str.isdigit() else 0
+                                  
                                   m_date = re.search(r'search_released[^>]*>\s*([^<]+?)\s*</div>', b)
                                   release_date = m_date.group(1).strip() if m_date else ""
 
@@ -360,7 +364,11 @@ jobs:
                                           "id": app_id, "name": title, "img": img, "discount": discount,
                                           "originalPrice": f"{float(m_orig.group(1).replace(',', '')):.2f}",
                                           "finalPrice": f"{float(m_final.group(1).replace(',', '')):.2f}",
-                                          "reviewPercent": review_percent, "releaseDate": release_date,
+                                          "reviewPercent": review_percent, 
+                                          "reviewTier": review_tier,         # 新增：评价等级 (如"特别好评")
+                                          "reviewCount": review_count,       # 新增：评价总数
+                                          "globalRank": len(deals_list) + 1, # 新增：全球畅销排名 (根据当前列表长度计算)
+                                          "releaseDate": release_date,
                                           "tags": final_tags[:6], "peakOnline": "-"
                                       })
                                       seen_ids.add(app_id)
