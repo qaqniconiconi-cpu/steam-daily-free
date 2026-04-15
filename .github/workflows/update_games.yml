@@ -373,12 +373,23 @@ jobs:
                                   if is_multi: final_tags.append("多人联机")
                                   if is_single: final_tags.append("单人游玩")
                                   
-                                  TAG_MAP = {"122":"RPG","9":"策略","289":"独立","597":"休闲","599":"模拟","1695":"开放世界","4166":"剧情","4345":"恐怖","1662":"解谜","3942":"科幻"}
+                                  # 💡 扩展版用户标签字典
+                                  TAG_MAP = {
+                                      "19":"动作","21":"冒险","122":"RPG","9":"策略","289":"独立","597":"休闲","599":"模拟","113":"FPS",
+                                      "1662":"解谜","1667":"类魂","1695":"开放世界","1702":"生存","1716":"女性向","1721":"赛博朋克",
+                                      "1742":"肉鸽","1770":"二次元","3811":"竞技","3859":"多人","3871":"2D","3942":"科幻","4004":"唯美",
+                                      "4106":"射击","4166":"剧情","4182":"卡牌","4255":"竞技场","4345":"恐怖","4667":"体感","4845":"氛围",
+                                      "4947":"视觉小说","5160":"复古","5350":"硬核","5716":"萌系","5941":"大逃杀","6650":"驾驶","7434":"砍杀",
+                                      "9541":"像素图形","10397":"清版射击","12057":"类银河战士恶魔城","17305":"恋爱模拟"
+                                  }
                                   m_tag_ids = re.search(r'data-ds-tagids="\[([\d,]+)\]"', b)
                                   tag_ids = m_tag_ids.group(1).split(',') if m_tag_ids else []
+                                  # 循环匹配，直到填满 6 个标签位
                                   for tid in tag_ids:
                                       tag_name = TAG_MAP.get(tid)
-                                      if tag_name and tag_name not in final_tags: final_tags.append(tag_name)
+                                      if tag_name and tag_name not in final_tags:
+                                          final_tags.append(tag_name)
+                                      if len(final_tags) >= 6: break
                                   
                                   # 💡 6. 数据入库
                                   if discount > 0 and m_orig and m_final:
