@@ -13,6 +13,7 @@
       "short_description": "结合策略与随机性的魔塔like+肉鸽lite游戏",
       "end_date": "2026-05-15T23:59:00Z",
       "platform": "Steam",
+      "original_price": "",
       "type": "to_paid",
       "_is_forced": true
     }
@@ -156,6 +157,7 @@
       "short_description": "由《拳击俱乐部》创作团队的原班人马打造，是有史以来最不正经的中世纪墓地经营模拟游戏",
       "end_date": "2026-04-13T17:00:00Z",
       "platform": "Steam",
+      "original_price": "¥ 76.00",
       "type": "100_off",
       "_is_forced": true
     }
@@ -170,6 +172,7 @@
       "short_description": "在一次事故中，你的飞船坠落在一座未知的岛屿上，这是世界交汇的节点",
       "end_date": "2026-04-16T00:00:00Z",
       "platform": "Steam",
+      "original_price": "",
       "type": "to_paid",
       "_is_forced": true
     }
@@ -184,6 +187,7 @@
       "short_description": "森林生存",
       "end_date": "2026-04-13T17:00:00Z",
       "platform": "Steam",
+      "original_price": "¥ 62.00",
       "type": "100_off",
       "_is_forced": true
     }
