@@ -218,6 +218,7 @@ jobs:
                       return {"status": "invalid"}
 
                   price = d.get('price_overview', {})
+                  orig_price = price.get('initial_formatted', '')
                   is_100_off = price.get('discount_percent') == 100
                   is_free = d.get('is_free', False)
                   has_free_license = any(sub.get('is_free_license') for group in d.get('package_groups', []) for sub in group.get('subs', []))
@@ -273,6 +274,7 @@ jobs:
                       "details": {
                           "steam_id": str(app_id), "zh_title": z_title, "thumbnail": thumbnail,
                           "short_description": short_desc, "end_date": end_date, "platform": "Steam",
+                          "original_price": orig_price,
                           "type": game_type, "_is_forced": bool(forced_info)
                       }
                   }
@@ -519,6 +521,9 @@ jobs:
                           img = next((i['url'] for i in item.get('keyImages', []) if i['type'] in ['OfferImageWide', 'Thumbnail']), "")
                           desc = str(item.get('description') or item.get('shortDescription') or '').strip()
                           title = item['title']
+                          # 提取 Epic 原价
+                          price_obj = item.get('price', {}).get('totalPrice', {}).get('fmtPrice', {})
+                          orig_price = price_obj.get('originalPrice', '')
                           
                           # 强力拦截：手动配置绝对优先
                           forced_info = next((f for f in FORCED_EPIC if f['epic_slug'] == slug), None)
@@ -549,6 +554,7 @@ jobs:
                           if e_date != "N/A":
                               game_obj = {
                                   "zh_title": title, "thumbnail": img, "short_description": desc,
+                                  "original_price": orig_price,
                                   "end_date": (forced_info.get('end_date') if forced_info and forced_info.get('end_date') else e_date),
                                   "platform": "Epic Games", "epic_slug": slug, "type": g_type, "is_upcoming": is_up
                               }
