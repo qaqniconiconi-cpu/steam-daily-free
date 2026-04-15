@@ -324,13 +324,28 @@ jobs:
                                   m_orig = re.search(r'<div class="discount_original_price">[^0-9]*([\d\.,]+)', b)
                                   m_final = re.search(r'<div class="discount_final_price">[^0-9]*([\d\.,]+)', b)
                                   
-                                  # 3. 提取评价信息与日期 (包含评价等级与数量)
-                                  m_review = re.search(r'data-tooltip-html="([^&<]+).*?(\d+)%.*?([\d,]+)\s*篇', b)
-                                  review_tier = m_review.group(1).strip() if m_review else ""
-                                  review_percent = int(m_review.group(2)) if m_review else 0
-                                  review_count_str = m_review.group(3).replace(',', '') if m_review else "0"
-                                  review_count = int(review_count_str) if review_count_str.isdigit() else 0
+                                  # 3. 提取评价信息与日期 (增强兼容版：支持中英双语代理)
+                                  m_tooltip = re.search(r'data-tooltip-html="([^"]+)"', b)
+                                  review_tier = ""
+                                  review_percent = 0
+                                  review_count = 0
                                   
+                                  if m_tooltip:
+                                      tooltip_str = m_tooltip.group(1)
+                                      # 提取评价等级
+                                      m_tier = re.search(r'^([^&<]+)', tooltip_str)
+                                      if m_tier:
+                                          tier_raw = m_tier.group(1).strip()
+                                          # 兜底：如果服务器强行返回英文，自动翻译成中文
+                                          trans = {"Overwhelmingly Positive": "好评如潮", "Very Positive": "特别好评", "Positive": "好评", "Mostly Positive": "多半好评", "Mixed": "褒贬不一", "Mostly Negative": "多半差评", "Negative": "差评", "Very Negative": "特别差评", "Overwhelmingly Negative": "差评如潮"}
+                                          review_tier = trans.get(tier_raw, tier_raw)
+                                          
+                                      # 提取好评率和总评价数 (去掉了严格的"篇"字限制，全语种通用)
+                                      m_nums = re.search(r'(\d+)%.*?([\d,]+)', tooltip_str)
+                                      if m_nums:
+                                          review_percent = int(m_nums.group(1))
+                                          review_count = int(m_nums.group(2).replace(',', ''))
+                                          
                                   m_date = re.search(r'search_released[^>]*>\s*([^<]+?)\s*</div>', b)
                                   release_date = m_date.group(1).strip() if m_date else ""
 
