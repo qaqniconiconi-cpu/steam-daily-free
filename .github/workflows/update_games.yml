@@ -324,7 +324,7 @@ jobs:
                                   m_orig = re.search(r'<div class="discount_original_price">[^0-9]*([\d\.,]+)', b)
                                   m_final = re.search(r'<div class="discount_final_price">[^0-9]*([\d\.,]+)', b)
                                   
-                                  # 3. 提取评价信息与日期 (增强兼容版：支持中英双语代理)
+                                  # 3. 提取评价信息与日期 (终极版：无视中英文语序差异)
                                   m_tooltip = re.search(r'data-tooltip-html="([^"]+)"', b)
                                   review_tier = ""
                                   review_percent = 0
@@ -332,19 +332,24 @@ jobs:
                                   
                                   if m_tooltip:
                                       tooltip_str = m_tooltip.group(1)
-                                      # 提取评价等级
+                                      # 3.1 提取评价等级
                                       m_tier = re.search(r'^([^&<]+)', tooltip_str)
                                       if m_tier:
                                           tier_raw = m_tier.group(1).strip()
-                                          # 兜底：如果服务器强行返回英文，自动翻译成中文
                                           trans = {"Overwhelmingly Positive": "好评如潮", "Very Positive": "特别好评", "Positive": "好评", "Mostly Positive": "多半好评", "Mixed": "褒贬不一", "Mostly Negative": "多半差评", "Negative": "差评", "Very Negative": "特别差评", "Overwhelmingly Negative": "差评如潮"}
                                           review_tier = trans.get(tier_raw, tier_raw)
                                           
-                                      # 提取好评率和总评价数 (去掉了严格的"篇"字限制，全语种通用)
-                                      m_nums = re.search(r'(\d+)%.*?([\d,]+)', tooltip_str)
-                                      if m_nums:
-                                          review_percent = int(m_nums.group(1))
-                                          review_count = int(m_nums.group(2).replace(',', ''))
+                                      # 3.2 独立提取好评率 (%)
+                                      m_pct = re.search(r'(\d+)%', tooltip_str)
+                                      if m_pct:
+                                          review_percent = int(m_pct.group(1))
+                                          
+                                      # 3.3 独立提取评价总数 (剔除百分比后，抓取最大的带逗号数字)
+                                      str_no_pct = re.sub(r'\d+%', '', tooltip_str)
+                                      nums = re.findall(r'[\d,]+', str_no_pct)
+                                      valid_nums = [int(n.replace(',', '')) for n in nums if n.replace(',', '').isdigit()]
+                                      if valid_nums:
+                                          review_count = max(valid_nums)
                                           
                                   m_date = re.search(r'search_released[^>]*>\s*([^<]+?)\s*</div>', b)
                                   release_date = m_date.group(1).strip() if m_date else ""
