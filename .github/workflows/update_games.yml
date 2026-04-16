@@ -336,19 +336,34 @@ jobs:
                                       nums = re.findall(r'[\d,]+', re.sub(r'\d+%', '', t_str))
                                       if nums: review_count = max([int(n.replace(',', '')) for n in nums if n.replace(',', '').isdigit()])
 
-                                  # 3. 核心修改：精准语言判定 + 全量标签抓取
-                                  # 从 data-ds-specs 判定语言 (22 是 Steam 简体中文的 Feature ID)
-                                  m_specs = re.search(r'data-ds-specs="\[([\d,]+)\]"', b)
-                                  spec_ids = m_specs.group(1).split(',') if m_specs else []
-                                  has_chinese = "22" in spec_ids
-                                  
-                                  # 提取 HTML 中的所有文本标签
-                                  # Steam 在搜索页会把热门标签放在 data-ds-tagids 里，
-                                  # 但最直接且“全量”的方式是抓取所有的 search_review_summary 附近的隐藏节点或直接解析标签。
-                                  # 这里我们采用一种更聪明的方式：从 HTML 结构提取
+                                  # 3. 提取所有的 HTML 文本标签 (已彻底移除不准确的语言判定)
                                   final_tags = []
-                                  final_tags.append("中文" if has_chinese else "英文")
+                                  
+                                  # 提取 Steam 搜索页的隐藏标签 ID
+                                  m_tag_ids = re.search(r'data-ds-tagids="\[([\d,]+)\]"', b)
+                                  if m_tag_ids:
+                                      tag_ids = m_tag_ids.group(1).split(',')
+                                      for tid in tag_ids:
+                                          t_name = TAG_MAP.get(tid)
+                                          # 如果匹配到我们在大字典里配置好的中文名，就塞进展示列表
+                                          if t_name and t_name not in final_tags:
+                                              final_tags.append(t_name)
+                                              
+                                  # 4. 数据封装 (最多截取前 7 个最热门的标签用于展示)
+                                  if discount > 0 and m_orig and m_final:
+                                      deals_list.append({
+                                          "id": app_id, "name": title, "img": img, "discount": discount,
+                                          "originalPrice": f"{float(m_orig.group(1).replace(',', '')):.2f}",
+                                          "finalPrice": f"{float(m_final.group(1).replace(',', '')):.2f}",
+                                          "reviewPercent": review_percent, "reviewTier": review_tier,
+                                          "reviewCount": review_count, "globalRank": len(deals_list) + 1,
+                                          "releaseDate": (re.search(r'search_released[^>]*>\s*([^<]+?)\s*</div>', b).group(1).strip() if re.search(r'search_released[^>]*>\s*([^<]+?)\s*</div>', b) else ""),
+                                          "tags": final_tags[:7],
+                                          "peakOnline": "-"
+                                      })
+                                      seen_ids.add(app_id)
 
+                                      
                                   # 获取该卡片内的所有小标签（Steam 搜索页通常只展示 3-5 个，但我们可以通过数据属性获取更多）
                                   # 我们直接利用脚本原本的逻辑，但移除字典限制，改用标签 ID 映射或直接提取
                                   # 既然要“尽可能全部收录”，我们从 HTML 中提取所有可能的用户自定义标签文字
