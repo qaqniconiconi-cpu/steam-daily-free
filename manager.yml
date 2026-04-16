@@ -1,4 +1,9 @@
 add:
+  - link: https://store.steampowered.com/app/2860410/NineHells/
+    name: 九层地域
+    type: 100_off
+    desc: 第一人称恐怖游戏
+    end_date: '2026-04-21T01:00:00.000Z'
   - link: https://store.epicgames.com/zh-CN/p/the-stone-of-madness-7b22f3
     name: 疯狂之石
     type: upcoming
@@ -39,10 +44,6 @@ add:
     name: 拾取宝石后意外觉醒了复制魔王力量的逆天技能
     type: to_paid
     end_date: '2026-05-15T23:59:00Z'
-  - link: https://store.steampowered.com/app/2513440/eWorlds/
-    name: eWorlds
-    type: to_paid
-    end_date: '2026-04-16T00:00:00Z'
   - link: https://store.epicgames.com/zh-CN/p/tractor-racers-28ca5f
     name: 拖拉机赛车手
     type: 100_off
