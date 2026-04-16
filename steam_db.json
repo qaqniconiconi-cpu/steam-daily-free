@@ -884,5 +884,8 @@
       "type": "100_off",
       "_is_forced": true
     }
+  },
+  "875800": {
+    "status": "invalid"
   }
 }
