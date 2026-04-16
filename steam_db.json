@@ -163,19 +163,7 @@
     }
   },
   "2513440": {
-    "status": "valid",
-    "type": "to_paid",
-    "details": {
-      "steam_id": "2513440",
-      "zh_title": "eWorlds",
-      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2513440/header.jpg?t=1776266543",
-      "short_description": "在一次事故中，你的飞船坠落在一座未知的岛屿上，这是世界交汇的节点",
-      "end_date": "2026-04-16T00:00:00Z",
-      "platform": "Steam",
-      "original_price": "",
-      "type": "to_paid",
-      "_is_forced": true
-    }
+    "status": "invalid"
   },
   "3027490": {
     "status": "expired",
@@ -881,5 +869,20 @@
   },
   "2134390": {
     "status": "invalid"
+  },
+  "2860410": {
+    "status": "valid",
+    "type": "100_off",
+    "details": {
+      "steam_id": "2860410",
+      "zh_title": "九层地域",
+      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2860410/header.jpg?t=1776202563",
+      "short_description": "第一人称恐怖游戏",
+      "end_date": "2026-04-21T01:00:00.000Z",
+      "platform": "Steam",
+      "original_price": "¥ 6.00",
+      "type": "100_off",
+      "_is_forced": true
+    }
   }
 }
