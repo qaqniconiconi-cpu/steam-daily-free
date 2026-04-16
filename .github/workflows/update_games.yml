@@ -323,7 +323,8 @@ jobs:
               }
 
               try:
-                  for page in range(3): 
+                  # 💡 将抓取池扩大到 5 页 (250款)，给洗牌算法提供充足的大作弹药
+                  for page in range(5): 
                       search_url = f"https://store.steampowered.com/search/results/?query&start={page*50}&count=50&dynamic_data=&specials=1&infinite=1&cc=cn&l=schinese&filter=globaltopsellers&_t={int(time.time())}"
                       res = requests.get(search_url, headers=HEADERS, timeout=10)
                       
@@ -397,8 +398,15 @@ jobs:
                                       seen_ids.add(app_id)
                               except: continue
                   
+                  # 💡 核心洗牌算法：无视 Steam 官方的实时排名，强制按“历史总评价数”降序！
+                  # 这样十万、百万评价的传世神作只要打折，必定霸榜
+                  deals_list.sort(key=lambda x: x.get('reviewCount', 0), reverse=True)
                   deals_list = deals_list[:50]
-                  # 补充实时人数（保持原样）
+                  
+                  # 洗牌后，重新分配 1-50 的榜单名次
+                  for idx, deal in enumerate(deals_list):
+                      deal['globalRank'] = idx + 1
+
                   for deal in deals_list:
                       try:
                           ccu_res = requests.get(f"https://api.steampowered.com/ISteamUserStats/GetNumberOfCurrentPlayers/v1/?appid={deal['id']}", timeout=5).json()
