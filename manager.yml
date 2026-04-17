@@ -1,4 +1,19 @@
 add:
+  - link: https://store.steampowered.com/app/3534240/Uncanny_Tales_Cold_Road/
+    name: 不可思议物语：寒露
+    type: 100_off
+    desc: 真正的恐怖不是来自怪物或超自然现象，而是来自人。
+    end_date: '2026-04-20T10:00:00.000Z'
+  - link: https://store.steampowered.com/app/978520/_/
+    name: 魔王大人，击退勇者吧
+    type: 100_off
+    desc: 融合了Rogue元素的地下城防守游戏。
+    end_date: '2026-04-24T01:00:00.000Z'
+  - link: https://store.steampowered.com/app/2792610/Stickman_Killing_Zombie/
+    name: 火柴人杀僵尸
+    type: 100_off
+    end_date: '2026-04-20T10:00:00.000Z'
+    desc: 火柴人解压割草游戏
   - link: https://store.steampowered.com/app/2860410/NineHells/
     name: 九层地域
     type: 100_off
