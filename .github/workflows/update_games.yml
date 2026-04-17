@@ -238,7 +238,7 @@ jobs:
                               if dt != "N/A": end_date = dt
                       except: pass
 
-                  keywords = ["转付费", "开始收费", "结束免费", "become paid", "paid game", "pricing", "限免", "free to keep", "恢复原价", "100% off", "100% discount"]
+                  keywords = ["转付费", "开始收费", "结束免费", "become paid", "paid game", "pricing", "限免", "free to keep", "恢复原价", "100% off", "100% discount", "play for free", "grab it", "retains the game", "free game"]
                   if end_date == "N/A":
                       desc_text = d.get('detailed_description', '') + " " + d.get('short_description', '')
                       if any(k in desc_text.lower() for k in keywords):
@@ -447,7 +447,7 @@ jobs:
                       if res.status_code == 200: scraped_ids.update(re.findall(r'app/(\d+)', res.text))
                   except: pass
 
-              for page in range(0, 2):
+              for page in range(0, 5):
                   try:
                       search_url = f"https://store.steampowered.com/search/results/?query&start={page*50}&count=50&dynamic_data=&sort_by=_ASC&snr=1_7_7_7000_7&specials=1&infinite=1"
                       res = requests.get(search_url, headers=HEADERS, timeout=10)
@@ -515,7 +515,12 @@ jobs:
                               final_intel['freeplay'].append(clean_details)
 
               # B. 收集并分发 Epic 官方数据
-              epic_urls = ["https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=CN&allowCountries=CN"]
+              # 💡 优化：同时请求国区和美区接口，防止部分游戏锁国区导致漏抓
+              epic_urls = [
+                 "https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=CN&allowCountries=CN",
+                 "https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=en-US&country=US&allowCountries=US"
+              ]
+              
               for e_url in epic_urls:
                   try:
                       res = requests.get(e_url, timeout=10).json()
