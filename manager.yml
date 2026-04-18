@@ -17,6 +17,7 @@ add:
     thumbnail: >-
       https://cdn1.epicgames.com/spt-assets/e0b2ef75c4ca470eae076d9d54087eb4/undead-rise-of-the-betrayed-king-logo-134i0.png?resize=1&w=480&h=270&quality=medium
     end_date: '2026-04-23T19:00:00.000Z'
+    original_price: ¥62.00
   - link: https://store.steampowered.com/app/3534240/Uncanny_Tales_Cold_Road/
     name: 不可思议物语：寒露
     type: 100_off
