@@ -1,4 +1,18 @@
 add:
+  - link: p/doomblade-afdf9a
+    name: DOOMBLADE
+    desc: >-
+      Deep underground, Gloom Girl discovers DOOMBLADE, a sentient weapon
+      hellbent on escape after eons in chains. Together, “Doom and Gloom” embark
+      on a vengeful quest to unlock the powerful abilities and destroy the Dread
+      Lords once and for all in this 2D Action Metroidvania.
+    thumbnail: >-
+      https://cdn1.epicgames.com/spt-assets/df87b66c9f3042ac83311bdc9b442884/doomblade-120wd.jpg
+    original_price: ¥58.00
+    type: upcoming
+    end_date: '2026-04-30T15:00:00.000Z'
+    is_upcoming: true
+    platform: epic
   - link: >-
       https://store.epicgames.com/zh-Hant/p/undead-rise-of-the-betrayed-king-4ad94c
     name: 亡灵:背叛之王的崛起
@@ -7,15 +21,6 @@ add:
     thumbnail: >-
       https://cdn1.epicgames.com/spt-assets/e0b2ef75c4ca470eae076d9d54087eb4/undead-rise-of-the-betrayed-king-logo-134i0.png?resize=1&w=480&h=270&quality=medium
     end_date: '2026-04-23T19:00:00.000Z'
-  - link: p/doomblade-afdf9a
-    name: DOOMBLADE
-    desc: 2D动作类，银河恶魔城游戏
-    thumbnail: >-
-      https://cdn1.epicgames.com/spt-assets/df87b66c9f3042ac83311bdc9b442884/doomblade-120wd.jpg
-    original_price: ¥58.00
-    type: 100_off
-    end_date: '2026-04-30T15:00:00.000Z'
-    is_upcoming: true
   - link: https://store.steampowered.com/app/3534240/Uncanny_Tales_Cold_Road/
     name: 不可思议物语：寒露
     type: 100_off
@@ -56,3 +61,4 @@ disable:
   - monument-valley-1d99d3
   - castlevania-anniversary-collection-a61f94
   - app/2183900
+  - app/922050
