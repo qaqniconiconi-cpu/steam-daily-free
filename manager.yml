@@ -1,11 +1,7 @@
 add:
   - link: p/doomblade-afdf9a
     name: DOOMBLADE
-    desc: >-
-      Deep underground, Gloom Girl discovers DOOMBLADE, a sentient weapon
-      hellbent on escape after eons in chains. Together, “Doom and Gloom” embark
-      on a vengeful quest to unlock the powerful abilities and destroy the Dread
-      Lords once and for all in this 2D Action Metroidvania.
+    desc: 2D动作类银河恶魔城游戏，踏上复仇之旅，消灭恐惧领主。
     thumbnail: >-
       https://cdn1.epicgames.com/spt-assets/df87b66c9f3042ac83311bdc9b442884/doomblade-120wd.jpg
     original_price: ¥58.00
