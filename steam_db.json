@@ -934,18 +934,6 @@
     }
   },
   "922050": {
-    "status": "valid",
-    "type": "100_off",
-    "details": {
-      "steam_id": "922050",
-      "zh_title": "DOOMBLADE",
-      "thumbnail": "https://cdn1.epicgames.com/spt-assets/df87b66c9f3042ac83311bdc9b442884/doomblade-120wd.jpg",
-      "short_description": "2D动作类，银河恶魔城游戏",
-      "end_date": "2026-04-30T15:00:00.000Z",
-      "platform": "Steam",
-      "original_price": "",
-      "type": "100_off",
-      "_is_forced": true
-    }
+    "status": "invalid"
   }
 }
