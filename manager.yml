@@ -1,4 +1,9 @@
 add:
+  - link: >-
+      https://store.epicgames.com/zh-Hant/p/undead-rise-of-the-betrayed-king-4ad94c
+    name: 新增的自定义游戏
+    type: 100_off
+    desc: 写实动作RPG，扮演一只化身为野蛮人的巨龙，能够使用魔法与不死族作战，与伙伴一起成长。
   - link: p/doomblade-afdf9a
     name: DOOMBLADE
     desc: 2D动作类，银河恶魔城游戏
