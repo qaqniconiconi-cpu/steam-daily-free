@@ -409,27 +409,25 @@ jobs:
                       deal['globalRank'] = idx + 1
 
                   # ==========================================
-                  # 💡 新增：批量抓取游戏截图，供前端实现滑动轮播
+                  # 💡 新增：精准抓取游戏截图，供前端实现滑动轮播
                   # ==========================================
-                  print("📸 正在批量抓取游戏截图 (支持前端滑动预览)...")
-                  # 将 50 个游戏按 10 个一组切片，批量请求降低 API 频率，防止 429 封禁
-                  for i in range(0, len(deals_list), 10):
-                      chunk = deals_list[i:i+10]
-                      app_ids = ",".join([str(d['id']) for d in chunk])
+                  print("📸 正在精准抓取游戏截图 (支持前端滑动预览)...")
+                  # Steam API 限制了批量查询，改为单点突破
+                  for deal in deals_list:
                       try:
-                          res = requests.get(f"https://store.steampowered.com/api/appdetails?appids={app_ids}&filters=screenshots&cc=cn", timeout=10)
+                          res = requests.get(f"https://store.steampowered.com/api/appdetails?appids={deal['id']}&filters=screenshots&cc=cn", timeout=5)
                           if res.status_code == 200:
                               data = res.json()
-                              for deal in chunk:
-                                  d_id = str(deal['id'])
-                                  if data and data.get(d_id, {}).get('success'):
-                                      screenshots = data[d_id]['data'].get('screenshots', [])
-                                      # 取前 4 张高清截图，加上原本的封面图，一共为前端输送 5 张
+                              d_id = str(deal['id'])
+                              if data and data.get(d_id, {}).get('success'):
+                                  screenshots = data[d_id]['data'].get('screenshots', [])
+                                  if screenshots:
+                                      # 取前 4 张高清截图，总计 5 张图供前端轮播
                                       deal['screenshots'] = [s['path_thumbnail'].split('?')[0].replace('http://', 'https://') for s in screenshots[:4]]
                       except Exception as e:
-                          print(f"⚠️ 截图抓取异常: {e}")
                           pass
-                      time.sleep(1) # 轻微延迟确保链路安全
+                      # 严格控制请求频率，防止触发 429 Too Many Requests
+                      time.sleep(0.4) 
                   # ==========================================
 
                   for deal in deals_list:
