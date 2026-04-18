@@ -400,12 +400,37 @@ jobs:
                   
                   # 💡 核心洗牌算法：无视 Steam 官方的实时排名，强制按“历史总评价数”降序！
                   # 这样十万、百万评价的传世神作只要打折，必定霸榜
+                  # 💡 核心洗牌算法：无视 Steam 官方的实时排名，强制按“历史总评价数”降序！
                   deals_list.sort(key=lambda x: x.get('reviewCount', 0), reverse=True)
                   deals_list = deals_list[:50]
                   
                   # 洗牌后，重新分配 1-50 的榜单名次
                   for idx, deal in enumerate(deals_list):
                       deal['globalRank'] = idx + 1
+
+                  # ==========================================
+                  # 💡 新增：批量抓取游戏截图，供前端实现滑动轮播
+                  # ==========================================
+                  print("📸 正在批量抓取游戏截图 (支持前端滑动预览)...")
+                  # 将 50 个游戏按 10 个一组切片，批量请求降低 API 频率，防止 429 封禁
+                  for i in range(0, len(deals_list), 10):
+                      chunk = deals_list[i:i+10]
+                      app_ids = ",".join([str(d['id']) for d in chunk])
+                      try:
+                          res = requests.get(f"https://store.steampowered.com/api/appdetails?appids={app_ids}&filters=screenshots&cc=cn", timeout=10)
+                          if res.status_code == 200:
+                              data = res.json()
+                              for deal in chunk:
+                                  d_id = str(deal['id'])
+                                  if data and data.get(d_id, {}).get('success'):
+                                      screenshots = data[d_id]['data'].get('screenshots', [])
+                                      # 取前 4 张高清截图，加上原本的封面图，一共为前端输送 5 张
+                                      deal['screenshots'] = [s['path_thumbnail'].split('?')[0].replace('http://', 'https://') for s in screenshots[:4]]
+                      except Exception as e:
+                          print(f"⚠️ 截图抓取异常: {e}")
+                          pass
+                      time.sleep(1) # 轻微延迟确保链路安全
+                  # ==========================================
 
                   for deal in deals_list:
                       try:
