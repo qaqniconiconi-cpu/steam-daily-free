@@ -1,4 +1,13 @@
 add:
+  - link: p/doomblade-afdf9a
+    name: DOOMBLADE
+    desc: 2D动作类，银河恶魔城游戏
+    thumbnail: >-
+      https://cdn1.epicgames.com/spt-assets/df87b66c9f3042ac83311bdc9b442884/doomblade-120wd.jpg
+    original_price: ¥58.00
+    type: 100_off
+    end_date: '2026-04-30T15:00:00.000Z'
+    is_upcoming: true
   - link: https://store.steampowered.com/app/3534240/Uncanny_Tales_Cold_Road/
     name: 不可思议物语：寒露
     type: 100_off
