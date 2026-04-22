@@ -1,4 +1,9 @@
 add:
+  - link: https://store.steampowered.com/app/635850
+    name: 感知：安卓的故事
+    type: 100_off
+    end_date: '2026-04-23T10:00:00.000Z'
+    desc: 基于选择的叙事冒险游戏
   - link: p/doomblade-afdf9a
     name: 厄运之刃
     desc: 2D动作类银河恶魔城游戏，踏上复仇之旅，消灭恐惧领主。
@@ -18,31 +23,16 @@ add:
       https://cdn1.epicgames.com/spt-assets/e0b2ef75c4ca470eae076d9d54087eb4/undead-rise-of-the-betrayed-king-logo-134i0.png?resize=1&w=480&h=270&quality=medium
     end_date: '2026-04-23T19:00:00.000Z'
     original_price: ¥62.00
-  - link: https://store.steampowered.com/app/3534240/Uncanny_Tales_Cold_Road/
-    name: 不可思议物语：寒露
-    type: 100_off
-    desc: 真正的恐怖不是来自怪物或超自然现象，而是来自人。
-    end_date: '2026-04-20T10:00:00.000Z'
   - link: https://store.steampowered.com/app/978520/_/
     name: 魔王大人，击退勇者吧
     type: 100_off
     desc: 融合了Rogue元素的地下城防守游戏。
     end_date: '2026-04-24T01:00:00.000Z'
-  - link: https://store.steampowered.com/app/2792610/Stickman_Killing_Zombie/
-    name: 火柴人杀僵尸
-    type: 100_off
-    end_date: '2026-04-20T10:00:00.000Z'
-    desc: 火柴人解压割草游戏
-  - link: https://store.steampowered.com/app/2860410/NineHells/
-    name: 九层地域
-    type: 100_off
-    desc: 第一人称恐怖游戏
-    end_date: '2026-04-21T01:00:00.000Z'
   - link: https://store.epicgames.com/zh-CN/p/the-stone-of-madness-7b22f3
     name: 疯狂之石
     type: 100_off
     desc: 实时战术潜行
-    end_date: '2026-04-16T00:00:00.000Z'
+    end_date: '2026-04-23T08:00:00.000Z'
     thumbnail: >-
       https://cdn1.epicgames.com/spt-assets/8de621e8d91b473f892472024035dc22/the-stone-of-madness-logo-29e1b.png?resize=1&w=480&h=270&quality=medium
   - link: https://store.steampowered.com/app/4138970
