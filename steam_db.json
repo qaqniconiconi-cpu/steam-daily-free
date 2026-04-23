@@ -937,7 +937,7 @@
     "status": "invalid"
   },
   "635850": {
-    "status": "valid",
+    "status": "expired",
     "type": "100_off",
     "details": {
       "steam_id": "635850",
