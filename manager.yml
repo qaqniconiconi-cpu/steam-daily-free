@@ -1,4 +1,9 @@
 add:
+  - link: https://store.steampowered.com/app/4148570/
+    name: SurrounDead Poly Construction
+    type: 100_off
+    desc: 开放世界生存游戏、冒险游戏。包含解谜、收集物品，击败敌人，到达终点。
+    end_date: '2026-04-26T01:00:00.000Z'
   - link: https://store.steampowered.com/app/3277530/Aeonic/
     name: 新增的自定义游戏
     type: 100_off
