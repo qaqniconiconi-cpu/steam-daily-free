@@ -502,10 +502,18 @@ jobs:
               current_time = datetime.utcnow()
               
               # A. 收集并分发 Steam 数据
+              # A. 收集并分发 Steam 数据
               for app_id, data in list(db.items()):
                   if data.get('status') == 'valid':
-                      if str(app_id) in BLACKLIST:
+                      # 修正：如果 ID 在黑名单，或者该 ID 其实是一个 Epic 的链接/Slug，则跳过，防止污染 Steam 列表
+                      if str(app_id) in BLACKLIST or "epicgames.com" in str(app_id).lower():
                           db[app_id]['status'] = 'invalid'
+                          continue
+                          
+                      details = data['details']
+                      
+                      # 核心修正：如果该条数据是从 manager.yml 强制添加的，且明确标记了是 Epic，则不进入 Steam 列表
+                      if details.get('platform') == 'Epic Games':
                           continue
                           
                       details = data['details']
