@@ -1,4 +1,9 @@
 add:
+  - link: https://store.steampowered.com/app/2835590/8AM/
+    name: 8AM
+    type: 100_off
+    desc: 悬疑游戏，主角被困在一个房间里，争取在早上8点获得解脱。
+    end_date: '2026-04-28T01:00:00.000Z'
   - link: p/oddsparks-58440c
     name: 火花奇遇记：自动化冒险
     desc: >-
