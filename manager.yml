@@ -1,6 +1,7 @@
 add:
   - link: p/typers-combat-23ed78
     name: Typers Combat
+    platform: epic
     type: 100_off
     desc: 以打字战斗，为胜利而战
     end_date: '2026-04-29T06:00:00.000Z'
@@ -11,6 +12,7 @@ add:
     end_date: '2026-04-28T01:00:00.000Z'
   - link: p/oddsparks-58440c
     name: 火花奇遇记：自动化冒险
+    platform: epic
     desc: >-
       Design automated workshops for your odd and adorable Sparks to carry and
       craft everything, including more of themselves. Lead your squad of Sparks
@@ -24,6 +26,7 @@ add:
     is_upcoming: true
   - link: p/firestone-online-idle-rpg-bfd04b
     name: 火之石 - 放置RPG
+    platform: epic
     desc: >-
       Firestone: Online Idle RPG 是一款具有放置 RPG
       机制的奇幻多人游戏。收集英雄🧙‍♂️、升级他们的装备和技能、派遣他们进行 AFK
