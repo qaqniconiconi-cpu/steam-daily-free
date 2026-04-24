@@ -26,9 +26,7 @@ add:
   - link: p/firestone-online-idle-rpg-bfd04b
     name: 火之石 - 放置RPG
     platform: epic
-    desc: >-
-      是一款具有放置 RPG 机制的多人游戏。收集英雄🧙‍♂️、升级他们的装备和技能、派遣他们进行 AFK
-      战斗，或疯狂继续加强点击，以击败可怕的Boss！与公会好友聊天或参与 PVP⚔️——选择权在你手中！
+    desc: 放置RPG的多人游戏。收集英雄、升级装备和技能、AFK 战斗，或疯狂的点击，与公会好友聊天或参与 PVP。
     thumbnail: >-
       https://cdn1.epicgames.com/spt-assets/69576a28f7154fe9a0dce97508da5163/firestone-online-idle-rpg-1vv9i.png
     type: 100_off
