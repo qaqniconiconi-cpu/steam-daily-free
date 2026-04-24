@@ -1,4 +1,34 @@
 add:
+  - link: p/oddsparks-58440c
+    name: 火花奇遇记：自动化冒险
+    desc: >-
+      Design automated workshops for your odd and adorable Sparks to carry and
+      craft everything, including more of themselves. Lead your squad of Sparks
+      into combat. Explore a strange fantasy world, in single player or online
+      co-op. Unearth the ancient mystery of the Sparks!
+    thumbnail: >-
+      https://cdn1.epicgames.com/spt-assets/f09aaab3f10e4c18a2948a5b829bd84d/oddsparks-an-automation-adventure-117zi.png
+    original_price: ￥130
+    type: 100_off
+    end_date: '2026-05-07T15:00:00.000Z'
+    is_upcoming: true
+  - link: p/firestone-online-idle-rpg-bfd04b
+    name: 火之石 - 放置RPG
+    desc: >-
+      Firestone: Online Idle RPG 是一款具有放置 RPG
+      机制的奇幻多人游戏。收集英雄🧙‍♂️、升级他们的装备和技能、派遣他们进行 AFK
+      战斗，或疯狂继续加强点击，以击败可怕的Boss！与公会好友聊天或参与 PVP⚔️——选择权在你手中！
+    thumbnail: >-
+      https://cdn1.epicgames.com/spt-assets/69576a28f7154fe9a0dce97508da5163/firestone-online-idle-rpg-1vv9i.png
+    original_price: '0'
+    type: 100_off
+    end_date: '2026-05-07T15:00:00.000Z'
+    is_upcoming: true
+  - link: https://store.steampowered.com/app/1634080/
+    name: 离火长明
+    type: 100_off
+    end_date: '2026-04-26T22:00:00.000Z'
+    desc: 横板动作
   - link: https://store.steampowered.com/app/4148570/
     name: SurrounDead Poly Construction
     type: 100_off
@@ -9,11 +39,6 @@ add:
     type: 100_off
     end_date: '2026-04-30T05:00:00.000Z'
     desc: 基于文本的冒险游戏,在其中你将体验穿越整个人类历史的的刺激
-  - link: https://store.steampowered.com/app/635850
-    name: 感知：安卓的故事
-    type: 100_off
-    end_date: '2026-04-23T10:00:00.000Z'
-    desc: 基于选择的叙事冒险游戏
   - link: p/doomblade-afdf9a
     name: 厄运之刃
     desc: 2D动作类银河恶魔城游戏，踏上复仇之旅，消灭恐惧领主。
@@ -33,11 +58,6 @@ add:
       https://cdn1.epicgames.com/spt-assets/e0b2ef75c4ca470eae076d9d54087eb4/undead-rise-of-the-betrayed-king-logo-134i0.png?resize=1&w=480&h=270&quality=medium
     end_date: '2026-04-23T19:00:00.000Z'
     original_price: ¥62.00
-  - link: https://store.steampowered.com/app/978520/_/
-    name: 魔王大人，击退勇者吧
-    type: 100_off
-    desc: 融合了Rogue元素的地下城防守游戏。
-    end_date: '2026-04-24T01:00:00.000Z'
   - link: https://store.epicgames.com/zh-CN/p/the-stone-of-madness-7b22f3
     name: 疯狂之石
     type: 100_off
