@@ -980,5 +980,80 @@
       "type": "100_off",
       "_is_forced": true
     }
+  },
+  "4351960": {
+    "status": "valid",
+    "type": "100_off",
+    "details": {
+      "steam_id": "4351960",
+      "zh_title": "Typers Combat",
+      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4351960/93d9c4b8aea001dcbf9392a8d757b92cb1cb9fce/header.jpg?t=1773183781",
+      "short_description": "以打字战斗，为胜利而战",
+      "end_date": "2026-04-29T06:00:00.000Z",
+      "platform": "Steam",
+      "original_price": "¥ 26.00",
+      "type": "100_off",
+      "_is_forced": true
+    }
+  },
+  "2835590": {
+    "status": "valid",
+    "type": "100_off",
+    "details": {
+      "steam_id": "2835590",
+      "zh_title": "8AM",
+      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2835590/header.jpg?t=1776993213",
+      "short_description": "悬疑游戏，主角被困在一个房间里，争取在早上8点获得解脱。",
+      "end_date": "2026-04-28T01:00:00.000Z",
+      "platform": "Steam",
+      "original_price": "¥ 15.00",
+      "type": "100_off",
+      "_is_forced": true
+    }
+  },
+  "1817800": {
+    "status": "valid",
+    "type": "100_off",
+    "details": {
+      "steam_id": "1817800",
+      "zh_title": "火花奇遇记：自动化冒险",
+      "thumbnail": "https://cdn1.epicgames.com/spt-assets/f09aaab3f10e4c18a2948a5b829bd84d/oddsparks-an-automation-adventure-117zi.png",
+      "short_description": "Design automated workshops for your odd and adorable Sparks to carry and craft everything, including more of themselves. Lead your squad of Sparks into combat. Explore a strange fantasy world, in single player or online co-op. Unearth the ancient mystery of the Sparks!",
+      "end_date": "2026-05-07T15:00:00.000Z",
+      "platform": "Steam",
+      "original_price": "",
+      "type": "100_off",
+      "_is_forced": true
+    }
+  },
+  "1013320": {
+    "status": "valid",
+    "type": "100_off",
+    "details": {
+      "steam_id": "1013320",
+      "zh_title": "火之石 - 放置RPG",
+      "thumbnail": "https://cdn1.epicgames.com/spt-assets/69576a28f7154fe9a0dce97508da5163/firestone-online-idle-rpg-1vv9i.png",
+      "short_description": "Firestone: Online Idle RPG 是一款具有放置 RPG 机制的奇幻多人游戏。收集英雄🧙‍♂️、升级他们的装备和技能、派遣他们进行 AFK 战斗，或疯狂继续加强点击，以击败可怕的Boss！与公会好友聊天或参与 PVP⚔️——选择权在你手中！",
+      "end_date": "2026-05-07T15:00:00.000Z",
+      "platform": "Steam",
+      "original_price": "",
+      "type": "100_off",
+      "_is_forced": true
+    }
+  },
+  "1634080": {
+    "status": "valid",
+    "type": "100_off",
+    "details": {
+      "steam_id": "1634080",
+      "zh_title": "离火长明",
+      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1634080/header.jpg?t=1776793447",
+      "short_description": "横板动作",
+      "end_date": "2026-04-26T22:00:00.000Z",
+      "platform": "Steam",
+      "original_price": "¥ 58.00",
+      "type": "100_off",
+      "_is_forced": true
+    }
   }
 }
