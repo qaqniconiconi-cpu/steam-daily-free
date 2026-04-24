@@ -5,6 +5,9 @@ add:
     type: 100_off
     desc: 以打字战斗，为胜利而战
     end_date: '2026-04-29T06:00:00.000Z'
+    thumbnail: >-
+      https://cdn1.epicgames.com/spt-assets/d07bf5ae6bdd495caf755fb5f56844e7/typers-combat-logo-1s1pa.png?resize=1&w=480&h=270&quality=medium
+    original_price: ￥40.00
   - link: https://store.steampowered.com/app/2835590/8AM/
     name: 8AM
     type: 100_off
@@ -28,12 +31,10 @@ add:
     name: 火之石 - 放置RPG
     platform: epic
     desc: >-
-      Firestone: Online Idle RPG 是一款具有放置 RPG
-      机制的奇幻多人游戏。收集英雄🧙‍♂️、升级他们的装备和技能、派遣他们进行 AFK
+      是一款具有放置 RPG 机制的多人游戏。收集英雄🧙‍♂️、升级他们的装备和技能、派遣他们进行 AFK
       战斗，或疯狂继续加强点击，以击败可怕的Boss！与公会好友聊天或参与 PVP⚔️——选择权在你手中！
     thumbnail: >-
       https://cdn1.epicgames.com/spt-assets/69576a28f7154fe9a0dce97508da5163/firestone-online-idle-rpg-1vv9i.png
-    original_price: '0'
     type: 100_off
     end_date: '2026-05-07T15:00:00.000Z'
     is_upcoming: true
@@ -92,6 +93,6 @@ disable:
   - castlevania-anniversary-collection-a61f94
   - app/2183900
   - app/922050
-  - 'Typers Combat'
-  - '火花奇遇记：自动化冒险'
-  - '火之石 - 放置RPG'
+  - Typers Combat
+  - 火花奇遇记：自动化冒险
+  - 火之石 - 放置RPG
