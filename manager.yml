@@ -16,11 +16,7 @@ add:
   - link: p/oddsparks-58440c
     name: 火花奇遇记：自动化冒险
     platform: epic
-    desc: >-
-      Design automated workshops for your odd and adorable Sparks to carry and
-      craft everything, including more of themselves. Lead your squad of Sparks
-      into combat. Explore a strange fantasy world, in single player or online
-      co-op. Unearth the ancient mystery of the Sparks!
+    desc: 融合了自动化和实时战略的游戏，既适合自动化类型的死忠玩家，也适合对自动化充满好奇的玩家。
     thumbnail: >-
       https://cdn1.epicgames.com/spt-assets/f09aaab3f10e4c18a2948a5b829bd84d/oddsparks-an-automation-adventure-117zi.png
     original_price: ￥130
