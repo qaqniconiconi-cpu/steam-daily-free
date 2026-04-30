@@ -1019,5 +1019,8 @@
       "type": "100_off",
       "_is_forced": true
     }
+  },
+  "990080": {
+    "status": "invalid"
   }
 }
