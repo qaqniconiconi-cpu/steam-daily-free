@@ -1,18 +1,4 @@
 add:
-  - link: p/typers-combat-23ed78
-    name: Typers Combat
-    platform: epic
-    type: 100_off
-    desc: 以打字战斗，为胜利而战
-    end_date: '2026-04-29T06:00:00.000Z'
-    thumbnail: >-
-      https://cdn1.epicgames.com/spt-assets/d07bf5ae6bdd495caf755fb5f56844e7/typers-combat-logo-1s1pa.png?resize=1&w=480&h=270&quality=medium
-    original_price: ￥40.00
-  - link: https://store.steampowered.com/app/2835590/8AM/
-    name: 8AM
-    type: 100_off
-    desc: 悬疑游戏，主角被困在一个房间里，争取在早上8点获得解脱。
-    end_date: '2026-04-28T01:00:00.000Z'
   - link: p/oddsparks-58440c
     name: 火花奇遇记：自动化冒险
     platform: epic
@@ -32,21 +18,6 @@ add:
     type: 100_off
     end_date: '2026-05-07T15:00:00.000Z'
     is_upcoming: true
-  - link: https://store.steampowered.com/app/1634080/
-    name: 离火长明
-    type: 100_off
-    end_date: '2026-04-26T22:00:00.000Z'
-    desc: 横板动作
-  - link: https://store.steampowered.com/app/4148570/
-    name: SurrounDead Poly Construction
-    type: 100_off
-    desc: 开放世界生存游戏、冒险游戏。包含解谜、收集物品，击败敌人，到达终点。
-    end_date: '2026-04-26T01:00:00.000Z'
-  - link: https://store.steampowered.com/app/3277530/Aeonic/
-    name: Aeonic
-    type: 100_off
-    end_date: '2026-04-30T05:00:00.000Z'
-    desc: 基于文本的冒险游戏,在其中你将体验穿越整个人类历史的的刺激
   - link: p/doomblade-afdf9a
     name: 厄运之刃
     desc: 2D动作类银河恶魔城游戏，踏上复仇之旅，消灭恐惧领主。
@@ -57,22 +28,6 @@ add:
     end_date: '2026-04-30T15:00:00.000Z'
     is_upcoming: true
     platform: epic
-  - link: >-
-      https://store.epicgames.com/zh-Hant/p/undead-rise-of-the-betrayed-king-4ad94c
-    name: 亡灵:背叛之王的崛起
-    type: 100_off
-    desc: 写实动作RPG，扮演一只化身为野蛮人的巨龙，能够使用魔法与不死族作战，与伙伴一起成长。
-    thumbnail: >-
-      https://cdn1.epicgames.com/spt-assets/e0b2ef75c4ca470eae076d9d54087eb4/undead-rise-of-the-betrayed-king-logo-134i0.png?resize=1&w=480&h=270&quality=medium
-    end_date: '2026-04-23T19:00:00.000Z'
-    original_price: ¥62.00
-  - link: https://store.epicgames.com/zh-CN/p/the-stone-of-madness-7b22f3
-    name: 疯狂之石
-    type: 100_off
-    desc: 实时战术潜行
-    end_date: '2026-04-23T08:00:00.000Z'
-    thumbnail: >-
-      https://cdn1.epicgames.com/spt-assets/8de621e8d91b473f892472024035dc22/the-stone-of-madness-logo-29e1b.png?resize=1&w=480&h=270&quality=medium
   - link: https://store.steampowered.com/app/4138970
     name: 拾取宝石后意外觉醒了复制魔王力量的逆天技能
     type: to_paid
