@@ -4,6 +4,8 @@ add:
     type: 100_off
     desc: 发掘并清理小饰品，进行升级改造，卖给古灵精怪的顾客。用积蓄升级店铺、购买更好的工具。
     end_date: '2026-05-14T08:00:00Z'
+    thumbnail: >-
+      https://cdn1.epicgames.com/spt-assets/113ae486fe9040d89a7fc25a501dc3b9/trash-goblin-logo-3xj6l.png?resize=1&w=480&h=270&quality=medium
   - link: >-
       https://store.epicgames.com/zh-CN/p/arranger-a-rolepuzzling-adventure-dbfde7
     name: 编排者：角色谜题冒险
@@ -11,6 +13,8 @@ add:
     platform: epic
     end_date: '2026-05-14T08:00:00Z'
     desc: 网格移动解密
+    thumbnail: >-
+      https://cdn1.epicgames.com/spt-assets/fee7dc25f12c4400a5182c864fd89c66/arranger-a-rolepuzzling-adventure-logo-ydvet.png?resize=1&w=480&h=270&quality=medium
   - link: https://store.steampowered.com/app/4138970
     name: 拾取宝石后意外觉醒了复制魔王力量的逆天技能
     type: to_paid
