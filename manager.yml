@@ -1,37 +1,20 @@
 add:
-  - link: p/oddsparks-58440c
-    name: 火花奇遇记：自动化冒险
-    platform: epic
-    desc: 融合了自动化和实时战略的游戏，既适合自动化类型的死忠玩家，也适合对自动化充满好奇的玩家。
-    thumbnail: >-
-      https://cdn1.epicgames.com/spt-assets/f09aaab3f10e4c18a2948a5b829bd84d/oddsparks-an-automation-adventure-117zi.png
-    original_price: ￥130
+  - link: https://store.epicgames.com/zh-CN/p/trash-goblin-cd5fd7
+    name: 变废为宝哥布林
     type: 100_off
-    end_date: '2026-05-07T15:00:00.000Z'
-    is_upcoming: true
-  - link: p/firestone-online-idle-rpg-bfd04b
-    name: 火之石 - 放置RPG
-    platform: epic
-    desc: 放置RPG的多人游戏。收集英雄、升级装备和技能、AFK 战斗，或疯狂的点击，与公会好友聊天或参与 PVP。
-    thumbnail: >-
-      https://cdn1.epicgames.com/spt-assets/69576a28f7154fe9a0dce97508da5163/firestone-online-idle-rpg-1vv9i.png
+    desc: 发掘并清理小饰品，进行升级改造，卖给古灵精怪的顾客。用积蓄升级店铺、购买更好的工具。
+    end_date: '2026-05-14T08:00:00Z'
+  - link: >-
+      https://store.epicgames.com/zh-CN/p/arranger-a-rolepuzzling-adventure-dbfde7
+    name: 编排者：角色谜题冒险
     type: 100_off
-    end_date: '2026-05-07T15:00:00.000Z'
-    is_upcoming: true
-  - link: p/doomblade-afdf9a
-    name: 厄运之刃
-    desc: 2D动作类银河恶魔城游戏，踏上复仇之旅，消灭恐惧领主。
-    thumbnail: >-
-      https://cdn1.epicgames.com/spt-assets/df87b66c9f3042ac83311bdc9b442884/doomblade-120wd.jpg
-    original_price: ¥58.00
-    type: 100_off
-    end_date: '2026-04-30T15:00:00.000Z'
-    is_upcoming: true
     platform: epic
+    end_date: '2026-05-14T08:00:00Z'
+    desc: 网格移动解密
   - link: https://store.steampowered.com/app/4138970
     name: 拾取宝石后意外觉醒了复制魔王力量的逆天技能
     type: to_paid
-    end_date: '2026-05-15T23:59:00Z'
+    end_date: '2026-06-01T23:59:00Z'
 disable:
   - '640700'
   - '3144950'
