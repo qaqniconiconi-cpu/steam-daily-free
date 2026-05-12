@@ -1037,5 +1037,35 @@
       "type": "100_off",
       "_is_forced": false
     }
+  },
+  "3856040": {
+    "status": "valid",
+    "type": "100_off",
+    "details": {
+      "steam_id": "3856040",
+      "zh_title": "形单影只：坠落地牢无尽深渊",
+      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3856040/778e45bf1e3b83f356b7d305f40dae3fecfa98a9/header.jpg?t=1778365883",
+      "short_description": "面对高难度任务，挑战极限。有时，胜利也需要一些运气。",
+      "end_date": "2026-05-14T01:00:00Z",
+      "platform": "Steam",
+      "original_price": "¥ 62.00",
+      "type": "100_off",
+      "_is_forced": true
+    }
+  },
+  "3353830": {
+    "status": "valid",
+    "type": "100_off",
+    "details": {
+      "steam_id": "3353830",
+      "zh_title": "生存战场",
+      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3353830/header.jpg?t=1778365475",
+      "short_description": "前往正确地点，完成所有战斗任务",
+      "end_date": "2026-05-13T01:00:00Z",
+      "platform": "Steam",
+      "original_price": "¥ 62.00",
+      "type": "100_off",
+      "_is_forced": true
+    }
   }
 }
