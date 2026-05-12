@@ -1,4 +1,9 @@
 add:
+  - link: https://store.steampowered.com/app/3353830/LivingBattle/
+    name: 生存战场
+    type: 100_off
+    desc: 前往正确地点，完成所有战斗任务
+    end_date: '2026-05-13T01:00:00Z'
   - link: https://store.epicgames.com/zh-CN/p/trash-goblin-cd5fd7
     name: 变废为宝哥布林
     type: 100_off
