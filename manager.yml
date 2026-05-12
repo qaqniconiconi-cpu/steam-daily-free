@@ -1,4 +1,9 @@
 add:
+  - link: https://store.steampowered.com/app/3856040/_/
+    name: 形单影只：坠落地牢无尽深渊
+    type: 100_off
+    desc: 面对高难度任务，挑战极限。有时，胜利也需要一些运气。
+    end_date: '2026-05-14T01:00:00Z'
   - link: https://store.steampowered.com/app/3353830/LivingBattle/
     name: 生存战场
     type: 100_off
