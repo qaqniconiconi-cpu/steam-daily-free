@@ -7,6 +7,7 @@ add:
     thumbnail: >-
       https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3587490/ad38d7ab0135468d698238d0d06e0e68ea41d49e/header.jpg?t=1778605447
     end_date: '2026-05-20T01:00:00Z'
+    original_price: '22'
   - link: https://store.epicgames.com/p/devils-island-03e902
     name: 魔鬼岛
     type: 100_off
