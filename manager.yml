@@ -8,6 +8,14 @@ add:
       https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3587490/ad38d7ab0135468d698238d0d06e0e68ea41d49e/header.jpg?t=1778605447
     end_date: '2026-05-20T01:00:00Z'
     original_price: '22'
+  - link: https://store.epicgames.com/free-games
+    name: Epic 神秘限免第二波
+    type: upcoming
+    platform: epic
+    desc: Epic神秘周限免
+    end_date: '2026-05-21T00:00:00Z'
+    thumbnail: >-
+      https://cdn1.epicgames.com/offer/d5241c76f178492ea1540fce45616757/image24_1200x1600-43ff50cec0da4a7599a9e1ae07f3811e?resize=1&w=360&h=480&quality=medium
   - link: https://store.epicgames.com/p/devils-island-03e902
     name: 魔鬼岛
     type: 100_off
