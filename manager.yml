@@ -24,7 +24,7 @@ add:
     platform: steam
     thumbnail: >-
       https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3343840/77c677158da20f9addb4fd615804cca7641cb6b6/header.jpg?t=1778882443
-    end_date: '2026-05-13T01:00:00Z'
+    end_date: '2026-05-31T01:00:00Z'
     original_price: '15'
     desc: 可爱furry，2.5D跑酷
   - link: https://store.epicgames.com/p/vaudeville-86cff0
