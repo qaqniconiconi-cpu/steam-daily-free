@@ -1,4 +1,9 @@
 add:
+  - link: com.epicgames.launcher://store/sales-and-specials/epic-extras
+    name: Epic 加码好礼
+    type: 100_off
+    desc: 在大特卖活动期间，通过 Epic 加码好礼解锁免费外观礼包及更多福利
+    end_date: '2026-06-11T23:00:00Z'
   - link: https://store.epicgames.com/free-games
     name: Epic 神秘限免Ⅱ
     type: upcoming
