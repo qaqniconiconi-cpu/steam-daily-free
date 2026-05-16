@@ -1082,5 +1082,20 @@
       "type": "100_off",
       "_is_forced": true
     }
+  },
+  "3343840": {
+    "status": "expired",
+    "type": "100_off",
+    "details": {
+      "steam_id": "3343840",
+      "zh_title": "迪诺从毛茸茸的奔跑",
+      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3343840/77c677158da20f9addb4fd615804cca7641cb6b6/header.jpg?t=1778882443",
+      "short_description": "可爱furry，2.5D跑酷",
+      "end_date": "2026-05-13T01:00:00Z",
+      "platform": "Steam",
+      "original_price": "¥ 15.00",
+      "type": "100_off",
+      "_is_forced": true
+    }
   }
 }
