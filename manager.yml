@@ -1,4 +1,13 @@
 add:
+  - link: https://store.epicgames.com/p/vaudeville-86cff0
+    name: Vaudeville
+    type: 100_off
+    platform: epic
+    desc: 是一款基于最新人工智能技术实时生成对话的实验性侦探游戏
+    thumbnail: >-
+      https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2240920/e3e98c74c5a81cf9a6dc0c52923231ce49627df7/ss_e3e98c74c5a81cf9a6dc0c52923231ce49627df7.1920x1080.jpg?t=1770214371
+    end_date: '2026-05-17T03:00:00Z'
+    original_price: '136'
   - link: https://store.steampowered.com/app/3587490/Terrors_to_Unveil__Day_Off/
     name: 恐惧揭秘:休假日
     type: 100_off
