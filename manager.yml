@@ -16,6 +16,7 @@ add:
     thumbnail: https://img.et-cdn.com/game/ba250b5f033b4ce3a3bc60bf236623a4.png
     end_date: '2026-05-21T00:00:00Z'
     desc: 神秘游戏限免入库
+    button_url: com.epicgames.launcher://store/free-games
   - link: >-
       https://store.steampowered.com/app/3343840/Dino_running_from_a_FURRY_GAMESFORFARM/
     name: ' 迪诺从毛茸茸的奔跑'
