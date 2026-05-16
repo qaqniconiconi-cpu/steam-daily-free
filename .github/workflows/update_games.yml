@@ -79,6 +79,8 @@ jobs:
                               name = str(item.get('name', '')).strip()
                               custom_thumbnail = str(item.get('thumbnail', '')).strip()
                               custom_desc = str(item.get('desc', item.get('description', item.get('dec', '')))).strip()
+                              title_url = str(item.get('title_url', item.get('web_url', item.get('detail_url', '')))).strip()
+                              button_url = str(item.get('button_url', item.get('action_url', item.get('deeplink_url', '')))).strip()
 
                               raw_date = item.get('end_date', item.get('endtime', item.get('endDate', '')))
                               if isinstance(raw_date, datetime): 
@@ -89,12 +91,25 @@ jobs:
                               platform_raw = str(item.get('platform', '')).strip().lower()
                               link_lower = link.lower()
                               m_epic = re.search(r'epicgames\.com/(?:[a-z]{2}-[a-zA-Z]{2}/)?p/([^/?#]+)', link_lower)
-                              is_epic = platform_raw == 'epic' or link_lower.startswith('p/') or bool(m_epic)
-                              is_steam = platform_raw == 'steam' or bool(re.search(r'steampowered\.com/app/\d+', link_lower)) or link_lower.startswith('app/') or link.isdigit()
-                              is_custom = platform_raw in ['custom', 'other', 'external', 'web', 'link'] or ((link_lower.startswith('http://') or link_lower.startswith('https://')) and not is_steam and not bool(m_epic))
+                              m_steam = re.search(r'steampowered\.com/app/(\d+)', link_lower)
+                              is_epic_product = link_lower.startswith('p/') or bool(m_epic) or (platform_raw == 'epic' and link and not link_lower.startswith(('http://', 'https://')) and not link_lower.startswith('free-games'))
+                              is_steam_product = bool(m_steam) or link_lower.startswith('app/') or link.isdigit()
+                              is_epic_page = platform_raw == 'epic' or 'epicgames.com' in link_lower or is_epic_product
+                              is_steam_page = platform_raw == 'steam' or 'steampowered.com' in link_lower or is_steam_product
+                              is_custom_platform = platform_raw in ['custom', 'other', 'external', 'web', 'link']
+                              is_custom = is_custom_platform or ((link_lower.startswith('http://') or link_lower.startswith('https://')) and not is_epic_product and not is_steam_product and not is_epic_page and not is_steam_page)
+                              is_platform_page_without_product = (link_lower.startswith('http://') or link_lower.startswith('https://')) and (is_epic_page or is_steam_page) and not is_epic_product and not is_steam_product
 
-                              if is_custom:
-                                  platform_label = str(item.get('platform_name', item.get('platform_label', item.get('source', '活动页面')))).strip() or "活动页面"
+                              if is_custom or is_platform_page_without_product:
+                                  explicit_platform_label = str(item.get('platform_name', item.get('platform_label', item.get('source', '')))).strip()
+                                  if explicit_platform_label:
+                                      platform_label = explicit_platform_label
+                                  elif is_epic_page:
+                                      platform_label = "Epic Games"
+                                  elif is_steam_page:
+                                      platform_label = "Steam"
+                                  else:
+                                      platform_label = "活动页面"
                                   orig_price = str(item.get('original_price', item.get('originalPrice', ''))).strip()
                                   FORCED_CUSTOM.append({
                                       "zh_title": name or link,
@@ -103,6 +118,8 @@ jobs:
                                       "platform": platform_label,
                                       "custom_url": link,
                                       "url": link,
+                                      "title_url": title_url or link,
+                                      "button_url": button_url,
                                       "short_description": custom_desc or "外部活动页面，点击查看详情。",
                                       "original_price": orig_price,
                                       "type": item.get('type', '100_off'),
@@ -111,7 +128,7 @@ jobs:
                                   })
                                   continue
 
-                              if is_epic:
+                              if is_epic_product:
                                   m_epic = re.search(r'epicgames\.com/(?:[a-z]{2}-[a-zA-Z]{2}/)?p/([^/?#]+)', link)
                                   slug = m_epic.group(1).lower() if m_epic else (link.split('/')[-1].lower() if link else "")
                                   if not slug: slug = name.lower()
@@ -140,7 +157,8 @@ jobs:
                                   FORCED_EPIC.append({
                                       "zh_title": name_final or slug, "thumbnail": thumb_final or "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='300'%3E%3Crect width='600' height='300' fill='%23121215'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%239F70FA' font-family='sans-serif' font-size='24'%3EEpic Game%3C/text%3E%3C/svg%3E", 
                                       "end_date": raw_date_str or "限免进行中",
-                                      "platform": "Epic Games", "epic_slug": slug, 
+                                      "platform": "Epic Games", "epic_slug": slug,
+                                      "title_url": title_url or (link if link.startswith('http') else ''), "button_url": button_url,
                                       "short_description": desc_final or "Epic 隐藏福利，建议立即入库体验。",
                                       "type": item.get('type', '100_off'), 
                                       "_custom_desc": custom_desc, "_custom_thumb": custom_thumbnail
@@ -162,6 +180,7 @@ jobs:
                               if app_id and app_id.isdigit():
                                   FORCED_ADD[app_id] = {
                                       "type": item.get('type', 'to_paid'), "end_date": raw_date_str, "name": name,
+                                      "title_url": title_url or (link if link.startswith('http') else ''), "button_url": button_url,
                                       "_custom_desc": custom_desc, "_custom_thumb": custom_thumbnail
                                   }
                           else:
@@ -247,7 +266,7 @@ jobs:
                           if not e_date or e_date.lower() == "none": e_date = "限免进行中"
                           z_title = forced_info.get('name') or f"神秘福利 {app_id}"
                           thumbnail_url = forced_info.get('_custom_thumb') or f"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{app_id}/header.jpg"
-                          return {"status": "valid", "type": forced_info.get('type', 'to_paid'), "details": {"steam_id": str(app_id), "zh_title": z_title, "thumbnail": thumbnail_url, "short_description": forced_info.get('_custom_desc') or "福利放送中，建议立即入库体验", "is_100_off": False, "end_date": e_date, "_is_forced": True}}
+                          return {"status": "valid", "type": forced_info.get('type', 'to_paid'), "details": {"steam_id": str(app_id), "zh_title": z_title, "thumbnail": thumbnail_url, "short_description": forced_info.get('_custom_desc') or "福利放送中，建议立即入库体验", "is_100_off": False, "end_date": e_date, "title_url": forced_info.get('title_url', ''), "button_url": forced_info.get('button_url', ''), "_is_forced": True}}
                       return {"status": "invalid"}
 
                   price = d.get('price_overview', {})
@@ -308,6 +327,8 @@ jobs:
                           "steam_id": str(app_id), "zh_title": z_title, "thumbnail": thumbnail,
                           "short_description": short_desc, "end_date": end_date, "platform": "Steam",
                           "original_price": orig_price,
+                          "title_url": forced_info.get('title_url', '') if forced_info else '',
+                          "button_url": forced_info.get('button_url', '') if forced_info else '',
                           "type": game_type, "_is_forced": bool(forced_info)
                       }
                   }
@@ -315,7 +336,7 @@ jobs:
                   if forced_info:
                       e_date = str(forced_info.get('end_date', '')).strip()
                       if not e_date or e_date.lower() == "none": e_date = "限免进行中"
-                      return {"status": "valid", "type": forced_info.get('type', 'to_paid'), "details": {"steam_id": str(app_id), "zh_title": forced_info.get('name') or f"App {app_id}", "thumbnail": forced_info.get('_custom_thumb') or f"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{app_id}/header.jpg", "short_description": forced_info.get('_custom_desc') or "福利放送中", "type": forced_info.get('type', 'to_paid'), "end_date": e_date, "_is_forced": True}}
+                      return {"status": "valid", "type": forced_info.get('type', 'to_paid'), "details": {"steam_id": str(app_id), "zh_title": forced_info.get('name') or f"App {app_id}", "thumbnail": forced_info.get('_custom_thumb') or f"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{app_id}/header.jpg", "short_description": forced_info.get('_custom_desc') or "福利放送中", "type": forced_info.get('type', 'to_paid'), "end_date": e_date, "title_url": forced_info.get('title_url', ''), "button_url": forced_info.get('button_url', ''), "_is_forced": True}}
                   return {"status": "invalid"}
 
           # ==========================================
