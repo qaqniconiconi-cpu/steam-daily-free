@@ -4,6 +4,8 @@ add:
     type: 100_off
     desc: 在大特卖活动期间，通过 Epic 加码好礼解锁免费外观礼包及更多福利
     end_date: '2026-06-11T23:00:00Z'
+    thumbnail: >-
+      https://cdn2.unrealengine.com/mega-sale-epicextras-background-1200x1200-asset-2a0b392475e9.avif?resize=1&w=360&h=480&quality=medium
   - link: https://store.epicgames.com/free-games
     name: Epic 神秘限免Ⅱ
     type: upcoming
