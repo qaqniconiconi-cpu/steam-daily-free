@@ -16,6 +16,7 @@
       "original_price": "",
       "title_url": "https://store.steampowered.com/app/4138970",
       "button_url": "",
+      "sort_order": "",
       "type": "to_paid",
       "_is_forced": true
     }
@@ -1083,6 +1084,7 @@
       "original_price": "¥ 22.00",
       "title_url": "https://store.steampowered.com/app/3587490/Terrors_to_Unveil__Day_Off/",
       "button_url": "",
+      "sort_order": "",
       "type": "100_off",
       "_is_forced": true
     }
@@ -1100,6 +1102,7 @@
       "original_price": "¥ 15.00",
       "title_url": "https://store.steampowered.com/app/3343840/Dino_running_from_a_FURRY_GAMESFORFARM/",
       "button_url": "",
+      "sort_order": "",
       "type": "100_off",
       "_is_forced": true
     }
