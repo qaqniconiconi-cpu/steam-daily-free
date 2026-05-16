@@ -16,7 +16,7 @@ add:
     end_date: '2026-05-21T00:00:00Z'
     desc: 神秘游戏限免入库
     button_url: com.epicgames.launcher://store/free-games
-    sort_order: 10
+    sort_order: 50
   - link: >-
       https://store.steampowered.com/app/3343840/Dino_running_from_a_FURRY_GAMESFORFARM/
     name: ' 迪诺从毛茸茸的奔跑'
@@ -36,7 +36,7 @@ add:
       https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2240920/e3e98c74c5a81cf9a6dc0c52923231ce49627df7/ss_e3e98c74c5a81cf9a6dc0c52923231ce49627df7.1920x1080.jpg?t=1770214371
     end_date: '2026-05-17T03:00:00Z'
     original_price: '136'
-    sort_order: 40
+    sort_order: 30
   - link: https://store.steampowered.com/app/3587490/Terrors_to_Unveil__Day_Off/
     name: 恐惧揭秘:休假日
     type: 100_off
@@ -55,7 +55,7 @@ add:
     desc: 带有生存和恐怖元素的僵尸第一人称射击游戏，背景设定在一个已经结束的末日世界。
     end_date: '2026-05-16T18:11:00Z'
     original_price: '37'
-    sort_order: 30
+    sort_order: 20
   - link: https://store.epicgames.com/p/lost-in-the-hole-3e0586
     name: Lost in the Hole
     type: 100_off
@@ -66,7 +66,7 @@ add:
     desc: >-
       这款设定在1970年代的恐怖游戏，带领玩家进入一座废弃的未来实验室。故事围绕一项生物实验失败展开，实验室员工变成了变异生物。目标是深入实验室，获取神秘样本。在废弃却充满生命的实验室世界里，70年代复古风格与未来科幻元素交织，惊喜在每个角落等待着你。
     end_date: '2026-05-16T16:00:00Z'
-    sort_order: 20
+    sort_order: 10
   - link: https://store.epicgames.com/p/the-telltale-batman
     name: 蝙蝠侠：故事版
     type: 100_off
@@ -76,7 +76,7 @@ add:
     end_date: '2026-06-01T08:00:00Z'
     desc: epic免费周游戏 蝙蝠侠！
     original_price: '104'
-    sort_order: 50
+    sort_order: 40
   - link: https://store.steampowered.com/app/4138970
     name: 拾取宝石后意外觉醒了复制魔王力量的逆天技能
     type: to_paid
