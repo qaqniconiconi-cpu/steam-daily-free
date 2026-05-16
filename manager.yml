@@ -4,7 +4,7 @@ add:
     type: 100_off
     platform: epic
     platform_name: Epic
-    desc: 在大特卖活动期间，通过 Epic 加码好礼解锁免费外观礼包及更多福利
+    desc: Epic加码好礼 地平线、战舰世界、狂野飙车、无限暖暖...等15款游戏好礼
     end_date: '2026-06-11T23:00:00Z'
     thumbnail: https://img.et-cdn.com/game/641df4c4d3794e5f86396835a5648df8.png
     button_url: com.epicgames.launcher://store/sales-and-specials/epic-extras
