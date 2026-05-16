@@ -185,18 +185,24 @@ jobs:
                                   except: pass
 
                               if app_id and app_id.isdigit():
+                                  item_type = str(item.get('type', '')).strip() or '100_off'
                                   FORCED_ADD[app_id] = {
-                                      "type": item.get('type', 'to_paid'), "end_date": raw_date_str, "name": name,
+                                      "type": item_type, "end_date": raw_date_str, "name": name,
                                       "title_url": title_url or (link if link.startswith('http') else ''), "button_url": button_url,
                                       "sort_order": sort_order,
                                       "_custom_desc": custom_desc, "_custom_thumb": custom_thumbnail
                                   }
+                                  print(f"🧷 手动 Steam 项：app/{app_id} type={item_type or '-'} end={raw_date_str or '未填写'} sort={sort_order or '-'}")
                           else:
                               link = str(item)
                               m = re.search(r'app/(\d+)', link)
                               app_id = m.group(1) if m else link.strip()
-                              if app_id.isdigit(): FORCED_ADD[app_id] = {"type": "to_paid", "end_date": "", "name": ""}
+                              if app_id.isdigit():
+                                  FORCED_ADD[app_id] = {"type": "100_off", "end_date": "", "name": ""}
+                                  print(f"🧷 手动 Steam 项：app/{app_id} type=100_off end=未填写 sort=-")
               except Exception as e: print(f"⚠️ 解析 manager.yml 失败: {e}")
+
+          print(f"📌 手动规则统计：Steam {len(FORCED_ADD)} / Epic {len(FORCED_EPIC)} / 平台页 {len(FORCED_CUSTOM)} / 禁用 {len(BLACKLIST)}")
 
           def fetch_old_data(filename):
               try:
@@ -307,8 +313,12 @@ jobs:
 
                   if forced_info:
                       raw_e = str(forced_info.get('end_date', '')).strip()
-                      if raw_e and raw_e.lower() != "none" and raw_e != "限免进行中": end_date = raw_e
-                      elif end_date == "N/A": end_date = "限免进行中"
+                      # 手动添加项只在管理员显式填写 end_date 时才按到期时间下架。
+                      # 否则不要使用 Steam API 里可能残留的旧 discount_expiration，避免手动项验证成功后又被最终分流阶段判定为过期。
+                      if raw_e and raw_e.lower() != "none" and raw_e != "限免进行中":
+                          end_date = raw_e
+                      else:
+                          end_date = "限免进行中"
 
                   if not (is_free or is_100_off or has_free_license) and not forced_info: return {"status": "invalid"}
 
@@ -722,6 +732,7 @@ jobs:
                       continue
 
                   if item_is_expired(details):
+                      print(f"⏰ Steam 项已过期跳过：app/{app_id} end={details.get('end_date') or details.get('endDate')} forced={details.get('_is_forced')}")
                       db[app_id]['status'] = 'expired'
                       continue
 
