@@ -1,4 +1,13 @@
 add:
+  - link: https://store.epicgames.com/free-games
+    name: Epic 神秘限免Ⅱ
+    type: upcoming
+    platform: custom
+    platform_name: Epic
+    thumbnail: >-
+      https://cdn1.epicgames.com/offer/d5241c76f178492ea1540fce45616757/image24_1200x1600-43ff50cec0da4a7599a9e1ae07f3811e
+    end_date: '2026-05-21T00:00:00Z'
+    desc: 神秘游戏限免入库
   - link: >-
       https://store.steampowered.com/app/3343840/Dino_running_from_a_FURRY_GAMESFORFARM/
     name: ' 迪诺从毛茸茸的奔跑'
