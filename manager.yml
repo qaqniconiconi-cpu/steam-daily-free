@@ -1,20 +1,19 @@
 add:
-  - link: com.epicgames.launcher://store/sales-and-specials/epic-extras
+  - link: https://store.epicgames.com/sales-and-specials/epic-extras
     name: Epic 加码好礼
     type: 100_off
     platform: epic
     platform_name: Epic
     desc: 在大特卖活动期间，通过 Epic 加码好礼解锁免费外观礼包及更多福利
     end_date: '2026-06-11T23:00:00Z'
-    thumbnail: >-
-      https://cdn2.unrealengine.com/mega-sale-epicextras-background-1200x1200-asset-2a0b392475e9.avif?resize=1&w=360&h=480&quality=medium
+    thumbnail: https://img.et-cdn.com/game/641df4c4d3794e5f86396835a5648df8.png
+    button_url: com.epicgames.launcher://store/sales-and-specials/epic-extras
   - link: https://store.epicgames.com/free-games
     name: Epic 神秘限免Ⅱ
     type: upcoming
     platform: epic
     platform_name: Epic
-    thumbnail: >-
-      https://cdn1.epicgames.com/offer/d5241c76f178492ea1540fce45616757/image24_1200x1600-43ff50cec0da4a7599a9e1ae07f3811e
+    thumbnail: https://img.et-cdn.com/game/ba250b5f033b4ce3a3bc60bf236623a4.png
     end_date: '2026-05-21T00:00:00Z'
     desc: 神秘游戏限免入库
   - link: >-
