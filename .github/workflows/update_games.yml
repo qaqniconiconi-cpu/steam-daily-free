@@ -49,6 +49,7 @@ jobs:
           BLACKLIST = set()
           FORCED_ADD = {}
           FORCED_EPIC = []
+          FORCED_CUSTOM = []
 
           # ==========================================
           # 1. 加载手动管理菜单 (manager.yml)
@@ -84,7 +85,31 @@ jobs:
                               else: 
                                   raw_date_str = str(raw_date).strip() if raw_date else ""
                               
-                              is_epic = 'epicgames.com' in link.lower() or str(item.get('platform', '')).lower() == 'epic'
+                              platform_raw = str(item.get('platform', '')).strip().lower()
+                              link_lower = link.lower()
+                              m_epic = re.search(r'epicgames\.com/(?:[a-z]{2}-[a-zA-Z]{2}/)?p/([^/?#]+)', link_lower)
+                              is_epic = platform_raw == 'epic' or link_lower.startswith('p/') or bool(m_epic)
+                              is_steam = platform_raw == 'steam' or bool(re.search(r'steampowered\.com/app/\d+', link_lower)) or link_lower.startswith('app/') or link.isdigit()
+                              is_custom = platform_raw in ['custom', 'other', 'external', 'web', 'link'] or ((link_lower.startswith('http://') or link_lower.startswith('https://')) and not is_steam and not bool(m_epic))
+
+                              if is_custom:
+                                  platform_label = str(item.get('platform_name', item.get('platform_label', item.get('source', '活动页面')))).strip() or "活动页面"
+                                  orig_price = str(item.get('original_price', item.get('originalPrice', ''))).strip()
+                                  FORCED_CUSTOM.append({
+                                      "zh_title": name or link,
+                                      "thumbnail": custom_thumbnail or "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='300'%3E%3Crect width='600' height='300' fill='%23121215'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%239F70FA' font-family='sans-serif' font-size='24'%3EExternal Link%3C/text%3E%3C/svg%3E",
+                                      "end_date": raw_date_str or "限免进行中",
+                                      "platform": platform_label,
+                                      "custom_url": link,
+                                      "url": link,
+                                      "short_description": custom_desc or "外部活动页面，点击查看详情。",
+                                      "original_price": orig_price,
+                                      "type": item.get('type', '100_off'),
+                                      "_custom_desc": custom_desc,
+                                      "_custom_thumb": custom_thumbnail
+                                  })
+                                  continue
+
                               if is_epic:
                                   m_epic = re.search(r'epicgames\.com/(?:[a-z]{2}-[a-zA-Z]{2}/)?p/([^/?#]+)', link)
                                   slug = m_epic.group(1).lower() if m_epic else (link.split('/')[-1].lower() if link else "")
@@ -99,10 +124,10 @@ jobs:
                                           res_raw = requests.get(e_url, headers=bot_headers, timeout=10)
                                           h = res_raw.text
                                           if not thumb_final:
-                                              m_img = re.search(r'(?:property|name)=[\'"]og:image[\'"][^>]+content=[\'"]([^\'"]+)[\'"]', h, re.IGNORECASE) or re.search(r'content=[\'"]([^\'"]+)[\'"][^>]+(?:property|name)=[\'"]og:image[\'"]', h, re.IGNORECASE)
+                                              m_img = re.search(r"(?:property|name)=['\"]og:image['\"][^>]+content=['\"]([^'\"]+)['\"]", h, re.IGNORECASE) or re.search(r"content=['\"]([^'\"]+)['\"][^>]+(?:property|name)=['\"]og:image['\"]", h, re.IGNORECASE)
                                               if m_img: thumb_final = m_img.group(1)
                                           if not desc_final:
-                                              m_desc = re.search(r'(?:property|name)=[\'"]og:description[\'"][^>]+content=[\'"]([^\'"]+)[\'"]', h, re.IGNORECASE) or re.search(r'content=[\'"]([^\'"]+)[\'"][^>]+(?:property|name)=[\'"]og:description[\'"]', h, re.IGNORECASE)
+                                              m_desc = re.search(r"(?:property|name)=['\"]og:description['\"][^>]+content=['\"]([^'\"]+)['\"]", h, re.IGNORECASE) or re.search(r"content=['\"]([^'\"]+)['\"][^>]+(?:property|name)=['\"]og:description['\"]", h, re.IGNORECASE)
                                               if m_desc: desc_final = m_desc.group(1).replace('Epic Games Store', '').strip()
                                           if not name_final or name_final == slug:
                                               m_title = re.search(r'<title>([^<]+)</title>', h, re.IGNORECASE)
@@ -645,7 +670,35 @@ jobs:
                           elif g_type == 'freeplay':
                               final_intel['freeplay'].append(clean_fe)
 
-              # D. 获取史低特惠数据
+              # D. 处理手动自定义网页链接：不再强制转换成 Steam/Epic 商店地址
+              for fc in FORCED_CUSTOM:
+                  fc_url = str(fc.get('custom_url') or fc.get('url') or '').strip()
+                  if not fc_url or fc_url.lower() in BLACKLIST or str(fc.get('zh_title', '')).lower() in BLACKLIST:
+                      continue
+                  end_date_str = fc.get('end_date')
+                  is_expired = False
+                  if end_date_str and end_date_str != "N/A" and end_date_str != "限免进行中":
+                      try:
+                          dt_str = str(end_date_str).replace('.000Z', 'Z')
+                          if datetime.strptime(dt_str, '%Y-%m-%dT%H:%M:%SZ') < datetime.utcnow():
+                              is_expired = True
+                      except: pass
+
+                  if not is_expired:
+                      clean_fc = {k: v for k, v in fc.items() if not k.startswith('_') and v != ''}
+                      g_type = fc.get('type', '100_off')
+                      if g_type == 'upcoming':
+                          clean_fc['is_upcoming'] = True
+                          clean_fc['type'] = 'upcoming'
+                          final_games.append(clean_fc)
+                      elif g_type == '100_off':
+                          final_games.append(clean_fc)
+                      elif g_type == 'to_paid':
+                          final_intel['to_paid'].append(clean_fc)
+                      elif g_type == 'freeplay':
+                          final_intel['freeplay'].append(clean_fc)
+
+              # E. 获取史低特惠数据
               steam_deals = fetch_steam_deals()
 
               print(f"🚀 正在将喜加一及预告数据推送至后端 API ({len(final_games)} 款)...")
