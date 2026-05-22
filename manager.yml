@@ -1,4 +1,13 @@
 add:
+  - link: https://store.epicgames.com/p/tomb-raider-iiii-remastered-538640
+    name: 《古墓丽影》冒险三部曲
+    type: 100_off
+    platform: epic
+    desc: 三部曲畅玩
+    original_price: '200'
+    end_date: '2026-05-28T08:00:00Z'
+    thumbnail: >-
+      https://cdn1.epicgames.com/spt-assets/20e7e7b1cd6b430cb062405676369c2a/tomb-raider-iiii-remastered-logo-1rit2.png?resize=1&w=480&h=270&quality=medium
   - link: p/the-telltale-batman
     title_url: https://store.epicgames.com/p/the-telltale-batman
     platform: Epic Games
