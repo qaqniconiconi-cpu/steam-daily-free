@@ -2,8 +2,12 @@ name: Update Games (ETL Smart Engine)
 
 on:
   schedule:
-    - cron: '0 */6 * * *'
+    - cron: '17 */6 * * *'
   workflow_dispatch:
+
+concurrency:
+  group: update-freegametest
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -20,6 +24,7 @@ jobs:
         run: pip install requests pyyaml
 
       - name: Run ETL Processor
+        id: etl
         env:
           API_BASE: ${{ secrets.API_BASE }}
         run: |
@@ -226,6 +231,17 @@ jobs:
                       print(f"⚠️ 上传 {filename} 第 {attempt}/3 次异常：{last_error}")
                   time.sleep(3)
               raise RuntimeError(f"上传 {filename} 失败，已停止，避免前端继续使用伪成功数据：{last_error}")
+
+          def stable_hash(payload):
+              raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(',', ':'), default=str)
+              return hashlib.sha256(raw.encode('utf-8')).hexdigest()
+
+          def write_github_output(name, value):
+              github_output = os.environ.get('GITHUB_OUTPUT')
+              if not github_output:
+                  return
+              with open(github_output, 'a', encoding='utf-8') as f:
+                  f.write(f"{name}={value}\n")
 
           def parse_date_smart(text):
               text = text.lower()
@@ -898,6 +914,40 @@ jobs:
               # F. 获取史低特惠数据
               steam_deals = fetch_steam_deals()
 
+              try:
+                  seo_old_games = normalize_api_payload(fetch_old_data("games.json"))
+              except Exception as e:
+                  print(f"⚠️ SEO hash 读取旧 games.json 失败：{repr(e)}")
+                  seo_old_games = []
+
+              try:
+                  seo_old_intel = normalize_api_payload(fetch_old_data("intel.json"))
+              except Exception as e:
+                  print(f"⚠️ SEO hash 读取旧 intel.json 失败：{repr(e)}")
+                  seo_old_intel = {}
+
+              try:
+                  seo_old_deals = normalize_api_payload(fetch_old_data("deals.json"))
+              except Exception as e:
+                  print(f"⚠️ SEO hash 读取旧 deals.json 失败：{repr(e)}")
+                  seo_old_deals = []
+
+              old_hash = stable_hash({
+                  "games": seo_old_games,
+                  "intel": seo_old_intel,
+                  "deals": seo_old_deals,
+              })
+              new_hash = stable_hash({
+                  "games": final_games,
+                  "intel": final_intel,
+                  "deals": steam_deals,
+              })
+              content_changed = old_hash != new_hash
+              seo_lastmod = (datetime.utcnow() + timedelta(hours=8)).strftime('%Y-%m-%d')
+              write_github_output("content_changed", "true" if content_changed else "false")
+              write_github_output("lastmod", seo_lastmod)
+              print(f"🔎 SEO content_changed={'true' if content_changed else 'false'} lastmod={seo_lastmod}")
+
               print(f"🚀 正在将喜加一及预告数据推送至后端 API ({len(final_games)} 款)...")
               post_update("games.json", final_games)
 
@@ -917,6 +967,27 @@ jobs:
           if __name__ == "__main__": main()
           EOF
           python processor.py
+
+      - name: Update SEO files
+        if: steps.etl.outputs.content_changed == 'true'
+        env:
+          PAGE_URL: https://www.et001.com/gameguide/freegametest.html
+          LASTMOD: ${{ steps.etl.outputs.lastmod }}
+        run: python scripts/update_freegametest_seo.py
+
+      - name: Submit IndexNow
+        if: steps.etl.outputs.content_changed == 'true'
+        env:
+          PAGE_URL: https://www.et001.com/gameguide/freegametest.html
+          INDEXNOW_KEY: ${{ secrets.INDEXNOW_KEY }}
+        run: python scripts/submit_indexnow.py
+
+      - name: Submit Baidu
+        if: steps.etl.outputs.content_changed == 'true'
+        env:
+          PAGE_URL: https://www.et001.com/gameguide/freegametest.html
+          BAIDU_PUSH_ENDPOINT: ${{ secrets.BAIDU_PUSH_ENDPOINT }}
+        run: python scripts/submit_baidu.py
 
       - name: Commit and Push DB
         run: |
