@@ -9,12 +9,12 @@ add:
     button_url: com.epicgames.launcher://store/sales-and-specials/epic-extras
     sort_order: 50
   - link: https://store.epicgames.com/free-games
-    name: Epic 神秘限免Ⅱ
+    name: Epic 神秘限免
     type: upcoming
     platform: epic
     thumbnail: https://img.et-cdn.com/game/ba250b5f033b4ce3a3bc60bf236623a4.png
-    end_date: '2026-05-21T00:00:00Z'
-    desc: 神秘游戏限免入库
+    end_date: '2026-05-28T00:00:00Z'
+    desc: 第三周神秘限免
     button_url: com.epicgames.launcher://store/free-games
     sort_order: 60
   - link: >-
@@ -67,16 +67,6 @@ add:
       这款设定在1970年代的恐怖游戏，带领玩家进入一座废弃的未来实验室。故事围绕一项生物实验失败展开，实验室员工变成了变异生物。目标是深入实验室，获取神秘样本。在废弃却充满生命的实验室世界里，70年代复古风格与未来科幻元素交织，惊喜在每个角落等待着你。
     end_date: '2026-05-16T16:00:00Z'
     sort_order: 10
-  - link: https://store.epicgames.com/p/the-telltale-batman
-    name: 蝙蝠侠：故事版
-    type: 100_off
-    platform: epic
-    thumbnail: >-
-      https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/498240/header.jpg?t=1733944832
-    end_date: '2026-06-01T08:00:00Z'
-    desc: epic免费周游戏 蝙蝠侠！
-    original_price: '104'
-    sort_order: 40
   - link: https://store.steampowered.com/app/4138970
     name: 拾取宝石后意外觉醒了复制魔王力量的逆天技能
     type: to_paid
