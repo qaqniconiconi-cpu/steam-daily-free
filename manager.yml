@@ -4,8 +4,7 @@ add:
     type: 100_off
     platform: epic
     original_price: '135'
-    thumbnail: >-
-      https://cdn2.unrealengine.com/egs-downinbermuda-yakco-ic1-400x400-435720022.png?resize=1&w=480&h=270&quality=medium
+    thumbnail: https://img.3dmgame.com/uploads/images/news/20250116/1737006271_950407.jpg
     end_date: '2026-05-28T08:00:00Z'
     desc: 第二波Epic限免
   - link: https://store.epicgames.com/p/tomb-raider-iiii-remastered-538640
