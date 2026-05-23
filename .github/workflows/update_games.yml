@@ -968,13 +968,6 @@ jobs:
           EOF
           python processor.py
 
-      - name: Update SEO files
-        if: steps.etl.outputs.content_changed == 'true'
-        env:
-          PAGE_URL: https://www.et001.com/gameguide/freegametest.html
-          LASTMOD: ${{ steps.etl.outputs.lastmod }}
-        run: python scripts/update_freegametest_seo.py
-
       - name: Submit IndexNow
         if: steps.etl.outputs.content_changed == 'true'
         env:
