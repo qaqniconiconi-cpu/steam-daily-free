@@ -968,20 +968,6 @@ jobs:
           EOF
           python processor.py
 
-      - name: Submit IndexNow
-        if: steps.etl.outputs.content_changed == 'true'
-        env:
-          PAGE_URL: https://www.et001.com/gameguide/freegametest.html
-          INDEXNOW_KEY: ${{ secrets.INDEXNOW_KEY }}
-        run: python scripts/submit_indexnow.py
-
-      - name: Submit Baidu
-        if: steps.etl.outputs.content_changed == 'true'
-        env:
-          PAGE_URL: https://www.et001.com/gameguide/freegametest.html
-          BAIDU_PUSH_ENDPOINT: ${{ secrets.BAIDU_PUSH_ENDPOINT }}
-        run: python scripts/submit_baidu.py
-
       - name: Commit and Push DB
         run: |
           git config --global user.name 'GitHub Action'
