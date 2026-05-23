@@ -16,17 +16,6 @@ add:
     end_date: '2026-05-28T08:00:00Z'
     thumbnail: >-
       https://cdn1.epicgames.com/spt-assets/20e7e7b1cd6b430cb062405676369c2a/tomb-raider-iiii-remastered-logo-1rit2.png?resize=1&w=480&h=270&quality=medium
-  - link: p/the-telltale-batman
-    title_url: https://store.epicgames.com/p/the-telltale-batman
-    platform: Epic Games
-    sort_order: '40'
-    name: 蝙蝠侠：故事版
-    desc: epic免费周游戏 蝙蝠侠！
-    thumbnail: >-
-      https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/498240/header.jpg?t=1733944832
-    type: 100_off
-    end_date: '2026-05-01T08:00:00Z'
-    is_upcoming: false
   - link: https://store.epicgames.com/sales-and-specials/epic-extras
     name: Epic 加码好礼
     type: 100_off
