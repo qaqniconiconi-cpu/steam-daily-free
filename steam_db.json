@@ -16,7 +16,7 @@
       "original_price": "",
       "title_url": "https://store.steampowered.com/app/4138970",
       "button_url": "",
-      "sort_order": "",
+      "sort_order": "60",
       "type": "to_paid",
       "_is_forced": true
     }
@@ -1102,7 +1102,7 @@
       "original_price": "¥ 15.00",
       "title_url": "https://store.steampowered.com/app/3343840/Dino_running_from_a_FURRY_GAMESFORFARM/",
       "button_url": "",
-      "sort_order": "",
+      "sort_order": "10",
       "type": "100_off",
       "_is_forced": true
     }
@@ -1167,16 +1167,16 @@
     "details": {
       "steam_id": "2218460",
       "zh_title": "Bunny Guys!",
-      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2218460/21bc1a04e1dc28a7a323f7dc4521836f56ad30e3/header.jpg?t=1778711514",
-      "short_description": "Climb, fall, curse… uh, respawn, pretend it was intentional. Bunny Guys is pure parkour chaos where one wins and everyone else fails spectacularly. Perfect for players who treat suffering, respawning, and “I can do better” as a hobby.",
-      "end_date": "2026-05-29T17:00:00Z",
+      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2218460/21bc1a04e1dc28a7a323f7dc4521836f56ad30e3/header.jpg?t=1779996640",
+      "short_description": "攀爬、坠落、咒骂……呃，我是说重生，然后假装这一切都是故意的",
+      "end_date": "限免进行中",
       "platform": "Steam",
       "original_price": "¥ 22.00",
       "title_url": "",
       "button_url": "",
-      "sort_order": "",
+      "sort_order": "20",
       "type": "100_off",
-      "_is_forced": false
+      "_is_forced": true
     }
   },
   "1070580": {
@@ -1187,14 +1187,14 @@
       "zh_title": "Drift86",
       "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1070580/header.jpg?t=1778267414",
       "short_description": "进入您最喜欢的汽车，并在这个独特的街机游戏中独自或与朋友一起创造记录！",
-      "end_date": "2026-06-03T17:00:00Z",
+      "end_date": "限免进行中",
       "platform": "Steam",
       "original_price": "¥ 11.00",
       "title_url": "",
       "button_url": "",
-      "sort_order": "",
+      "sort_order": "30",
       "type": "100_off",
-      "_is_forced": false
+      "_is_forced": true
     }
   }
 }
