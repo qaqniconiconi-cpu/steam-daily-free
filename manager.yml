@@ -18,6 +18,7 @@ add:
       https://cdn2.unrealengine.com/egs-calico-peachykeengames-s3-2560x1440-555511855.jpg
     desc: 休闲社区模拟游戏，重建镇上的猫咪咖啡厅
     end_date: '2026-06-04T08:00:00Z'
+    sort_order: 10
   - link: https://store.epicgames.com/p/lonestar-83f143
     name: 孤星猎人
     type: 100_off
@@ -27,11 +28,12 @@ add:
     original_price: '88'
     end_date: '2026-06-04T08:00:00Z'
     desc: Roguelike 强策略玩法的飞船对决游戏，作为一名宇宙赏金猎人抓捕罪犯
+    sort_order: 20
   - link: https://store.epicgames.com/free-games
     name: Epic 神秘限免 ②
     type: upcoming
     platform: epic
-    sort_order: 30
+    sort_order: 50
     desc: 第四波神秘限免
     end_date: '2026-06-04T00:00:00Z'
     thumbnail: https://img.et-cdn.com/game/ba250b5f033b4ce3a3bc60bf236623a4.png
@@ -43,7 +45,7 @@ add:
     end_date: '2026-06-11T23:00:00Z'
     thumbnail: https://img.et-cdn.com/game/641df4c4d3794e5f86396835a5648df8.png
     button_url: com.epicgames.launcher://store/sales-and-specials/epic-extras
-    sort_order: 10
+    sort_order: 30
   - link: https://store.epicgames.com/free-games
     name: Epic 神秘限免 ①
     type: upcoming
@@ -52,7 +54,7 @@ add:
     end_date: '2026-06-04T00:00:00Z'
     desc: 第四波神秘限免
     button_url: com.epicgames.launcher://store/free-games
-    sort_order: 20
+    sort_order: 40
   - link: >-
       https://store.steampowered.com/app/3343840/Dino_running_from_a_FURRY_GAMESFORFARM/
     name: ' 迪诺从毛茸茸的奔跑'
