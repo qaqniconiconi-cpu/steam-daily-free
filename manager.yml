@@ -1,21 +1,4 @@
 add:
-  - link: https://store.epicgames.com/p/down-in-bermuda
-    name: '逃出百慕大 Down in Bermuda '
-    type: 100_off
-    platform: epic
-    original_price: '135'
-    thumbnail: https://img.3dmgame.com/uploads/images/news/20250116/1737006271_950407.jpg
-    end_date: '2026-05-28T08:00:00Z'
-    desc: 第二波Epic限免
-  - link: https://store.epicgames.com/p/tomb-raider-iiii-remastered-538640
-    name: 《古墓丽影》冒险三部曲
-    type: 100_off
-    platform: epic
-    desc: 三部曲畅玩
-    original_price: '200'
-    end_date: '2026-05-28T08:00:00Z'
-    thumbnail: >-
-      https://cdn1.epicgames.com/spt-assets/20e7e7b1cd6b430cb062405676369c2a/tomb-raider-iiii-remastered-logo-1rit2.png?resize=1&w=480&h=270&quality=medium
   - link: https://store.epicgames.com/sales-and-specials/epic-extras
     name: Epic 加码好礼
     type: 100_off
@@ -26,12 +9,12 @@ add:
     button_url: com.epicgames.launcher://store/sales-and-specials/epic-extras
     sort_order: 50
   - link: https://store.epicgames.com/free-games
-    name: Epic 神秘限免
+    name: Epic 神秘限免 ①
     type: upcoming
     platform: epic
     thumbnail: https://img.et-cdn.com/game/ba250b5f033b4ce3a3bc60bf236623a4.png
-    end_date: '2026-05-28T00:00:00Z'
-    desc: 第三周神秘限免
+    end_date: '2026-06-04T00:00:00Z'
+    desc: 第四波神秘限免
     button_url: com.epicgames.launcher://store/free-games
     sort_order: 60
   - link: >-
