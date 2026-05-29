@@ -1,4 +1,13 @@
 add:
+  - link: https://store.epicgames.com/p/calico
+    name: Calico
+    type: 100_off
+    platform: epic
+    original_price: '82'
+    thumbnail: >-
+      https://cdn2.unrealengine.com/egs-calico-peachykeengames-s3-2560x1440-555511855.jpg
+    desc: 休闲社区模拟游戏，重建镇上的猫咪咖啡厅
+    end_date: '2026-06-04T08:00:00Z'
   - link: https://store.epicgames.com/p/lonestar-83f143
     name: 孤星猎人
     type: 100_off
