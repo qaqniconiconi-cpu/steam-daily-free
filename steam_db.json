@@ -1099,7 +1099,7 @@
       "short_description": "可爱furry，2.5D跑酷",
       "end_date": "2026-05-31T01:00:00Z",
       "platform": "Steam",
-      "original_price": "¥ 15.00",
+      "original_price": "",
       "title_url": "https://store.steampowered.com/app/3343840/Dino_running_from_a_FURRY_GAMESFORFARM/",
       "button_url": "",
       "sort_order": "10",
@@ -1195,6 +1195,42 @@
       "sort_order": "30",
       "type": "100_off",
       "_is_forced": true
+    }
+  },
+  "1035110": {
+    "status": "valid",
+    "type": "100_off",
+    "details": {
+      "steam_id": "1035110",
+      "zh_title": "Moonrise Fall",
+      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1035110/header.jpg?t=1780107953",
+      "short_description": "​Moonrise Fall is an atmospheric exploration puzzle game about a boy who finds himself lost in a supernatural forest after losing both parents in a car crash. Put your detective skills to the test. Unravel the mysteries of the forest and photograph the strange creatures (cryptids) that reside there.",
+      "end_date": "2026-06-02T17:00:00Z",
+      "platform": "Steam",
+      "original_price": "¥ 42.00",
+      "title_url": "",
+      "button_url": "",
+      "sort_order": "",
+      "type": "100_off",
+      "_is_forced": false
+    }
+  },
+  "3771740": {
+    "status": "valid",
+    "type": "100_off",
+    "details": {
+      "steam_id": "3771740",
+      "zh_title": "IQ Under Construction",
+      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3771740/f1c5eaf217c893e9f134251f44a3cac986fb06a2/header.jpg?t=1778708014",
+      "short_description": "Got strong nerves? Reliable friends? Precise jumps? Then this is the place for you. And if not, try it anyway. It'll be fun. Probably.",
+      "end_date": "2026-06-01T17:00:00Z",
+      "platform": "Steam",
+      "original_price": "¥ 15.00",
+      "title_url": "",
+      "button_url": "",
+      "sort_order": "",
+      "type": "100_off",
+      "_is_forced": false
     }
   }
 }
