@@ -9,7 +9,7 @@
     "details": {
       "steam_id": "4138970",
       "zh_title": "拾取宝石后意外觉醒了复制魔王力量的逆天技能",
-      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4138970/fc8c0781c1e772dad60b9173ae67d0ee8a361bc8/header.jpg?t=1773072175",
+      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4138970/fc8c0781c1e772dad60b9173ae67d0ee8a361bc8/header.jpg?t=1780323571",
       "short_description": "结合策略与随机性的魔塔like+肉鸽lite游戏",
       "end_date": "2026-06-01T23:59:00Z",
       "platform": "Steam",
@@ -1216,7 +1216,7 @@
     }
   },
   "3771740": {
-    "status": "valid",
+    "status": "expired",
     "type": "100_off",
     "details": {
       "steam_id": "3771740",
@@ -1226,6 +1226,24 @@
       "end_date": "2026-06-01T17:00:00Z",
       "platform": "Steam",
       "original_price": "¥ 15.00",
+      "title_url": "",
+      "button_url": "",
+      "sort_order": "",
+      "type": "100_off",
+      "_is_forced": false
+    }
+  },
+  "858710": {
+    "status": "valid",
+    "type": "100_off",
+    "details": {
+      "steam_id": "858710",
+      "zh_title": "重力回路",
+      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/858710/68ea7cdbcc45c99f3a15b20680c81af6d608501d/header_alt_assets_0.jpg?t=1780337507",
+      "short_description": "《重力回路》是一款极具经典街机精神的酷炫动作2D平台游戏",
+      "end_date": "2026-06-14T17:00:00Z",
+      "platform": "Steam",
+      "original_price": "¥ 66.00",
       "title_url": "",
       "button_url": "",
       "sort_order": "",
