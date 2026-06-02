@@ -1162,14 +1162,14 @@
     }
   },
   "2218460": {
-    "status": "valid",
+    "status": "expired",
     "type": "100_off",
     "details": {
       "steam_id": "2218460",
       "zh_title": "Bunny Guys!",
       "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2218460/21bc1a04e1dc28a7a323f7dc4521836f56ad30e3/header.jpg?t=1780356747",
       "short_description": "攀爬、坠落、咒骂……呃，我是说重生，然后假装这一切都是故意的",
-      "end_date": "限免进行中",
+      "end_date": "2026-05-31T01:00:00Z",
       "platform": "Steam",
       "original_price": "¥ 22.00",
       "title_url": "",
@@ -1180,14 +1180,14 @@
     }
   },
   "1070580": {
-    "status": "valid",
+    "status": "expired",
     "type": "100_off",
     "details": {
       "steam_id": "1070580",
       "zh_title": "Drift86",
       "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1070580/header.jpg?t=1778267414",
       "short_description": "进入您最喜欢的汽车，并在这个独特的街机游戏中独自或与朋友一起创造记录！",
-      "end_date": "限免进行中",
+      "end_date": "2026-05-31T01:00:00Z",
       "platform": "Steam",
       "original_price": "¥ 11.00",
       "title_url": "",
