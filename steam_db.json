@@ -4,7 +4,7 @@
     "reason": "非免费/非特惠"
   },
   "4138970": {
-    "status": "valid",
+    "status": "expired",
     "type": "to_paid",
     "details": {
       "steam_id": "4138970",
@@ -1167,7 +1167,7 @@
     "details": {
       "steam_id": "2218460",
       "zh_title": "Bunny Guys!",
-      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2218460/21bc1a04e1dc28a7a323f7dc4521836f56ad30e3/header.jpg?t=1779996640",
+      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2218460/21bc1a04e1dc28a7a323f7dc4521836f56ad30e3/header.jpg?t=1780356747",
       "short_description": "攀爬、坠落、咒骂……呃，我是说重生，然后假装这一切都是故意的",
       "end_date": "限免进行中",
       "platform": "Steam",
@@ -1250,5 +1250,8 @@
       "type": "100_off",
       "_is_forced": false
     }
+  },
+  "1180660": {
+    "status": "invalid"
   }
 }
