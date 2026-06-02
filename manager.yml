@@ -1,4 +1,26 @@
 add:
+  - link: app/1070580
+    platform: Steam
+    sort_order: '30'
+    name: Drift86
+    desc: 进入您最喜欢的汽车，并在这个独特的街机游戏中独自或与朋友一起创造记录！
+    thumbnail: >-
+      https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1070580/header.jpg?t=1778267414
+    original_price: ¥ 11.00
+    type: 100_off
+    end_date: '2026-05-31T01:00:00Z'
+    is_upcoming: false
+  - link: app/2218460
+    platform: Steam
+    sort_order: '20'
+    name: Bunny Guys!
+    desc: 攀爬、坠落、咒骂……呃，我是说重生，然后假装这一切都是故意的
+    thumbnail: >-
+      https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2218460/21bc1a04e1dc28a7a323f7dc4521836f56ad30e3/header.jpg?t=1780356747
+    original_price: ¥ 22.00
+    type: 100_off
+    end_date: '2026-05-31T01:00:00Z'
+    is_upcoming: false
   - link: https://store.epicgames.com/p/calico
     name: Calico
     type: 100_off
