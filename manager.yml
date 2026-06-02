@@ -8,7 +8,7 @@ add:
       https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1070580/header.jpg?t=1778267414
     original_price: ¥ 11.00
     type: 100_off
-    end_date: '2026-05-31T01:00:00Z'
+    end_date: '2026-06-04T01:00:00Z'
     is_upcoming: false
   - link: app/2218460
     platform: Steam
