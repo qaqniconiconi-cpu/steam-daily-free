@@ -1,14 +1,4 @@
 add:
-  - link: app/1070580
-    name: Drift86
-    type: 100_off
-    platform: steam
-    sort_order: '30'
-  - link: app/2218460
-    name: Bunny Guys!
-    type: 100_off
-    platform: steam
-    sort_order: '20'
   - link: https://store.epicgames.com/p/calico
     name: Calico
     type: 100_off
@@ -57,12 +47,6 @@ add:
     original_price: '15'
     desc: 可爱furry，2.5D跑酷
     sort_order: '10'
-  - link: https://store.steampowered.com/app/4138970
-    name: 拾取宝石后意外觉醒了复制魔王力量的逆天技能
-    type: to_paid
-    end_date: '2026-06-01T23:59:00Z'
-    platform: steam
-    sort_order: '60'
 disable:
   - '640700'
   - '3144950'
