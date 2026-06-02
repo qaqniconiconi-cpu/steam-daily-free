@@ -10,17 +10,6 @@ add:
     type: 100_off
     end_date: '2026-06-04T01:00:00Z'
     is_upcoming: false
-  - link: app/2218460
-    platform: Steam
-    sort_order: '20'
-    name: Bunny Guys!
-    desc: 攀爬、坠落、咒骂……呃，我是说重生，然后假装这一切都是故意的
-    thumbnail: >-
-      https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2218460/21bc1a04e1dc28a7a323f7dc4521836f56ad30e3/header.jpg?t=1780356747
-    original_price: ¥ 22.00
-    type: 100_off
-    end_date: '2026-05-31T01:00:00Z'
-    is_upcoming: false
   - link: https://store.epicgames.com/p/calico
     name: Calico
     type: 100_off
@@ -58,17 +47,6 @@ add:
     thumbnail: https://img.et-cdn.com/game/641df4c4d3794e5f86396835a5648df8.png
     button_url: com.epicgames.launcher://store/sales-and-specials/epic-extras
     sort_order: 30
-  - link: >-
-      https://store.steampowered.com/app/3343840/Dino_running_from_a_FURRY_GAMESFORFARM/
-    name: ' 迪诺从毛茸茸的奔跑'
-    type: 100_off
-    platform: steam
-    thumbnail: >-
-      https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3343840/77c677158da20f9addb4fd615804cca7641cb6b6/header.jpg?t=1778882443
-    end_date: '2026-05-31T01:00:00Z'
-    original_price: '15'
-    desc: 可爱furry，2.5D跑酷
-    sort_order: '10'
 disable:
   - '640700'
   - '3144950'
@@ -83,3 +61,4 @@ disable:
   - 火花奇遇记：自动化冒险
   - 火之石 - 放置RPG
   - p/the-telltale-batman
+  - app/2218460
