@@ -4,7 +4,8 @@ add:
     type: 100_off
     platform: steam
     desc: 叙事类冒险游戏，国区steam账户无法领取
-    end_date: '2026-07-2T23:00:00Z'
+    end_date: '2026-07-02T23:00:00Z'
+    original_price: ￥135
   - link: https://store.steampowered.com/app/3065800/
     name: 失落星船：马拉松
     type: freeplay
