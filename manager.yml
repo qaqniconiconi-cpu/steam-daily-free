@@ -1,4 +1,10 @@
 add:
+  - link: https://store.steampowered.com/app/1180660/Tell_Me_Why/
+    name: Tell Me Why
+    type: 100_off
+    platform: steam
+    desc: 叙事类冒险游戏，国区steam账户无法领取
+    end_date: '2026-07-2T23:00:00Z'
   - link: https://store.steampowered.com/app/3065800/
     name: 失落星船：马拉松
     type: freeplay
@@ -31,7 +37,7 @@ add:
     type: 100_off
     platform: epic
     sort_order: 20
-    end_date: '2026-06-11T23:00:00Z'
+    end_date: 2026-06-11T23:00:0a0Z
     original_price: '148'
     thumbnail: >-
       https://cdn1.epicgames.com/spt-assets/94a3384a2e9f4b69a5fcb13d9cdbddd8/songs-of-conquest-logo-1htgi.png?resize=1&w=480&h=270&quality=medium
@@ -50,6 +56,7 @@ add:
     type: 100_off
     platform: steam
     sort_order: 10
+    end_date: 2026-06-15T01:00:0a0Z
   - link: app/577740
     name: Winexy
     type: 100_off
