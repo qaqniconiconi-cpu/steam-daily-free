@@ -5,6 +5,8 @@ add:
     platform: epic
     desc: 海盗战术回合游戏
     end_date: '2026-06-11T23:00:00Z'
+    thumbnail: >-
+      https://cdn1.epicgames.com/spt-assets/0432328c147947ce8ac177a88ce06cc0/rogue-waters-logo-18pqc.png?resize=1&w=480&h=270&quality=medium
   - link: https://store.epicgames.com/p/songs-of-conquest
     name: 征服之歌
     type: 100_off
