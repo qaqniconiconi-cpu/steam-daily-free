@@ -41,7 +41,7 @@ add:
     type: 100_off
     platform: epic
     sort_order: 20
-    end_date: 2026-06-11T23:00:0a0Z
+    end_date: '2026-06-11T23:00:00Z'
     original_price: '148'
     thumbnail: >-
       https://cdn1.epicgames.com/spt-assets/94a3384a2e9f4b69a5fcb13d9cdbddd8/songs-of-conquest-logo-1htgi.png?resize=1&w=480&h=270&quality=medium
