@@ -1241,18 +1241,31 @@
       "zh_title": "重力回路",
       "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/858710/68ea7cdbcc45c99f3a15b20680c81af6d608501d/header_alt_assets_0.jpg?t=1780337507",
       "short_description": "《重力回路》是一款极具经典街机精神的酷炫动作2D平台游戏",
-      "end_date": "限免进行中",
+      "end_date": "2026-06-15T01:00:00Z",
       "platform": "Steam",
       "original_price": "¥ 66.00",
       "title_url": "",
       "button_url": "",
-      "sort_order": "10",
+      "sort_order": "20",
       "type": "100_off",
       "_is_forced": true
     }
   },
   "1180660": {
-    "status": "invalid"
+    "status": "valid",
+    "type": "100_off",
+    "details": {
+      "steam_id": "1180660",
+      "zh_title": "Tell Me Why",
+      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1180660/header.jpg?t=1780349055",
+      "short_description": "叙事类冒险游戏，国区steam账户无法领取",
+      "is_100_off": false,
+      "end_date": "2026-07-02T23:00:00Z",
+      "title_url": "https://store.steampowered.com/app/1180660/Tell_Me_Why/",
+      "button_url": "",
+      "sort_order": "30",
+      "_is_forced": true
+    }
   },
   "577740": {
     "status": "valid",
@@ -1262,13 +1275,31 @@
       "zh_title": "Winexy",
       "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/577740/header.jpg?t=1778879396",
       "short_description": "Winexy is a realistic 3D rolling ball game with a simple gameplay and entertaining action.",
-      "end_date": "限免进行中",
+      "end_date": "2026-06-06T01:00:00Z",
       "platform": "Steam",
       "original_price": "¥ 22.00",
       "title_url": "",
       "button_url": "",
-      "sort_order": "20",
+      "sort_order": "10",
       "type": "100_off",
+      "_is_forced": true
+    }
+  },
+  "3065800": {
+    "status": "valid",
+    "type": "freeplay",
+    "details": {
+      "steam_id": "3065800",
+      "zh_title": "失落星船：马拉松",
+      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3065800/4b7961273ef37ef82119c804ae6087fbbed69dfd/header_schinese.jpg?t=1780600595",
+      "short_description": "限时游玩，非入库",
+      "end_date": "2026-06-17T23:00:00Z",
+      "platform": "Steam",
+      "original_price": "¥ 168.00",
+      "title_url": "https://store.steampowered.com/app/3065800/",
+      "button_url": "",
+      "sort_order": "40",
+      "type": "freeplay",
       "_is_forced": true
     }
   }
