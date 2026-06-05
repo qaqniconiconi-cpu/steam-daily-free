@@ -1,4 +1,12 @@
 add:
+  - link: https://store.epicgames.com/p/songs-of-conquest
+    name: 征服之歌
+    type: 100_off
+    platform: epic
+    end_date: '2026-06-11T23:00:00Z'
+    original_price: '148'
+    thumbnail: >-
+      https://cdn1.epicgames.com/spt-assets/94a3384a2e9f4b69a5fcb13d9cdbddd8/songs-of-conquest-logo-1htgi.png?resize=1&w=480&h=270&quality=medium
   - link: app/1035110
     platform: Steam
     name: Moonrise Fall
