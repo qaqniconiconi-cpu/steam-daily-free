@@ -3,6 +3,7 @@ add:
     name: 衔尾蛇国王
     type: upcoming
     platform: epic
+    sort_order: 40
     thumbnail: >-
       https://cdn1.epicgames.com/spt-assets/33630d7105014582a478094e89953f49/the-ouroboros-king-logo-gv0u5.png?resize=1&w=480&h=270&quality=medium
     end_date: '2026-06-11T23:00:00Z'
@@ -11,6 +12,7 @@ add:
     name: 恶棍水域
     type: 100_off
     platform: epic
+    sort_order: 10
     desc: 海盗战术回合游戏
     end_date: '2026-06-11T23:00:00Z'
     thumbnail: >-
@@ -19,6 +21,7 @@ add:
     name: 征服之歌
     type: 100_off
     platform: epic
+    sort_order: 20
     end_date: '2026-06-11T23:00:00Z'
     original_price: '148'
     thumbnail: >-
