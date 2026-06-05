@@ -1,4 +1,13 @@
 add:
+  - link: https://store.steampowered.com/app/3065800/
+    name: 失落星船：马拉松
+    type: freeplay
+    platform: steam
+    sort_order: 30
+    thumbnail: >-
+      https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3065800/4b7961273ef37ef82119c804ae6087fbbed69dfd/header_schinese.jpg?t=1780600595
+    desc: 限时游玩，非入库
+    end_date: '2026-06-17T23:00:00Z'
   - link: https://store.epicgames.com/p/the-ouroboros-king-e1d547
     name: 衔尾蛇国王
     type: upcoming
