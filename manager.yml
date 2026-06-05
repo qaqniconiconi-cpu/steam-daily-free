@@ -1,4 +1,10 @@
 add:
+  - link: https://store.epicgames.com/p/rogue-waters-9764d6
+    name: 恶棍水域
+    type: 100_off
+    platform: epic
+    desc: 海盗战术回合游戏
+    end_date: '2026-06-11T23:00:00Z'
   - link: https://store.epicgames.com/p/songs-of-conquest
     name: 征服之歌
     type: 100_off
@@ -7,6 +13,7 @@ add:
     original_price: '148'
     thumbnail: >-
       https://cdn1.epicgames.com/spt-assets/94a3384a2e9f4b69a5fcb13d9cdbddd8/songs-of-conquest-logo-1htgi.png?resize=1&w=480&h=270&quality=medium
+    desc: 回合制策略冒险
   - link: app/1035110
     platform: Steam
     name: Moonrise Fall
@@ -28,34 +35,6 @@ add:
     type: 100_off
     end_date: '2026-06-04T01:00:00Z'
     is_upcoming: false
-  - link: https://store.epicgames.com/p/calico
-    name: Calico
-    type: 100_off
-    platform: epic
-    original_price: '82'
-    thumbnail: >-
-      https://cdn2.unrealengine.com/egs-calico-peachykeengames-s3-2560x1440-555511855.jpg
-    desc: 休闲社区模拟游戏，重建镇上的猫咪咖啡厅
-    end_date: '2026-06-04T08:00:00Z'
-    sort_order: 10
-  - link: https://store.epicgames.com/p/lonestar-83f143
-    name: 孤星猎人
-    type: 100_off
-    platform: epic
-    thumbnail: >-
-      https://cdn1.epicgames.com/spt-assets/142bbd5f45fb4cf7a61b301d8a3b9900/lonestar-logo-y004d.png?resize=1&w=480&h=270&quality=medium
-    original_price: '88'
-    end_date: '2026-06-04T08:00:00Z'
-    desc: Roguelike 强策略玩法的飞船对决游戏，作为一名宇宙赏金猎人抓捕罪犯
-    sort_order: 20
-  - link: https://store.epicgames.com/free-games
-    name: Epic 神秘限免 ①-②
-    type: upcoming
-    platform: epic
-    sort_order: 50
-    desc: EPIC 第四波神秘限免 两款游戏即将到来
-    end_date: '2026-06-04T00:00:00Z'
-    thumbnail: https://img.et-cdn.com/game/ba250b5f033b4ce3a3bc60bf236623a4.png
   - link: https://store.epicgames.com/sales-and-specials/epic-extras
     name: Epic 加码好礼
     type: 100_off
