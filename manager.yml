@@ -71,12 +71,6 @@ add:
     platform: steam
     sort_order: 20
     end_date: '2026-06-15T01:00:00Z'
-  - link: app/577740
-    name: Winexy
-    type: 100_off
-    platform: steam
-    sort_order: 10
-    end_date: '2026-06-06T01:00:00Z'
 disable:
   - '640700'
   - '3144950'
