@@ -1,4 +1,14 @@
 add:
+  - link: https://store.steampowered.com/app/4736640/
+    name: 消逝殆烬
+    type: to_paid
+    platform: steam
+    sort_order: 30
+    desc: 限时活动，添加愿望单，进群抽cdk（详见游戏公告）
+    end_date: '2026-07-24T00:00:00Z'
+    original_price: '26'
+    thumbnail: >-
+      https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4736640/494c982946fc01644efdb333ee7e1d05c7226455/header_schinese.jpg?t=1780983175
   - link: https://store.epicgames.com/p/relaxing-simulator-4cca47
     name: 放松模拟器
     type: 100_off
@@ -13,7 +23,7 @@ add:
     name: Tell Me Why
     type: 100_off
     platform: steam
-    sort_order: 30
+    sort_order: 20
     desc: 叙事类冒险游戏，国区steam账户无法领取
     end_date: '2026-07-02T23:00:00Z'
     original_price: ￥135
@@ -69,7 +79,7 @@ add:
     name: 重力回路
     type: 100_off
     platform: steam
-    sort_order: 20
+    sort_order: 10
     end_date: '2026-06-15T01:00:00Z'
 disable:
   - '640700'
