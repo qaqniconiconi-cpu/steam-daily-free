@@ -1,4 +1,14 @@
 add:
+  - link: https://store.epicgames.com/p/relaxing-simulator-4cca47
+    name: 放松模拟器
+    type: 100_off
+    platform: epic
+    sort_order: 40
+    desc: 休闲探索模拟器
+    end_date: '2026-06-15T01:00:00Z'
+    original_price: '25'
+    thumbnail: >-
+      https://cdn1.epicgames.com/spt-assets/bd81d3aa06c74d9db85dc2d49d688b83/relaxing-simulator-logo-16rkl.png?resize=1&w=480&h=270&quality=medium
   - link: https://store.steampowered.com/app/1180660/Tell_Me_Why/
     name: Tell Me Why
     type: 100_off
@@ -22,7 +32,7 @@ add:
     name: 衔尾蛇国王
     type: upcoming
     platform: epic
-    sort_order: 40
+    sort_order: 50
     thumbnail: >-
       https://cdn1.epicgames.com/spt-assets/33630d7105014582a478094e89953f49/the-ouroboros-king-logo-gv0u5.png?resize=1&w=480&h=270&quality=medium
     end_date: '2026-06-11T23:00:00Z'
