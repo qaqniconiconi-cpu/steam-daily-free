@@ -4,7 +4,7 @@ add:
     type: to_paid
     platform: steam
     sort_order: 30
-    desc: 限时活动，添加愿望单，进群抽cdk（价值26，详见游戏公告）
+    desc: 限时活动，添加愿望单，抽游戏cdk（价值26，详见游戏公告）
     end_date: '2026-07-24T00:00:00Z'
     original_price: '26'
     thumbnail: >-
