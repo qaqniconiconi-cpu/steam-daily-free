@@ -1341,5 +1341,41 @@
       "type": "to_paid",
       "_is_forced": true
     }
+  },
+  "1433340": {
+    "status": "valid",
+    "type": "100_off",
+    "details": {
+      "steam_id": "1433340",
+      "zh_title": "Happy's Humble Burger Farm",
+      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1433340/7ecf0f63b4269a0e14e2366bbbca7ce10bf77681/header_alt_assets_0.jpg?t=1781103474",
+      "short_description": "恭喜！你被录用了！你将独自负责开心小汉堡庄餐馆的夜间经营",
+      "end_date": "2026-06-15T17:00:00Z",
+      "platform": "Steam",
+      "original_price": "¥ 76.00",
+      "title_url": "",
+      "button_url": "",
+      "sort_order": "",
+      "type": "100_off",
+      "_is_forced": false
+    }
+  },
+  "1053710": {
+    "status": "valid",
+    "type": "100_off",
+    "details": {
+      "steam_id": "1053710",
+      "zh_title": "The Red Lantern",
+      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1053710/header.jpg?t=1779363205",
+      "short_description": "The Red Lantern is a narrative, dog sledding game about survival. You play as the Musher who, along with her team of 5 sled dogs, must find her way home. Care for your dogs, discover their stories, and learn how to navigate the unknowns of the Alaskan wilderness and prepare for your new life.",
+      "end_date": "2026-06-18T17:00:00Z",
+      "platform": "Steam",
+      "original_price": "¥ 80.00",
+      "title_url": "",
+      "button_url": "",
+      "sort_order": "",
+      "type": "100_off",
+      "_is_forced": false
+    }
   }
 }
