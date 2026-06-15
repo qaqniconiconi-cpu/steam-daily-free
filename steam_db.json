@@ -1343,7 +1343,7 @@
     }
   },
   "1433340": {
-    "status": "valid",
+    "status": "expired",
     "type": "100_off",
     "details": {
       "steam_id": "1433340",
@@ -1379,7 +1379,7 @@
     }
   },
   "6100": {
-    "status": "valid",
+    "status": "expired",
     "type": "100_off",
     "details": {
       "steam_id": "6100",
@@ -1397,7 +1397,7 @@
     }
   },
   "1134700": {
-    "status": "valid",
+    "status": "expired",
     "type": "100_off",
     "details": {
       "steam_id": "1134700",
