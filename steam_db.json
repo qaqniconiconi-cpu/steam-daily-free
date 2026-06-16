@@ -1295,7 +1295,7 @@
       "short_description": "限时游玩，非入库",
       "end_date": "2026-06-17T23:00:00Z",
       "platform": "Steam",
-      "original_price": "¥ 168.00",
+      "original_price": "",
       "title_url": "https://store.steampowered.com/app/3065800/",
       "button_url": "",
       "sort_order": "40",
