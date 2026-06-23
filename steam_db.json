@@ -1413,5 +1413,23 @@
       "type": "100_off",
       "_is_forced": false
     }
+  },
+  "4447550": {
+    "status": "valid",
+    "type": "100_off",
+    "details": {
+      "steam_id": "4447550",
+      "zh_title": "你画我跑",
+      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4447550/f44b3899529251e29efa6b154fd8e2bd9b79b2ac/header.jpg?t=1780214242",
+      "short_description": "一名玩家负责导航，一名玩家负责创作。2D非对称合作解谜平台游戏。",
+      "end_date": "2026-07-01T00:00:00Z",
+      "platform": "Steam",
+      "original_price": "",
+      "title_url": "https://store.steampowered.com/app/4447550/Linebound/",
+      "button_url": "",
+      "sort_order": "10",
+      "type": "100_off",
+      "_is_forced": true
+    }
   }
 }
