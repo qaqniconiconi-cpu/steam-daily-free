@@ -2,7 +2,7 @@ add:
   - link: "p/rollercoaster-tycoon-3-complete-edition"
     name: "过山车大亨3"
     type: "100_off"
-    platform: "Epic Games"
+    platform: "epic"
     desc: "非国区账号领取"
     end_date: "2026-07-02T15:00:00.000Z"
     original_price: "$19.99"
