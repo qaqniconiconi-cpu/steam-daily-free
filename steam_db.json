@@ -1439,7 +1439,7 @@
     "status": "invalid"
   },
   "1986840": {
-    "status": "valid",
+    "status": "expired",
     "type": "100_off",
     "details": {
       "steam_id": "1986840",
