@@ -43,7 +43,16 @@ add:
     end_date: "2026-07-02T23:00:00Z"
     original_price: "￥135"
     thumbnail: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1180660/header.jpg?t=1780349055"
-    https: "//shared.akamai.steamstatic.com/store_item_assets/steam/apps/1180660/header.jpg?t=1780349055"
+deals:
+  - link: "https://store.steampowered.com/app/1517290/Battlefield_2042/"
+    name: "Battlefield 2042"
+    sort_order: 10
+  - link: "https://store.steampowered.com/app/1238810/Battlefield_V/"
+    name: "Battlefield V"
+    sort_order: 20
+  - link: "https://store.steampowered.com/app/1938090/Call_of_Duty/"
+    name: "Call of Duty"
+    sort_order: 30
 disable:
   - "640700"
   - "3144950"
