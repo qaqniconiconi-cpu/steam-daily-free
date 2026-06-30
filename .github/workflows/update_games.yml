@@ -412,9 +412,19 @@ jobs:
               }
 
               try:
-                  # 💡 将抓取池扩大到 5 页 (250款)，给洗牌算法提供充足的大作弹药
-                  for page in range(5): 
-                      search_url = f"https://store.steampowered.com/search/results/?query&start={page*50}&count=50&dynamic_data=&specials=1&infinite=1&cc=cn&l=schinese&filter=globaltopsellers&_t={int(time.time())}"
+                  deal_queries = [
+                      ("globaltopsellers", "filter=globaltopsellers"),
+                      ("topsellers", "filter=topsellers"),
+                      ("reviews", "sort_by=Reviews_DESC"),
+                      ("discount", "sort_by=Discount_DESC"),
+                      ("price", "sort_by=Price_ASC"),
+                  ]
+                  # Broaden the automatic specials pool across multiple Steam sort modes.
+                  for page in range(40):
+                      source_label, source_query = deal_queries[page % len(deal_queries)]
+                      source_page = page // len(deal_queries)
+                      start = source_page * 50
+                      search_url = f"https://store.steampowered.com/search/results/?query&start={start}&count=50&dynamic_data=&specials=1&infinite=1&cc=cn&l=schinese&{source_query}&_t={int(time.time())}"
                       res = requests.get(search_url, headers=HEADERS, timeout=10)
 
                       if res.status_code != 200 or 'data-ds-appid' not in res.text:
@@ -740,7 +750,8 @@ jobs:
 
               scraped_ids = fetch_steam_candidates()
               for app_id in scraped_ids:
-                  if app_id not in db:
+                  current_status = db.get(app_id, {}).get('status')
+                  if app_id not in db or current_status in ('invalid', 'expired'):
                       db[app_id] = {"status": "pending"}
 
               for f_id in FORCED_ADD:
@@ -748,7 +759,7 @@ jobs:
 
               pending_ids = [app_id for app_id, data in db.items() if data.get('status') == 'pending']
               pending_ids.sort(key=lambda x: 0 if x in FORCED_ADD else 1)
-              verify_limit = int(os.environ.get('VERIFY_LIMIT', '80'))
+              verify_limit = int(os.environ.get('VERIFY_LIMIT', '150'))
               print(f"🧪 待验证 Steam App：{len(pending_ids)} 个，本轮最多验证 {verify_limit} 个")
 
               verify_stats = {"valid": 0, "invalid": 0, "rate_limit": 0}
