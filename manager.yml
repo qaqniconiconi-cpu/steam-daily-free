@@ -1,4 +1,7 @@
 add:
+  - name: "新增游戏"
+    type: "100_off"
+    sort_order: 80
   - link: "https://store.steampowered.com/app/3028330"
     name: "战地6免费试玩周"
     type: "100_off"
