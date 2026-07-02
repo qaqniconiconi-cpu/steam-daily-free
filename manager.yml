@@ -1,8 +1,17 @@
 add:
+  - link: "https://store.epicgames.com/p/river-city-girls-2-77af3a"
+    name: "热血少女 2"
+    type: "upcoming"
+    platform: "epic"
+    sort_order: 50
+    desc: "横板格斗"
+    end_date: "2026-07-02T23:00:00.000Z"
+    thumbnail: "https://cdn1.epicgames.com/spt-assets/dfdcd48c05c6483284cb40b333dc71e4/river-city-girls-2-logo-11rbw.png?resize=1&w=480&h=270&quality=medium"
   - link: "https://store.epicgames.com/p/asgsg-455410"
     name: "一个简单的扔垃圾游戏"
     type: "100_off"
     platform: "epic"
+    sort_order: 10
     desc: "扮演一名测试员，身处一个封闭实验室中，而你的每一次简单的通关，都将面临一次未知的考验！"
     end_date: "2026-07-07T00:00:00.000Z"
     original_price: "3"
@@ -11,7 +20,7 @@ add:
     name: "新增游戏a请做coser的主人5"
     type: "100_off"
     platform: "epic"
-    sort_order: "11"
+    sort_order: 40
     desc: "真人视频互动游戏。 游戏把你带入主角的世界，在那里你与9位美女发生复杂互动，本游戏不包含恋爱元素和动人心弦的剧情。"
     end_date: "2026-07-13T00:00:00.000Z"
     original_price: "9.99"
@@ -20,7 +29,7 @@ add:
     name: "过山车大亨3"
     type: "100_off"
     platform: "epic"
-    sort_order: "10"
+    sort_order: 30
     desc: "非国区账号领取"
     end_date: "2026-07-02T15:00:00.000Z"
     original_price: "$19.99"
@@ -30,7 +39,7 @@ add:
     name: "星穹遗迹"
     type: "100_off"
     platform: "epic"
-    sort_order: "9"
+    sort_order: 20
     desc: "宇宙恐怖世界中的手绘2D动作类平台游戏。探索第一文明留下的冰雪逐渐消融的遗迹，击败栖身在那里的众神。不断提升你的力量，发现远古神器，在残垣断壁之间扩张你的神庙吧！"
     end_date: "2026-07-02T08:00:00.000Z"
     original_price: "￥136"
