@@ -1476,5 +1476,11 @@
       "type": "100_off",
       "_is_forced": true
     }
+  },
+  "4859500": {
+    "status": "invalid"
+  },
+  "4624100": {
+    "status": "invalid"
   }
 }
