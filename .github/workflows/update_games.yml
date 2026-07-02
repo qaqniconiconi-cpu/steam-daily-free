@@ -511,25 +511,44 @@ jobs:
                   # 💡 新增：精准抓取游戏截图，供前端实现滑动轮播
                   # ==========================================
                   print("📸 正在精准抓取游戏截图 (支持前端滑动预览)...")
+                  shot_stats = {"ok": 0, "empty": 0, "http_error": 0, "exception": 0}
+                  time.sleep(5)
                   # Steam screenshots with filters=screenshots are reliable per appid; batched appids may return null.
                   for deal in deals_list:
                       try:
-                          for attempt in range(2):
-                              res = requests.get(f"https://store.steampowered.com/api/appdetails?appids={deal['id']}&filters=screenshots&cc=cn", headers=HEADERS, timeout=8)
-                              if res.status_code == 429 and attempt == 0:
-                                  time.sleep(3)
-                                  continue
-                              if res.status_code == 200:
+                          got_screenshots = False
+                          for cc in ("cn", "us"):
+                              for attempt in range(2):
+                                  res = requests.get(f"https://store.steampowered.com/api/appdetails?appids={deal['id']}&filters=screenshots&cc={cc}&l=schinese", headers=HEADERS, cookies=COOKIES, timeout=10)
+                                  if res.status_code == 429 and attempt == 0:
+                                      print(f"⚠️ screenshots 429 app/{deal['id']} cc={cc}; retrying")
+                                      time.sleep(5)
+                                      continue
+                                  if res.status_code != 200:
+                                      shot_stats["http_error"] += 1
+                                      print(f"⚠️ screenshots HTTP {res.status_code} app/{deal['id']} cc={cc}")
+                                      break
                                   data = res.json()
                                   d_id = str(deal['id'])
                                   if data and data.get(d_id, {}).get('success'):
                                       screenshots = data[d_id]['data'].get('screenshots', [])
                                       if screenshots:
-                                          deal['screenshots'] = [s['path_thumbnail'].split('?')[0].replace('http://', 'https://') for s in screenshots[:4]]
-                              break
+                                          deal['screenshots'] = [s.get('path_thumbnail', '').split('?')[0].replace('http://', 'https://') for s in screenshots[:4] if s.get('path_thumbnail')]
+                                          got_screenshots = bool(deal.get('screenshots'))
+                                          if got_screenshots:
+                                              shot_stats["ok"] += 1
+                                              break
+                                  break
+                              if got_screenshots:
+                                  break
+                          if not got_screenshots:
+                              shot_stats["empty"] += 1
                       except Exception as e:
+                          shot_stats["exception"] += 1
+                          print(f"⚠️ screenshots exception app/{deal.get('id')}: {repr(e)}")
                           pass
-                      time.sleep(0.45)
+                      time.sleep(1.0)
+                  print("📊 screenshots stats: " + json.dumps(shot_stats, ensure_ascii=False))
                   # ==========================================
 
                   for deal in deals_list:
