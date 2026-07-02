@@ -431,7 +431,14 @@ jobs:
                           res = requests.get(f"https://api.allorigins.win/raw?url={urllib.parse.quote(search_url)}", headers=HEADERS, timeout=15)
 
                       if res.status_code == 200 and 'data-ds-appid' in res.text:
-                          raw_html = res.json().get('results_html', '')
+                          try:
+                              payload = res.json()
+                              raw_html = payload.get('results_html', '') if isinstance(payload, dict) else ''
+                          except Exception as e:
+                              print(f"⚠️ Steam specials page parse failed source={source_label} start={start}: {repr(e)}")
+                              raw_html = res.text if '<a' in res.text and 'search_result_row' in res.text else ''
+                          if not raw_html:
+                              continue
                           blocks = re.findall(r'<a[^>]*?search_result_row.*?</a>', raw_html, re.DOTALL)
 
                           for b in blocks:
@@ -621,12 +628,42 @@ jobs:
                   print("📊 screenshots stats: " + json.dumps(shot_stats, ensure_ascii=False))
                   # ==========================================
 
+                  print("👥 正在抓取实时在线人数...")
+                  ccu_stats = {"ok": 0, "zero": 0, "http_error": 0, "exception": 0}
                   for deal in deals_list:
                       try:
-                          ccu_res = requests.get(f"https://api.steampowered.com/ISteamUserStats/GetNumberOfCurrentPlayers/v1/?appid={deal['id']}", timeout=5).json()
-                          if ccu_res.get('response', {}).get('result') == 1:
-                              deal['peakOnline'] = f"{ccu_res['response']['player_count']:,} 人"
-                      except: pass
+                          found_ccu = False
+                          for attempt in range(2):
+                              res_ccu = requests.get(
+                                  f"https://api.steampowered.com/ISteamUserStats/GetNumberOfCurrentPlayers/v1/?appid={deal['id']}",
+                                  headers=HEADERS,
+                                  timeout=8
+                              )
+                              if res_ccu.status_code == 429 and attempt == 0:
+                                  print(f"⚠️ current players 429 app/{deal['id']}; retrying")
+                                  time.sleep(3)
+                                  continue
+                              if res_ccu.status_code != 200:
+                                  ccu_stats["http_error"] += 1
+                                  print(f"⚠️ current players HTTP {res_ccu.status_code} app/{deal['id']}")
+                                  break
+                              ccu_res = res_ccu.json()
+                              if ccu_res.get('response', {}).get('result') == 1:
+                                  player_count = int(ccu_res.get('response', {}).get('player_count') or 0)
+                                  deal['peakOnline'] = f"{player_count:,} 人"
+                                  ccu_stats["ok" if player_count > 0 else "zero"] += 1
+                                  found_ccu = True
+                              break
+                          if not found_ccu and not deal.get('peakOnline'):
+                              deal['peakOnline'] = "-"
+                      except Exception as e:
+                          ccu_stats["exception"] += 1
+                          print(f"⚠️ current players exception app/{deal.get('id')}: {repr(e)}")
+                          if not deal.get('peakOnline'):
+                              deal['peakOnline'] = "-"
+                      time.sleep(0.2)
+                  print("📊 current players stats: " + json.dumps(ccu_stats, ensure_ascii=False))
+                  print(f"📦 deals ready: total={len(deals_list)}, screenshots_gt0={sum(1 for d in deals_list if d.get('screenshots'))}, peakOnline_gt0={sum(1 for d in deals_list if d.get('peakOnline') and d.get('peakOnline') != '-')}")
               except Exception as e: print(f"⚠️ 抓取折扣失败: {e}")
               return deals_list
 
