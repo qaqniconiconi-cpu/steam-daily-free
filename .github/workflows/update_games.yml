@@ -511,12 +511,60 @@ jobs:
                   # 💡 新增：精准抓取游戏截图，供前端实现滑动轮播
                   # ==========================================
                   print("📸 正在精准抓取游戏截图 (支持前端滑动预览)...")
-                  shot_stats = {"ok": 0, "empty": 0, "http_error": 0, "exception": 0}
+                  shot_stats = {"api_ok": 0, "full_api_ok": 0, "html_ok": 0, "old_reused": 0, "empty": 0, "http_error": 0, "exception": 0}
                   time.sleep(5)
-                  # Steam screenshots with filters=screenshots are reliable per appid; batched appids may return null.
+
+                  old_deal_screenshots = {}
+                  try:
+                      old_deals_payload = fetch_old_data("deals.json")
+                      old_deals = old_deals_payload.get('data', old_deals_payload) if isinstance(old_deals_payload, dict) else old_deals_payload
+                      if isinstance(old_deals, list):
+                          for old in old_deals:
+                              if isinstance(old, dict) and old.get('id') and old.get('screenshots'):
+                                  old_deal_screenshots[str(old.get('id'))] = old.get('screenshots') or []
+                  except Exception as e:
+                      print(f"⚠️ 读取旧 deals.json 截图兜底失败: {repr(e)}")
+
+                  def clean_screenshot_urls(urls):
+                      cleaned = []
+                      seen = set()
+                      for url in urls or []:
+                          u = html.unescape(str(url or '').strip()).replace('\\/', '/').replace('http://', 'https://')
+                          if not u or 'ss_' not in u or '.jpg' not in u:
+                              continue
+                          if u not in seen:
+                              seen.add(u)
+                              cleaned.append(u.split('?')[0])
+                          if len(cleaned) >= 4:
+                              break
+                      return cleaned
+
+                  def screenshots_from_payload(payload, app_id):
+                      try:
+                          data = payload.get(str(app_id), {}) if isinstance(payload, dict) else {}
+                          if not data.get('success'):
+                              return []
+                          screenshots = data.get('data', {}).get('screenshots', [])
+                          return clean_screenshot_urls([s.get('path_thumbnail') or s.get('path_full') for s in screenshots if isinstance(s, dict)])
+                      except Exception:
+                          return []
+
+                  def fetch_store_html_screenshots(app_id):
+                      try:
+                          h = requests.get(f"https://store.steampowered.com/app/{app_id}?l=schinese&cc=cn", headers=HEADERS, cookies=COOKIES, timeout=12).text
+                          h = html.unescape(h).replace('\\/', '/')
+                          urls = re.findall(r'https?://[^"\'<>\\\s]+ss_[^"\'<>\\\s]+?\.600x338\.jpg(?:\?t=\d+)?', h)
+                          if not urls:
+                              full_urls = re.findall(r'https?://[^"\'<>\\\s]+ss_[^"\'<>\\\s]+?\.1920x1080\.jpg(?:\?t=\d+)?', h)
+                              urls = [u.replace('.1920x1080.jpg', '.600x338.jpg') for u in full_urls]
+                          return clean_screenshot_urls(urls)
+                      except Exception as e:
+                          print(f"⚠️ screenshots HTML exception app/{app_id}: {repr(e)}")
+                          return []
+
                   for deal in deals_list:
                       try:
-                          got_screenshots = False
+                          found = []
                           for cc in ("cn", "us"):
                               for attempt in range(2):
                                   res = requests.get(f"https://store.steampowered.com/api/appdetails?appids={deal['id']}&filters=screenshots&cc={cc}&l=schinese", headers=HEADERS, cookies=COOKIES, timeout=10)
@@ -528,21 +576,43 @@ jobs:
                                       shot_stats["http_error"] += 1
                                       print(f"⚠️ screenshots HTTP {res.status_code} app/{deal['id']} cc={cc}")
                                       break
-                                  data = res.json()
-                                  d_id = str(deal['id'])
-                                  if data and data.get(d_id, {}).get('success'):
-                                      screenshots = data[d_id]['data'].get('screenshots', [])
-                                      if screenshots:
-                                          deal['screenshots'] = [s.get('path_thumbnail', '').split('?')[0].replace('http://', 'https://') for s in screenshots[:4] if s.get('path_thumbnail')]
-                                          got_screenshots = bool(deal.get('screenshots'))
-                                          if got_screenshots:
-                                              shot_stats["ok"] += 1
-                                              break
+                                  found = screenshots_from_payload(res.json(), deal['id'])
+                                  if found:
+                                      deal['screenshots'] = found
+                                      shot_stats["api_ok"] += 1
+                                      break
                                   break
-                              if got_screenshots:
+                              if found:
                                   break
-                          if not got_screenshots:
-                              shot_stats["empty"] += 1
+
+                          if not found:
+                              try:
+                                  res_full = requests.get(f"https://store.steampowered.com/api/appdetails?appids={deal['id']}&cc=cn&l=schinese", headers=HEADERS, cookies=COOKIES, timeout=12)
+                                  if res_full.status_code == 200:
+                                      found = screenshots_from_payload(res_full.json(), deal['id'])
+                                      if found:
+                                          deal['screenshots'] = found
+                                          shot_stats["full_api_ok"] += 1
+                                  else:
+                                      shot_stats["http_error"] += 1
+                                      print(f"⚠️ screenshots full API HTTP {res_full.status_code} app/{deal['id']}")
+                              except Exception as e:
+                                  shot_stats["exception"] += 1
+                                  print(f"⚠️ screenshots full API exception app/{deal.get('id')}: {repr(e)}")
+
+                          if not found:
+                              found = fetch_store_html_screenshots(deal['id'])
+                              if found:
+                                  deal['screenshots'] = found
+                                  shot_stats["html_ok"] += 1
+
+                          if not found:
+                              old_shots = clean_screenshot_urls(old_deal_screenshots.get(str(deal.get('id')), []))
+                              if old_shots:
+                                  deal['screenshots'] = old_shots
+                                  shot_stats["old_reused"] += 1
+                              else:
+                                  shot_stats["empty"] += 1
                       except Exception as e:
                           shot_stats["exception"] += 1
                           print(f"⚠️ screenshots exception app/{deal.get('id')}: {repr(e)}")
