@@ -34,7 +34,7 @@ add:
     name: "一个简单的扔垃圾游戏"
     type: "100_off"
     platform: "epic"
-    sort_order: 10
+    sort_order: 30
     desc: "扮演一名测试员，身处一个封闭实验室中，而你的每一次简单的通关，都将面临一次未知的考验！"
     end_date: "2026-07-07T00:00:00.000Z"
     original_price: "3"
@@ -52,7 +52,7 @@ add:
     name: "过山车大亨3"
     type: "100_off"
     platform: "epic"
-    sort_order: 30
+    sort_order: 20
     desc: "非国区账号领取"
     end_date: "2026-07-02T15:00:00.000Z"
     original_price: "$19.99"
@@ -62,7 +62,7 @@ add:
     name: "星穹遗迹"
     type: "100_off"
     platform: "epic"
-    sort_order: 20
+    sort_order: 10
     desc: "宇宙恐怖世界中的手绘2D动作类平台游戏。探索第一文明留下的冰雪逐渐消融的遗迹，击败栖身在那里的众神。不断提升你的力量，发现远古神器，在残垣断壁之间扩张你的神庙吧！"
     end_date: "2026-07-02T08:00:00.000Z"
     original_price: "￥136"
