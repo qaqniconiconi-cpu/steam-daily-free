@@ -425,10 +425,18 @@ jobs:
                       source_page = page // len(deal_queries)
                       start = source_page * 50
                       search_url = f"https://store.steampowered.com/search/results/?query&start={start}&count=50&dynamic_data=&specials=1&infinite=1&cc=cn&l=schinese&{source_query}&_t={int(time.time())}"
-                      res = requests.get(search_url, headers=HEADERS, timeout=10)
+                      try:
+                          res = requests.get(search_url, headers=HEADERS, cookies=COOKIES, timeout=10)
+                      except Exception as e:
+                          print(f"⚠️ Steam specials request failed source={source_label} start={start}: {repr(e)}")
+                          continue
 
                       if res.status_code != 200 or 'data-ds-appid' not in res.text:
-                          res = requests.get(f"https://api.allorigins.win/raw?url={urllib.parse.quote(search_url)}", headers=HEADERS, timeout=15)
+                          try:
+                              res = requests.get(f"https://api.allorigins.win/raw?url={urllib.parse.quote(search_url)}", headers=HEADERS, timeout=15)
+                          except Exception as e:
+                              print(f"⚠️ Steam specials proxy failed source={source_label} start={start}: {repr(e)}")
+                              continue
 
                       if res.status_code == 200 and 'data-ds-appid' in res.text:
                           try:
