@@ -1485,5 +1485,23 @@
   },
   "1598230": {
     "status": "invalid"
+  },
+  "1741160": {
+    "status": "valid",
+    "type": "100_off",
+    "details": {
+      "steam_id": "1741160",
+      "zh_title": "Catch Me!",
+      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1741160/c6cabfebbeecf6adaca30a320b5693a5af8f0313/header.jpg?t=1784133968",
+      "short_description": "Compete online against your friends and other players in this chaotic and fast paced 4-player game of tag! Race across different locations, jump through windows, electrocute the other players, or throw cats at them. (No cats were harmed in the production of this game.)",
+      "end_date": "2026-07-17T17:00:00Z",
+      "platform": "Steam",
+      "original_price": "¥ 42.00",
+      "title_url": "",
+      "button_url": "",
+      "sort_order": "",
+      "type": "100_off",
+      "_is_forced": false
+    }
   }
 }
