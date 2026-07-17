@@ -1487,7 +1487,7 @@
     "status": "invalid"
   },
   "1741160": {
-    "status": "valid",
+    "status": "expired",
     "type": "100_off",
     "details": {
       "steam_id": "1741160",
@@ -1497,6 +1497,24 @@
       "end_date": "2026-07-17T17:00:00Z",
       "platform": "Steam",
       "original_price": "¥ 42.00",
+      "title_url": "",
+      "button_url": "",
+      "sort_order": "",
+      "type": "100_off",
+      "_is_forced": false
+    }
+  },
+  "1272160": {
+    "status": "valid",
+    "type": "100_off",
+    "details": {
+      "steam_id": "1272160",
+      "zh_title": "The Life and Suffering of Sir Brante",
+      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1272160/header.jpg?t=1780003239",
+      "short_description": "这是一部充满挑战的角色扮演互动小说",
+      "end_date": "2026-07-23T17:00:00Z",
+      "platform": "Steam",
+      "original_price": "¥ 70.00",
       "title_url": "",
       "button_url": "",
       "sort_order": "",
