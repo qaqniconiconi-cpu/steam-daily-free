@@ -1505,7 +1505,7 @@
     }
   },
   "1272160": {
-    "status": "valid",
+    "status": "expired",
     "type": "100_off",
     "details": {
       "steam_id": "1272160",
@@ -1515,6 +1515,24 @@
       "end_date": "2026-07-23T17:00:00Z",
       "platform": "Steam",
       "original_price": "¥ 70.00",
+      "title_url": "",
+      "button_url": "",
+      "sort_order": "",
+      "type": "100_off",
+      "_is_forced": false
+    }
+  },
+  "674750": {
+    "status": "valid",
+    "type": "100_off",
+    "details": {
+      "steam_id": "674750",
+      "zh_title": "Yet Another Zombie Defense HD",
+      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/674750/header.jpg?t=1780089205",
+      "short_description": "《Yet Another Zombie Defense HD》是一款带有塔防元素的俯视视角丧尸射击游戏，可供最多4人本地或在线联机",
+      "end_date": "2026-07-30T17:00:00Z",
+      "platform": "Steam",
+      "original_price": "¥ 18.00",
       "title_url": "",
       "button_url": "",
       "sort_order": "",
