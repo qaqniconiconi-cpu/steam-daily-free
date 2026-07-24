@@ -478,22 +478,7 @@
     }
   },
   "2738490": {
-    "status": "valid",
-    "type": "upcoming",
-    "details": {
-      "steam_id": "2738490",
-      "zh_title": "寻日之旅",
-      "thumbnail": "https://cdn1.epicgames.com/spt-assets/30d70e74bab1498686aba69969a6c19e/sol-cesto-logo-hfpxe.png?resize=1&w=480&h=270&quality=medium",
-      "short_description": "快节奏紧张刺激的战术类肉鸽游戏",
-      "end_date": "2026-07-30T09:02:00.000Z",
-      "platform": "Steam",
-      "original_price": "¥ 56.00",
-      "title_url": "",
-      "button_url": "",
-      "sort_order": "30",
-      "type": "upcoming",
-      "_is_forced": true
-    }
+    "status": "invalid"
   },
   "1313140": {
     "status": "valid",
