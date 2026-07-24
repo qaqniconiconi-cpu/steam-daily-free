@@ -1,10 +1,14 @@
 add:
-  - name: "寻日之旅"
+  - link: "https://store.epicgames.com/p/sol-cesto-e9b803?lang=zh-CN"
+    name: "寻日之旅"
     type: "upcoming"
-    sort_order: 30
+    platform: "epic"
+    sort_order: "30"
     desc: "快节奏紧张刺激的战术类肉鸽游戏"
     end_date: "2026-07-30T09:02:00.000Z"
+    original_price: "¥ 56.00"
     thumbnail: "https://cdn1.epicgames.com/spt-assets/30d70e74bab1498686aba69969a6c19e/sol-cesto-logo-hfpxe.png?resize=1&w=480&h=270&quality=medium"
+    is_upcoming: true
   - link: "https://store.epicgames.com/p/otxo-396b8b"
     name: "孤狼"
     type: "upcoming"
@@ -46,3 +50,4 @@ disable:
   - "火之石 - 放置RPG"
   - "p/the-telltale-batman"
   - "app/2218460"
+  - "app/2738490"
