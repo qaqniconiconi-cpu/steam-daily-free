@@ -1,4 +1,13 @@
 add:
+  - name: "寻日之旅"
+    type: "100_off"
+    sort_order: 30
+    desc: "快节奏紧张刺激的战术类肉鸽游戏"
+    end_date: "2026-07-30T09:02:00.000Z"
+    thumbnail: "https://cdn1.epicgames.com/spt-assets/30d70e74bab1498686aba69969a6c19e/sol-cesto-logo-hfpxe.png?resize=1&w=480&h=270&quality=medium"
+  - name: "孤狼"
+    type: "100_off"
+    sort_order: 40
   - link: "https://store.epicgames.com/p/together-after-dark-fa0ce0?lang=zh-CN"
     name: "天黑后在一起"
     type: "100_off"
@@ -13,6 +22,7 @@ add:
     type: "100_off"
     platform: "epic"
     sort_order: 20
+    end_date: "2026-07-30T23:00:00.000Z"
 disable:
   - "640700"
   - "3144950"
