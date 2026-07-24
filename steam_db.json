@@ -1325,7 +1325,7 @@
     "status": "invalid"
   },
   "4736640": {
-    "status": "valid",
+    "status": "expired",
     "type": "to_paid",
     "details": {
       "steam_id": "4736640",
@@ -1334,7 +1334,7 @@
       "short_description": "限时活动，添加愿望单，抽游戏cdk（价值26，详见游戏公告）",
       "end_date": "2026-07-24T00:00:00Z",
       "platform": "Steam",
-      "original_price": "",
+      "original_price": "¥ 26.00",
       "title_url": "https://store.steampowered.com/app/4736640/",
       "button_url": "",
       "sort_order": "30",
