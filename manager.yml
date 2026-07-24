@@ -1,13 +1,19 @@
 add:
   - name: "寻日之旅"
-    type: "100_off"
+    type: "upcoming"
     sort_order: 30
     desc: "快节奏紧张刺激的战术类肉鸽游戏"
     end_date: "2026-07-30T09:02:00.000Z"
     thumbnail: "https://cdn1.epicgames.com/spt-assets/30d70e74bab1498686aba69969a6c19e/sol-cesto-logo-hfpxe.png?resize=1&w=480&h=270&quality=medium"
-  - name: "孤狼"
-    type: "100_off"
+  - link: "https://store.epicgames.com/p/otxo-396b8b"
+    name: "孤狼"
+    type: "upcoming"
+    platform: "epic"
     sort_order: 40
+    desc: "残暴又黑暗的快节奏肉鸽风格游戏"
+    end_date: "2026-07-30T23:00:00.000Z"
+    original_price: "￥47"
+    thumbnail: "https://cdn1.epicgames.com/spt-assets/f6da0031691c4d94a6e21255b18c1710/otxo-logo-t3e8q.png?resize=1&w=480&h=270&quality=medium"
   - link: "https://store.epicgames.com/p/together-after-dark-fa0ce0?lang=zh-CN"
     name: "天黑后在一起"
     type: "100_off"
