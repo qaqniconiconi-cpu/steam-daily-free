@@ -24,11 +24,13 @@ add:
     original_price: "￥9"
     thumbnail: "https://cdn1.epicgames.com/spt-assets/42a9aa9f7d7f40d1a0c1aa5c69565757/together-after-dark-logo-8d7q1.png?resize=1&w=480&h=270&quality=medium"
   - link: "p/foretales-d6c5bd"
-    name: "《Foretales》"
+    name: "Foretales"
     type: "100_off"
     platform: "epic"
     sort_order: 20
+    desc: "这个剧情丰富的卡牌游戏中主宰世界的命运。你可以在《Foretales》中以独特视角展开冒险，通过多种玩法风格和故事线拯救世界……或带来毁灭。"
     end_date: "2026-07-30T23:00:00.000Z"
+    thumbnail: "https://cdn1.epicgames.com/spt-assets/2b593b82aea84695b1608d74d3850ceb/foretales-logo-7mlnh.png?resize=1&w=480&h=270&quality=medium"
 disable:
   - "640700"
   - "3144950"
