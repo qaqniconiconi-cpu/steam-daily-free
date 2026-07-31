@@ -46,7 +46,7 @@ add:
     name: "我们一起在这里"
     type: "upcoming"
     platform: "epic"
-    sort_order: 50
+    sort_order: 40
     desc: "极地合作生存"
     end_date: "2026-08-05T16:00:00.000Z"
     original_price: "￥40"
@@ -55,7 +55,7 @@ add:
     name: "寻日之旅"
     type: "100_off"
     platform: "epic"
-    sort_order: 30
+    sort_order: 20
     desc: "快节奏紧张刺激的战术类肉鸽游戏"
     end_date: "2026-08-07T15:59:00.000Z"
     original_price: "¥ 56.00"
@@ -63,7 +63,7 @@ add:
     is_upcoming: true
   - link: "https://store.epicgames.com/p/otxo-396b8b"
     name: "孤狼"
-    type: "upcoming"
+    type: "100_off"
     platform: "epic"
     sort_order: 10
     desc: "残暴又黑暗的快节奏肉鸽风格游戏"
@@ -74,7 +74,7 @@ add:
     name: "灯塔松"
     type: "100_off"
     platform: "epic"
-    sort_order: 40
+    sort_order: 30
     desc: "可爱风格怪奇冒险游戏"
     end_date: "2026-08-05T16:00:00.000Z"
     original_price: "￥62"
