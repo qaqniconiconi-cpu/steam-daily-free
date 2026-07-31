@@ -1,4 +1,13 @@
 add:
+  - link: "https://www.paydaythegame.com/static/payday2/social-safe/"
+    name: "收获日免费道具"
+    type: "100_off"
+    platform: "steam"
+    desc: "点击即可获得多种道具"
+    end_date: "2026-08-08T15:59:00.000Z"
+    thumbnail: "https://img.et-cdn.com/game/704830f18fb647589750b5b349932918.png"
+    title_url: "https://www.paydaythegame.com/static/payday2/social-safe/"
+    button_url: "https://www.paydaythegame.com/static/payday2/social-safe/"
   - link: "https://store.steampowered.com/app/4742660/DragonSword__Awakening__Familiar__Abyssal_Direwolf/"
     name: "龙剑：觉醒 DLC"
     type: "100_off"
