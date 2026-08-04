@@ -1583,21 +1583,6 @@
     }
   },
   "1169040": {
-    "status": "valid",
-    "type": "100_off",
-    "details": {
-      "steam_id": "1169040",
-      "zh_title": "奈斯启示录",
-      "thumbnail": "https://shared.st.dl.eccdnx.com/store_item_assets/steam/apps/1169040/2c2b507cf33191af41f996d218416542d4fd2256/header_alt_assets_5_schinese.jpg?t=1785430625",
-      "short_description": "建造、探索和征服，像素风游戏",
-      "end_date": "2026-08-14T05:00:00.000Z",
-      "platform": "Steam",
-      "original_price": "¥ 58.00",
-      "title_url": "https://store.steampowered.com/app/1169040/Necesse/",
-      "button_url": "",
-      "sort_order": "10",
-      "type": "100_off",
-      "_is_forced": true
-    }
+    "status": "invalid"
   }
 }
