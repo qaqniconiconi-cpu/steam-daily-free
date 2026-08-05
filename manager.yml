@@ -1,8 +1,17 @@
 add:
+  - link: "https://store.epicgames.com/p/project-first-contact-ff7fdc"
+    name: "新增游戏"
+    type: "100_off"
+    platform: "epic"
+    sort_order: 30
+    end_date: "2026-08-17T22:00:00.000Z"
+    original_price: "￥9"
+    thumbnail: "https://cdn1.epicgames.com/spt-assets/35c9be112ee14d7bad20313621c9edc5/project-first-contact-logo-1qgy3.png?resize=1&w=480&h=270&quality=medium"
   - link: "https://www.paydaythegame.com/static/payday2/social-safe/"
     name: "收获日免费道具"
     type: "100_off"
     platform: "steam"
+    sort_order: 10
     desc: "点击即可获得多种道具"
     end_date: "2026-08-08T15:59:00.000Z"
     thumbnail: "https://img.et-cdn.com/game/704830f18fb647589750b5b349932918.png"
@@ -12,7 +21,7 @@ add:
     name: "龙剑：觉醒 DLC"
     type: "100_off"
     platform: "steam"
-    sort_order: 40
+    sort_order: 20
     desc: "DLC限免，新增使魔：深渊巨狼"
     end_date: "2026-08-30T16:00:00.000Z"
     thumbnail: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4742660/08f8d343eb3988e1f0fd8c4d2a60a32ff229aa26/header.jpg?t=1784776428"
@@ -24,20 +33,11 @@ add:
     desc: "VR多人射击，该游戏即将下线"
     end_date: "2026-10-31T16:00:00.000Z"
     thumbnail: "https://clan.akamai.steamstatic.com/images//39374358/e0c7d74a0b1c2ca80ee10df7feb0eb3e70963862.png"
-  - link: "https://store.steampowered.com/app/2280440/Ogre_Chambers_DX/"
-    name: "变形怪物房间"
-    type: "100_off"
-    platform: "steam"
-    sort_order: 20
-    desc: "像素弹幕射击，该游戏即将下架"
-    end_date: "2026-08-02T16:00:00.000Z"
-    original_price: "￥0"
-    thumbnail: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2280440/14b990d994062e2dbebae23a0dcdbb1ce84011fb/header.jpg?t=1764017464"
   - link: "https://store.epicgames.com/p/we-were-here-together-6a6d66?lang=zh-CN"
     name: "我们一起在这里"
     type: "upcoming"
     platform: "epic"
-    sort_order: 40
+    sort_order: 50
     desc: "极地合作生存"
     end_date: "2026-08-05T16:00:00.000Z"
     original_price: "￥40"
@@ -65,7 +65,7 @@ add:
     name: "灯塔松"
     type: "100_off"
     platform: "epic"
-    sort_order: 30
+    sort_order: 40
     desc: "可爱风格怪奇冒险游戏"
     end_date: "2026-08-05T16:00:00.000Z"
     original_price: "￥62"
