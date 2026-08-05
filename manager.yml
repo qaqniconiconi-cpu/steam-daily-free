@@ -4,6 +4,7 @@ add:
     type: "100_off"
     platform: "epic"
     sort_order: 30
+    desc: "击败邪恶外星人"
     end_date: "2026-08-17T22:00:00.000Z"
     original_price: "￥9"
     thumbnail: "https://cdn1.epicgames.com/spt-assets/35c9be112ee14d7bad20313621c9edc5/project-first-contact-logo-1qgy3.png?resize=1&w=480&h=270&quality=medium"
