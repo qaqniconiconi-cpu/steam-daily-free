@@ -68,8 +68,9 @@ add:
     platform: "epic"
     sort_order: 40
     desc: "可爱风格怪奇冒险游戏"
-    end_date: "2026-08-05T16:00:00.000Z"
+    end_date: "2026-08-13T15:00:00.000Z"
     original_price: "￥62"
+    thumbnail: "https://cdn1.epicgames.com/spt-assets/c89a3b955d704c3c97ddd2aba5265a38/beacon-pines-logo-n7dkn.png?resize=1&w=480&h=270&quality=medium"
 disable:
   - "640700"
   - "3144950"
