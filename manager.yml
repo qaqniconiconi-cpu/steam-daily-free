@@ -3,6 +3,7 @@ add:
     name: "蜘蛛狐"
     type: "100_off"
     platform: "epic"
+    sort_order: 10
     desc: "你扮演一只蜘蛛狐狸，现在必须拯救动物并阻止疯狂的科学家"
     end_date: "2026-08-13T15:00:00.000Z"
     original_price: "￥25"
@@ -11,7 +12,7 @@ add:
     name: "漫漫长路：沙巫之旅"
     type: "upcoming"
     platform: "epic"
-    sort_order: 40
+    sort_order: 50
     desc: "穿梭于辽阔的风景之间，沉醉在扣人心弦的探险之中"
     end_date: "2026-08-12T16:00:00.000Z"
     original_price: "￥90"
@@ -20,7 +21,7 @@ add:
     name: "第一类接触计划"
     type: "100_off"
     platform: "epic"
-    sort_order: 20
+    sort_order: 40
     desc: "击败邪恶外星人"
     end_date: "2026-08-17T22:00:00.000Z"
     original_price: "￥9"
@@ -39,7 +40,7 @@ add:
     name: "龙剑：觉醒 DLC"
     type: "100_off"
     platform: "steam"
-    sort_order: 20
+    sort_order: 30
     desc: "DLC限免，新增使魔：深渊巨狼"
     end_date: "2026-08-30T16:00:00.000Z"
     thumbnail: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4742660/08f8d343eb3988e1f0fd8c4d2a60a32ff229aa26/header.jpg?t=1784776428"
@@ -47,7 +48,7 @@ add:
     name: "Hyper Dash"
     type: "100_off"
     platform: "steam"
-    sort_order: 30
+    sort_order: 40
     desc: "VR多人射击，该游戏即将下线"
     end_date: "2026-10-31T16:00:00.000Z"
     thumbnail: "https://clan.akamai.steamstatic.com/images//39374358/e0c7d74a0b1c2ca80ee10df7feb0eb3e70963862.png"
@@ -55,7 +56,7 @@ add:
     name: "我们一起在这里"
     type: "100_off"
     platform: "epic"
-    sort_order: 10
+    sort_order: 20
     desc: "极地合作生存"
     end_date: "2026-08-13T15:00:00.000Z"
     original_price: "￥40"
@@ -69,6 +70,11 @@ add:
     end_date: "2026-08-13T15:00:00.000Z"
     original_price: "￥62"
     thumbnail: "https://cdn1.epicgames.com/spt-assets/c89a3b955d704c3c97ddd2aba5265a38/beacon-pines-logo-n7dkn.png?resize=1&w=480&h=270&quality=medium"
+  - link: "app/606150"
+    name: "Moonlighter"
+    type: "100_off"
+    platform: "steam"
+    sort_order: 20
 disable:
   - "640700"
   - "3144950"
