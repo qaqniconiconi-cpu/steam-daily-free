@@ -36,11 +36,11 @@ add:
     thumbnail: "https://clan.akamai.steamstatic.com/images//39374358/e0c7d74a0b1c2ca80ee10df7feb0eb3e70963862.png"
   - link: "https://store.epicgames.com/p/we-were-here-together-6a6d66?lang=zh-CN"
     name: "我们一起在这里"
-    type: "upcoming"
+    type: "100_off"
     platform: "epic"
     sort_order: 50
     desc: "极地合作生存"
-    end_date: "2026-08-05T16:00:00.000Z"
+    end_date: "2026-08-13T15:00:00.000Z"
     original_price: "￥40"
     thumbnail: "https://img.et-cdn.com/game/42343b9fa1ff4046a9e8327faaddf542.png"
   - link: "https://store.epicgames.com/p/sol-cesto-e9b803?lang=zh-CN"
