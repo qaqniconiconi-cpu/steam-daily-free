@@ -1608,5 +1608,23 @@
   },
   "4500780": {
     "status": "invalid"
+  },
+  "738520": {
+    "status": "valid",
+    "type": "100_off",
+    "details": {
+      "steam_id": "738520",
+      "zh_title": "呼吸边缘",
+      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/738520/header_schinese.jpg?t=1786122378",
+      "short_description": "在外太空中活下来！与永生不死的鸡作伴，探寻太空飞船意外坠毁背后的真相",
+      "end_date": "2026-08-09T17:00:00Z",
+      "platform": "Steam",
+      "original_price": "¥ 92.00",
+      "title_url": "",
+      "button_url": "",
+      "sort_order": "",
+      "type": "100_off",
+      "_is_forced": false
+    }
   }
 }
