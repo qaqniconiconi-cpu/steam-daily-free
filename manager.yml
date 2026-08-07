@@ -1,6 +1,6 @@
 add:
   - link: "https://store.epicgames.com/p/project-first-contact-ff7fdc"
-    name: "Project First Contact"
+    name: "第一类接触计划"
     type: "100_off"
     platform: "epic"
     sort_order: 30
@@ -38,30 +38,11 @@ add:
     name: "我们一起在这里"
     type: "100_off"
     platform: "epic"
-    sort_order: 50
+    sort_order: 10
     desc: "极地合作生存"
     end_date: "2026-08-13T15:00:00.000Z"
     original_price: "￥40"
     thumbnail: "https://img.et-cdn.com/game/42343b9fa1ff4046a9e8327faaddf542.png"
-  - link: "https://store.epicgames.com/p/sol-cesto-e9b803?lang=zh-CN"
-    name: "寻日之旅"
-    type: "100_off"
-    platform: "epic"
-    sort_order: 20
-    desc: "快节奏紧张刺激的战术类肉鸽游戏"
-    end_date: "2026-08-07T15:59:00.000Z"
-    original_price: "¥ 56.00"
-    thumbnail: "https://cdn1.epicgames.com/spt-assets/30d70e74bab1498686aba69969a6c19e/sol-cesto-logo-hfpxe.png?resize=1&w=480&h=270&quality=medium"
-    is_upcoming: true
-  - link: "https://store.epicgames.com/p/otxo-396b8b"
-    name: "孤狼"
-    type: "100_off"
-    platform: "epic"
-    sort_order: 10
-    desc: "残暴又黑暗的快节奏肉鸽风格游戏"
-    end_date: "2026-08-07T15:59:00.000Z"
-    original_price: "￥47"
-    thumbnail: "https://cdn1.epicgames.com/spt-assets/f6da0031691c4d94a6e21255b18c1710/otxo-logo-t3e8q.png?resize=1&w=480&h=270&quality=medium"
   - link: "p/beacon-pines-629fc3"
     name: "灯塔松"
     type: "100_off"
@@ -89,3 +70,5 @@ disable:
   - "app/2738490"
   - "p/foretales-d6c5bd"
   - "app/1169040"
+  - "p/otxo-396b8b"
+  - "p/sol-cesto-e9b803"
