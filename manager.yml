@@ -1,6 +1,17 @@
 add:
-  - name: "漫漫长路：沙巫之旅"
+  - link: "https://store.epicgames.com/p/spider-fox-efd273"
+    name: "蜘蛛狐"
+    type: "100_off"
+    platform: "epic"
+    desc: "你扮演一只蜘蛛狐狸，现在必须拯救动物并阻止疯狂的科学家"
+    end_date: "2026-08-13T15:00:00.000Z"
+    original_price: "￥25"
+    thumbnail: "https://cdn1.epicgames.com/spt-assets/0aa9c79e62ef4ba1bcc01558e8f6a06c/spider-fox-logo-xnxtn.png?resize=1&w=480&h=270&quality=medium"
+  - link: "https://store.epicgames.com/p/caravan-sandwitch-05ff58"
+    name: "漫漫长路：沙巫之旅"
     type: "upcoming"
+    platform: "epic"
+    sort_order: 40
     desc: "穿梭于辽阔的风景之间，沉醉在扣人心弦的探险之中"
     end_date: "2026-08-12T16:00:00.000Z"
     original_price: "￥90"
@@ -9,7 +20,7 @@ add:
     name: "第一类接触计划"
     type: "100_off"
     platform: "epic"
-    sort_order: 30
+    sort_order: 20
     desc: "击败邪恶外星人"
     end_date: "2026-08-17T22:00:00.000Z"
     original_price: "￥9"
@@ -53,7 +64,7 @@ add:
     name: "灯塔松"
     type: "100_off"
     platform: "epic"
-    sort_order: 40
+    sort_order: 30
     desc: "可爱风格怪奇冒险游戏"
     end_date: "2026-08-13T15:00:00.000Z"
     original_price: "￥62"
