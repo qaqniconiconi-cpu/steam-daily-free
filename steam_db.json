@@ -1541,7 +1541,7 @@
       "original_price": "",
       "title_url": "https://store.steampowered.com/app/4742660/DragonSword__Awakening__Familiar__Abyssal_Direwolf/",
       "button_url": "",
-      "sort_order": "20",
+      "sort_order": "30",
       "type": "100_off",
       "_is_forced": true
     }
@@ -1559,7 +1559,7 @@
       "original_price": "",
       "title_url": "https://store.steampowered.com/app/1386890/Hyper_Dash/",
       "button_url": "",
-      "sort_order": "30",
+      "sort_order": "40",
       "type": "100_off",
       "_is_forced": true
     }
@@ -1593,14 +1593,14 @@
       "zh_title": "Moonlighter",
       "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/606150/8928bd4aa73d49a92099b07a85c21ad2d0141d58/header_alt_assets_8.jpg?t=1785952913",
       "short_description": "《夜勤人》(Moonlighter) 是一款采用大量类 rogue 元素的动作角色扮演游戏，展现了威尔的日常生活",
-      "end_date": "2026-08-09T17:00:00Z",
+      "end_date": "限免进行中",
       "platform": "Steam",
       "original_price": "¥ 70.00",
       "title_url": "",
       "button_url": "",
-      "sort_order": "",
+      "sort_order": "20",
       "type": "100_off",
-      "_is_forced": false
+      "_is_forced": true
     }
   },
   "943170": {
