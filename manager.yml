@@ -1,6 +1,6 @@
 add:
   - link: "https://store.epicgames.com/p/project-first-contact-ff7fdc"
-    name: "新增游戏"
+    name: "Project First Contact"
     type: "100_off"
     platform: "epic"
     sort_order: 30
