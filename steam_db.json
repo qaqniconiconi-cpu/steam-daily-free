@@ -1595,7 +1595,7 @@
       "short_description": "《夜勤人》(Moonlighter) 是一款采用大量类 rogue 元素的动作角色扮演游戏，展现了威尔的日常生活",
       "end_date": "2026-08-10T02:00:00.000Z",
       "platform": "Steam",
-      "original_price": "¥ 70.00",
+      "original_price": "",
       "title_url": "",
       "button_url": "",
       "sort_order": "20",
@@ -1610,7 +1610,7 @@
     "status": "invalid"
   },
   "738520": {
-    "status": "valid",
+    "status": "expired",
     "type": "100_off",
     "details": {
       "steam_id": "738520",
