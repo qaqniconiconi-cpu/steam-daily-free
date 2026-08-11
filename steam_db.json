@@ -281,17 +281,20 @@
   },
   "3472040": {
     "status": "valid",
-    "type": "weekend",
+    "type": "freeplay",
     "details": {
       "steam_id": "3472040",
       "zh_title": "NBA 2K26",
-      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3472040/bcb5cbbcf26ab63fbcd228a6c62618828f6a7fda/header_alt_assets_4.jpg?t=1775257702",
-      "short_description": "辉煌生涯、梦幻球队、篮球联盟、女篮生涯和快速比赛，荣耀之争一触即发！借助由ProPLAY™提供支持的超真实技术动作施展全能攻势，在《NBA 2K26》所有竞技模式中挑战好友或劲敌，巅峰无悔，圣冠加冕",
-      "is_100_off": false,
-      "is_weekend": true,
-      "end_date": "N/A",
-      "type": "weekend",
-      "_is_forced": false
+      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3472040/f7e126add75c3b09779b44cd349be93d31b0a80b/header.jpg?t=1786115051",
+      "short_description": "免费畅玩 非入库",
+      "end_date": "2026-08-15T04:00:00.000Z",
+      "platform": "Steam",
+      "original_price": "",
+      "title_url": "https://store.steampowered.com/app/3472040/NBA_2K26/",
+      "button_url": "",
+      "sort_order": "20",
+      "type": "freeplay",
+      "_is_forced": true
     }
   },
   "753640": {
