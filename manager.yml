@@ -20,6 +20,7 @@ add:
     name: "NBA 2K26"
     type: "freeplay"
     platform: "steam"
+    sort_order: 20
     desc: "免费畅玩 非入库"
     end_date: "2026-08-15T04:00:00.000Z"
     original_price: "$69.99"
@@ -28,6 +29,7 @@ add:
     name: "steam 免费头像、贴纸"
     type: "100_off"
     platform: "steam"
+    sort_order: 10
     desc: "回答任意问题即可获得奖励"
     end_date: "2026-08-18T15:59:00.000Z"
     thumbnail: "https://img.et-cdn.com/game/9aa3061254d74a64af3884f448048658.png"
