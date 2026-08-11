@@ -1,4 +1,21 @@
 add:
+  - link: "https://store.epicgames.com/p/happiness-market-0572e2"
+    name: "幸福市场"
+    type: "100_off"
+    platform: "epic"
+    desc: "一款简单的模拟经营类游戏。建造不同的店铺从路过的客人那里赚取金钱。\n"
+    end_date: "2026-08-14T16:00:00.000Z"
+    original_price: "￥3"
+    thumbnail: "https://cdn1.epicgames.com/spt-assets/e38d12968a0d4039bda7fed79f94cb52/happiness-market-video-1bnlb.png"
+  - link: "https://store.epicgames.com/p/cat-named-mojave-7e06ad"
+    name: "莫哈维之猫"
+    type: "100_off"
+    platform: "epic"
+    sort_order: 20
+    desc: "超现实恐怖游戏"
+    end_date: "2026-08-15T03:00:00.000Z"
+    original_price: "￥31"
+    thumbnail: "https://cdn1.epicgames.com/spt-assets/4f6bd74f8583461e8718829cb279c90d/cat-named-mojave-video-mjwkx.png?resize=1&w=480&h=270&quality=medium"
   - link: "https://store.steampowered.com/app/3472040/NBA_2K26/"
     name: "NBA 2K26"
     type: "freeplay"
@@ -20,7 +37,7 @@ add:
     name: "蜘蛛狐"
     type: "100_off"
     platform: "epic"
-    sort_order: 10
+    sort_order: 40
     desc: "你扮演一只蜘蛛狐狸，现在必须拯救动物并阻止疯狂的科学家"
     end_date: "2026-08-13T15:00:00.000Z"
     original_price: "￥25"
@@ -29,7 +46,7 @@ add:
     name: "漫漫长路：沙巫之旅"
     type: "upcoming"
     platform: "epic"
-    sort_order: 50
+    sort_order: 60
     desc: "穿梭于辽阔的风景之间，沉醉在扣人心弦的探险之中"
     end_date: "2026-08-12T16:00:00.000Z"
     original_price: "￥90"
@@ -38,7 +55,7 @@ add:
     name: "第一类接触计划"
     type: "100_off"
     platform: "epic"
-    sort_order: 40
+    sort_order: 50
     desc: "击败邪恶外星人"
     end_date: "2026-08-17T22:00:00.000Z"
     original_price: "￥9"
@@ -63,7 +80,7 @@ add:
     name: "我们一起在这里"
     type: "100_off"
     platform: "epic"
-    sort_order: 20
+    sort_order: 10
     desc: "极地合作生存"
     end_date: "2026-08-13T15:00:00.000Z"
     original_price: "￥40"
