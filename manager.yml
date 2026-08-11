@@ -1,4 +1,13 @@
 add:
+  - link: "https://store.ubisoft.com/cn/%E3%80%8A%E5%B9%BD%E7%81%B5%E8%A1%8C%E5%8A%A8%EF%BC%9A%E6%9C%AA%E6%9D%A5%E6%88%98%E5%A3%AB%E3%80%8B/57ebc2a74e0165ef268b4568.html?"
+    name: "育碧 幽灵行动4：未来战士"
+    type: "100_off"
+    platform: "steam"
+    sort_order: 30
+    desc: "育碧喜加一：《幽灵行动4：未来战士》"
+    end_date: "2026-08-13T08:00:00.000Z"
+    original_price: "￥68"
+    thumbnail: "https://store.ubisoft.com/dw/image/v2/ABBS_PRD/on/demandware.static/-/Sites-masterCatalog/default/dw8990f22b/images/pdpbanner/57ebc15fef3aa57d1f8b4567.jpg?sw=768&sfrm=jpg"
   - link: "https://store.epicgames.com/p/happiness-market-0572e2"
     name: "幸福市场"
     type: "100_off"
@@ -66,7 +75,7 @@ add:
     name: "龙剑：觉醒 DLC"
     type: "100_off"
     platform: "steam"
-    sort_order: 30
+    sort_order: 40
     desc: "DLC限免，新增使魔：深渊巨狼"
     end_date: "2026-08-30T16:00:00.000Z"
     thumbnail: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4742660/08f8d343eb3988e1f0fd8c4d2a60a32ff229aa26/header.jpg?t=1784776428"
@@ -74,7 +83,7 @@ add:
     name: "Hyper Dash"
     type: "100_off"
     platform: "steam"
-    sort_order: 40
+    sort_order: 50
     desc: "VR多人射击，该游戏即将下线"
     end_date: "2026-10-31T16:00:00.000Z"
     thumbnail: "https://clan.akamai.steamstatic.com/images//39374358/e0c7d74a0b1c2ca80ee10df7feb0eb3e70963862.png"
