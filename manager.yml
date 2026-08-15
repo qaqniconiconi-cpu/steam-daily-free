@@ -55,11 +55,11 @@ add:
     thumbnail: "https://cdn1.epicgames.com/spt-assets/0aa9c79e62ef4ba1bcc01558e8f6a06c/spider-fox-logo-xnxtn.png?resize=1&w=480&h=270&quality=medium"
   - link: "https://store.epicgames.com/p/caravan-sandwitch-05ff58"
     name: "漫漫长路：沙巫之旅"
-    type: "upcoming"
+    type: "100_off"
     platform: "epic"
     sort_order: 60
     desc: "穿梭于辽阔的风景之间，沉醉在扣人心弦的探险之中"
-    end_date: "2026-08-12T16:00:00.000Z"
+    end_date: "2026-08-19T16:00:00.000Z"
     original_price: "￥90"
     thumbnail: "https://cdn1.epicgames.com/spt-assets/95b9a9a220e8483c8c1a70ad692de4b3/caravan-sandwitch-1t19m.png"
   - link: "https://store.epicgames.com/p/project-first-contact-ff7fdc"
