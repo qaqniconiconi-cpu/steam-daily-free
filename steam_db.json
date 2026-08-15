@@ -280,22 +280,7 @@
     "status": "invalid"
   },
   "3472040": {
-    "status": "valid",
-    "type": "freeplay",
-    "details": {
-      "steam_id": "3472040",
-      "zh_title": "NBA 2K26",
-      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3472040/f7e126add75c3b09779b44cd349be93d31b0a80b/header.jpg?t=1786115051",
-      "short_description": "免费畅玩 非入库",
-      "end_date": "2026-08-15T04:00:00.000Z",
-      "platform": "Steam",
-      "original_price": "",
-      "title_url": "https://store.steampowered.com/app/3472040/NBA_2K26/",
-      "button_url": "",
-      "sort_order": "20",
-      "type": "freeplay",
-      "_is_forced": true
-    }
+    "status": "invalid"
   },
   "753640": {
     "status": "valid",
@@ -1544,7 +1529,7 @@
       "original_price": "",
       "title_url": "https://store.steampowered.com/app/4742660/DragonSword__Awakening__Familiar__Abyssal_Direwolf/",
       "button_url": "",
-      "sort_order": "40",
+      "sort_order": "30",
       "type": "100_off",
       "_is_forced": true
     }
@@ -1562,7 +1547,7 @@
       "original_price": "",
       "title_url": "https://store.steampowered.com/app/1386890/Hyper_Dash/",
       "button_url": "",
-      "sort_order": "50",
+      "sort_order": "40",
       "type": "100_off",
       "_is_forced": true
     }
@@ -1641,14 +1626,35 @@
       "zh_title": "Deponia",
       "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/214340/header.jpg?t=1785262567",
       "short_description": "在德波尼亚，整个世界沦为一个巨大的垃圾场，住在那里的古怪男子鲁弗斯总是诸事不顺",
-      "end_date": "2026-08-20T17:00:00Z",
+      "end_date": "限免进行中",
       "platform": "Steam",
       "original_price": "¥ 59.00",
       "title_url": "",
       "button_url": "",
-      "sort_order": "",
+      "sort_order": "10",
       "type": "100_off",
-      "_is_forced": false
+      "_is_forced": true
+    }
+  },
+  "4914830": {
+    "status": "invalid"
+  },
+  "2019300": {
+    "status": "valid",
+    "type": "upcoming",
+    "details": {
+      "steam_id": "2019300",
+      "zh_title": "Dokimon: Quest",
+      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2019300/header.jpg?t=1785760235",
+      "short_description": "怪物养成游戏",
+      "end_date": "2026-08-24T16:00:00.000Z",
+      "platform": "Steam",
+      "original_price": "",
+      "title_url": "https://store.steampowered.com/app/2019300/Dokimon_Quest/",
+      "button_url": "",
+      "sort_order": "50",
+      "type": "upcoming",
+      "_is_forced": true
     }
   }
 }
