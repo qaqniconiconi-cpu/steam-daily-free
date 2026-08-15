@@ -1656,5 +1656,8 @@
       "type": "upcoming",
       "_is_forced": true
     }
+  },
+  "939200": {
+    "status": "invalid"
   }
 }
