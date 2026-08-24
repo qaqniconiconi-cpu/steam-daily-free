@@ -1640,7 +1640,7 @@
     "status": "invalid"
   },
   "2019300": {
-    "status": "valid",
+    "status": "expired",
     "type": "upcoming",
     "details": {
       "steam_id": "2019300",
@@ -1649,7 +1649,7 @@
       "short_description": "怪物养成游戏",
       "end_date": "2026-08-24T16:00:00.000Z",
       "platform": "Steam",
-      "original_price": "",
+      "original_price": "¥ 49.00",
       "title_url": "https://store.steampowered.com/app/2019300/Dokimon_Quest/",
       "button_url": "",
       "sort_order": "50",
