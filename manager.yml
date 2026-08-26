@@ -1,4 +1,12 @@
 add:
+  - link: "https://store.epicgames.com/p/bolmn-aa2906"
+    name: "Bolmn"
+    type: "100_off"
+    platform: "epic"
+    desc: "潦草马里奥"
+    end_date: "2026-08-26T23:01:00.000Z"
+    original_price: "￥3"
+    thumbnail: "https://cdn1.epicgames.com/spt-assets/c83afd5bf5d84031a9cfbe361319a06b/bolmn-logo-1fz1j.png?resize=1&w=480&h=270&quality=medium"
   - link: "https://store.steampowered.com/app/2019300/Dokimon_Quest/"
     name: "Dokimon: Quest"
     type: "upcoming"
@@ -11,7 +19,7 @@ add:
     name: "目标锁定 - 10天"
     type: "100_off"
     platform: "epic"
-    sort_order: 20
+    sort_order: 60
     desc: "在游戏中存活10天"
     end_date: "2026-08-31T15:00:00.000Z"
     thumbnail: "https://cdn1.epicgames.com/spt-assets/ad46171b003a4965b1eb3ef8b57dc688/targeted-logo-wxvps.png?resize=1&w=480&h=270&quality=medium"
@@ -19,7 +27,7 @@ add:
     name: "卡片末日"
     type: "100_off"
     platform: "epic"
-    sort_order: 50
+    sort_order: 20
     desc: "交朋友，玩卡牌，扭转规则，成为一只超级异形能量宠物的主人，在这个关于90年代的孩子的单人RPG游戏里拯救世界。"
     end_date: "2026-08-27T15:00:00.000Z"
     original_price: "￥84"
@@ -28,20 +36,11 @@ add:
     name: "漫漫长路：沙巫之旅"
     type: "100_off"
     platform: "epic"
-    sort_order: 10
+    sort_order: 50
     desc: "穿梭于辽阔的风景之间，沉醉在扣人心弦的探险之中"
     end_date: "2026-08-20T15:00:00.000Z"
     original_price: "￥90"
     thumbnail: "https://cdn1.epicgames.com/spt-assets/95b9a9a220e8483c8c1a70ad692de4b3/caravan-sandwitch-1t19m.png"
-  - link: "https://store.epicgames.com/p/project-first-contact-ff7fdc"
-    name: "第一类接触计划"
-    type: "100_off"
-    platform: "epic"
-    sort_order: 30
-    desc: "击败邪恶外星人"
-    end_date: "2026-08-17T22:00:00.000Z"
-    original_price: "￥9"
-    thumbnail: "https://cdn1.epicgames.com/spt-assets/35c9be112ee14d7bad20313621c9edc5/project-first-contact-logo-1qgy3.png?resize=1&w=480&h=270&quality=medium"
   - link: "https://store.steampowered.com/app/4742660/DragonSword__Awakening__Familiar__Abyssal_Direwolf/"
     name: "龙剑：觉醒 DLC"
     type: "100_off"
@@ -62,10 +61,20 @@ add:
     name: "阿尔比恩Online 史诗法师礼包"
     type: "upcoming"
     platform: "epic"
-    sort_order: 40
+    sort_order: 10
     desc: "仅EPIC独家，史诗法师礼包"
     end_date: "2026-08-28T15:00:00.000Z"
     thumbnail: "https://cdn1.epicgames.com/spt-assets/92837229023341268267ff64cae425a5/albion-online-logo-10nlh.png?resize=1&w=480&h=270&quality=medium"
+  - link: "p/breathedge"
+    name: "《Breathedge》"
+    type: "100_off"
+    platform: "epic"
+    sort_order: 30
+  - link: "p/rival-stars-horse-racing-dd09de"
+    name: "Rival Stars Horse Racing : Desktop Edition"
+    type: "100_off"
+    platform: "epic"
+    sort_order: 40
 disable:
   - "640700"
   - "3144950"
