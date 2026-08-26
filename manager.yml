@@ -59,11 +59,12 @@ add:
     end_date: "2026-10-31T16:00:00.000Z"
     thumbnail: "https://clan.akamai.steamstatic.com/images//39374358/e0c7d74a0b1c2ca80ee10df7feb0eb3e70963862.png"
   - link: "p/albion-online-7eb24d"
-    name: "史诗法师礼包"
+    name: "阿尔比恩Online 史诗法师礼包"
     type: "upcoming"
     platform: "epic"
     sort_order: 40
-    end_date: "2026-08-19T16:00:00.000Z"
+    desc: "仅EPIC独家，史诗法师礼包"
+    end_date: "2026-08-28T15:00:00.000Z"
 disable:
   - "640700"
   - "3144950"
