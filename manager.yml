@@ -20,8 +20,10 @@ add:
     type: "100_off"
     platform: "epic"
     sort_order: 50
+    desc: "交朋友，玩卡牌，扭转规则，成为一只超级异形能量宠物的主人，在这个关于90年代的孩子的单人RPG游戏里拯救世界。"
     end_date: "2026-08-27T15:00:00.000Z"
     original_price: "￥84"
+    thumbnail: "https://cdn1.epicgames.com/spt-assets/b2209fe4081f490794ae55680b556cfc/cardpocalypse-logo-1edjj.png?resize=1&w=480&h=270&quality=medium"
   - link: "https://store.epicgames.com/p/caravan-sandwitch-05ff58"
     name: "漫漫长路：沙巫之旅"
     type: "100_off"
