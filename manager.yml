@@ -72,11 +72,6 @@ add:
     platform: "epic"
     sort_order: 40
     end_date: "2026-08-19T16:00:00.000Z"
-  - link: "app/214340"
-    name: "Deponia"
-    type: "100_off"
-    platform: "steam"
-    sort_order: 10
 disable:
   - "640700"
   - "3144950"
@@ -99,3 +94,4 @@ disable:
   - "p/sol-cesto-e9b803"
   - "p/cat-named-mojave-7e06ad"
   - "app/3472040"
+  - "app/214340"
