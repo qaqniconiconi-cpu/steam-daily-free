@@ -20,7 +20,7 @@ add:
     name: "目标锁定 - 10天"
     type: "100_off"
     platform: "epic"
-    sort_order: 50
+    sort_order: 40
     desc: "在游戏中存活10天"
     end_date: "2026-08-31T15:00:00.000Z"
     thumbnail: "https://cdn1.epicgames.com/spt-assets/ad46171b003a4965b1eb3ef8b57dc688/targeted-logo-wxvps.png?resize=1&w=480&h=270&quality=medium"
@@ -61,7 +61,7 @@ add:
     name: "《Breathedge》"
     type: "100_off"
     platform: "epic"
-    sort_order: 40
+    sort_order: 50
   - link: "p/rival-stars-horse-racing-dd09de"
     name: "Rival Stars Horse Racing : Desktop Edition"
     type: "100_off"
