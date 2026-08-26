@@ -65,6 +65,7 @@ add:
     sort_order: 40
     desc: "仅EPIC独家，史诗法师礼包"
     end_date: "2026-08-28T15:00:00.000Z"
+    thumbnail: "https://cdn1.epicgames.com/spt-assets/92837229023341268267ff64cae425a5/albion-online-logo-10nlh.png?resize=1&w=480&h=270&quality=medium"
 disable:
   - "640700"
   - "3144950"
