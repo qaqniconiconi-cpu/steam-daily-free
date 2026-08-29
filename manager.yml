@@ -69,6 +69,7 @@ add:
     type: "100_off"
     platform: "epic"
     sort_order: 60
+    end_date: "2026-09-03T15:00:00.000Z"
 disable:
   - "640700"
   - "3144950"
