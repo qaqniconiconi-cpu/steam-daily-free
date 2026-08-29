@@ -1,13 +1,12 @@
 import os
 import re
 import xml.etree.ElementTree as ET
-from datetime import date, datetime, timezone, timedelta
+from datetime import date
 from pathlib import Path
 
 
 PAGE_URL = os.environ.get("PAGE_URL", "https://www.et001.com/gameguide/freegametest.html").strip()
 LASTMOD = os.environ.get("LASTMOD") or date.today().isoformat()
-UPDATED_AT = os.environ.get("UPDATED_AT") or f"{LASTMOD}T00:00:00+08:00"
 SITEMAP_NS = "http://www.sitemaps.org/schemas/sitemap/0.9"
 
 
@@ -108,7 +107,7 @@ def update_sitemap():
         'xmlns="https://www.sitemaps.org/schemas/sitemap/0.9"',
         'xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"',
     )
-    sitemap_path.write_text(text, encoding="utf-8")
+    sitemap_path.write_text(text, encoding="utf-8", newline="\n")
     print(f"Updated sitemap lastmod: {sitemap_path} -> {LASTMOD}")
 
 
@@ -121,26 +120,14 @@ def update_html_dates():
     text = html_path.read_text(encoding="utf-8")
     y, m, d = LASTMOD.split("-")
     zh_date = f"{int(y)} 年 {int(m)} 月 {int(d)} 日"
-    try:
-        updated = datetime.fromisoformat(UPDATED_AT.replace("Z", "+00:00"))
-        if updated.tzinfo is None:
-            updated = updated.replace(tzinfo=timezone(timedelta(hours=8)))
-        updated = updated.astimezone(timezone(timedelta(hours=8)))
-        iso_datetime = updated.isoformat(timespec="seconds")
-        page_label = f"{updated.year} 年 {updated.month} 月 {updated.day} 日 {updated:%H:%M}（北京时间）"
-    except ValueError:
-        iso_datetime = f"{LASTMOD}T00:00:00+08:00"
-        page_label = f"{zh_date} 00:00（北京时间）"
+    iso_datetime = f"{LASTMOD}T00:00:00+08:00"
 
     text = re.sub(r'("dateModified"\s*:\s*")[^"]+(")', rf"\g<1>{LASTMOD}\2", text)
     text = re.sub(r'(datetime=")[^"]+(")', rf"\g<1>{iso_datetime}\2", text)
     text = re.sub(r'(dateTime=")[^"]+(")', rf"\g<1>{iso_datetime}\2", text)
     text = re.sub(r"\d{4}\s*年\s*\d{1,2}\s*月\s*\d{1,2}\s*日", zh_date, text)
-    text = re.sub(r"const pageUpdatedIso = '[^']*';", f"const pageUpdatedIso = '{iso_datetime}';", text)
-    text = re.sub(r"const pageUpdatedLabel = '[^']*';", f"const pageUpdatedLabel = '{page_label}';", text)
-    text = re.sub(r">\d{4} 年 \d{1,2} 月 \d{1,2} 日 \d{1,2}:\d{2}（北京时间）<", f">{page_label}<", text)
 
-    html_path.write_text(text, encoding="utf-8")
+    html_path.write_text(text, encoding="utf-8", newline="\n")
     print(f"Updated HTML modified date: {html_path} -> {LASTMOD}")
 
 
