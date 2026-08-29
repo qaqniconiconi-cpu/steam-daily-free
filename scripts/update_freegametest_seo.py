@@ -108,7 +108,7 @@ def update_sitemap():
         'xmlns="https://www.sitemaps.org/schemas/sitemap/0.9"',
         'xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"',
     )
-    sitemap_path.write_text(text, encoding="utf-8", newline="\n")
+    sitemap_path.write_text(text, encoding="utf-8")
     print(f"Updated sitemap lastmod: {sitemap_path} -> {LASTMOD}")
 
 
@@ -127,7 +127,7 @@ def update_html_dates():
             updated = updated.replace(tzinfo=timezone(timedelta(hours=8)))
         updated = updated.astimezone(timezone(timedelta(hours=8)))
         iso_datetime = updated.isoformat(timespec="seconds")
-        page_label = updated.strftime("%Y 年 %-m 月 %-d 日 %H:%M（北京时间）")
+        page_label = f"{updated.year} 年 {updated.month} 月 {updated.day} 日 {updated:%H:%M}（北京时间）"
     except ValueError:
         iso_datetime = f"{LASTMOD}T00:00:00+08:00"
         page_label = f"{zh_date} 00:00（北京时间）"
@@ -140,7 +140,7 @@ def update_html_dates():
     text = re.sub(r"const pageUpdatedLabel = '[^']*';", f"const pageUpdatedLabel = '{page_label}';", text)
     text = re.sub(r">\d{4} 年 \d{1,2} 月 \d{1,2} 日 \d{1,2}:\d{2}（北京时间）<", f">{page_label}<", text)
 
-    html_path.write_text(text, encoding="utf-8", newline="\n")
+    html_path.write_text(text, encoding="utf-8")
     print(f"Updated HTML modified date: {html_path} -> {LASTMOD}")
 
 
