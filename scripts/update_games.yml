@@ -1151,15 +1151,6 @@ jobs:
           EOF
           python processor.py
 
-      - name: Update page timestamp
-        env:
-          LASTMOD: ${{ steps.etl.outputs.lastmod }}
-          UPDATED_AT: ${{ steps.etl.outputs.updated_at }}
-        run: |
-          export UPDATED_AT="$(TZ=Asia/Shanghai date --iso-8601=seconds)"
-          export LASTMOD="${UPDATED_AT:0:10}"
-          python scripts/update_freegametest_seo.py
-
       - name: Commit and Push DB
         run: |
           git config --global user.name 'GitHub Action'
