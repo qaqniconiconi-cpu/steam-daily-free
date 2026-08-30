@@ -1,4 +1,11 @@
 add:
+  - link: "https://store.epicgames.com/p/together-after-dark-fa0ce0?lang=en-US"
+    name: "暗夜同行"
+    type: "100_off"
+    platform: "epic"
+    desc: "1-4人合作恐怖游戏"
+    end_date: "2026-09-02T02:04:00.000Z"
+    original_price: "￥9"
   - link: "https://store.epicgames.com/p/targeted-10-days-75a48c"
     name: "目标锁定 - 10天"
     type: "100_off"
