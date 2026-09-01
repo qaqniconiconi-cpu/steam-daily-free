@@ -1517,7 +1517,7 @@
     }
   },
   "4742660": {
-    "status": "valid",
+    "status": "expired",
     "type": "100_off",
     "details": {
       "steam_id": "4742660",
@@ -1652,6 +1652,9 @@
     "status": "invalid"
   },
   "3683750": {
+    "status": "invalid"
+  },
+  "4849920": {
     "status": "invalid"
   }
 }
