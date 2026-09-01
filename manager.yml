@@ -5,6 +5,7 @@ add:
     platform: "epic"
     end_date: "2026-09-02T02:04:00.000Z"
     original_price: "￥9"
+    thumbnail: "https://cdn1.epicgames.com/spt-assets/42a9aa9f7d7f40d1a0c1aa5c69565757/together-after-dark-p3ld5.png?resize=1&w=480&h=270&quality=medium"
   - link: "https://store.steampowered.com/app/1386890/Hyper_Dash/"
     name: "Hyper Dash"
     type: "100_off"
