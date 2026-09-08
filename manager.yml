@@ -1,9 +1,10 @@
 add:
   - link: "https://store.steampowered.com/app/1880831/Hogwarts_Legacy_Astronomers_Hat/"
-    name: "Hogwarts Legacy: Astronomer’s Hat"
+    name: "霍格沃茨之遗：天文帽 DLC"
     type: "100_off"
     platform: "steam"
     desc: "This includes: Astronomer’s Hat"
+    end_date: "2026-09-11T16:00:00.000Z"
     thumbnail: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1880831/66768af3850aba12bec8a0e4f550879f4f964278/capsule_616x353.jpg?t=1788224693"
   - link: "https://store.steampowered.com/app/2618160/Legends_of_Starkadia/"
     name: "Legends of Starkadia"
