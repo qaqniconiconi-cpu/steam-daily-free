@@ -22,6 +22,7 @@ add:
     type: "100_off"
     platform: "steam"
     desc: "Lead empires that evolve or endure through the Ages. Build something you believe in with Sid Meier’s Civilization® VII."
+    end_date: "2026-09-09T16:00:00.000Z"
     original_price: "$69.99"
     thumbnail: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1295660/80a9d68ad78f0457f4ae9584ecd500b672dd7094/capsule_616x353_alt_assets_7.jpg?t=1788644205"
   - link: "https://store.steampowered.com/app/1880831/Hogwarts_Legacy_Astronomers_Hat/"
