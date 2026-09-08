@@ -3,6 +3,7 @@ add:
     name: "与你独处"
     type: "100_off"
     platform: "epic"
+    sort_order: 30
     desc: "Download and play Alone With You at the Epic Games Store. Check for platform availability and price!"
     end_date: "2026-09-10T15:00:00.000Z"
     original_price: "￥31"
@@ -11,7 +12,7 @@ add:
     name: "心境 | GOG.COM"
     type: "100_off"
     platform: "epic"
-    sort_order: 40
+    sort_order: 20
     desc: "GOG平台喜加一，当思维和机器成为一体时——人类还剩下什么？ 柏林，2048 年——世界濒临崩溃。资源匮乏，污染的空气和水引起疾病，犯罪率上升，战争。政府和公司承诺通过技术进步来进行补救。无人机和"
     end_date: "2026-09-09T16:00:00.000Z"
     thumbnail: "https://images.gog-statics.com/948360d0e110622fdbdab367732dc1a3004fd51bad991bada0e95a1f9acb8ccf.jpg"
@@ -51,21 +52,23 @@ add:
     name: "NoRush!"
     type: "100_off"
     platform: "epic"
-    sort_order: 30
+    sort_order: 10
     desc: "Download and play NoRush! at the Epic Games Store. Check for platform availability and price!"
     end_date: "2026-09-09T09:00:00.000Z"
     original_price: "￥8"
     thumbnail: "https://cdn1.epicgames.com/spt-assets/c9f21b13a96c43e98f29177035f4a5f5/norush-uvwzy.png"
   - link: "p/astral-ascent-b33bc2"
     name: "Astral Ascent"
-    type: "100_off"
+    type: "upcoming"
     platform: "epic"
-    sort_order: 10
+    sort_order: 50
+    end_date: "2026-09-09T16:00:00.000Z"
   - link: "p/luftrausers-51e5e9"
     name: "Luftrausers"
-    type: "100_off"
+    type: "upcoming"
     platform: "epic"
-    sort_order: 20
+    sort_order: 40
+    end_date: "2026-09-09T16:00:00.000Z"
 disable:
   - "640700"
   - "3144950"
