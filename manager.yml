@@ -1,4 +1,12 @@
 add:
+  - link: "https://store.epicgames.com/p/vanakan-0ec386"
+    name: "Vanakan | Download and Buy Today - Epic Games Store"
+    type: "100_off"
+    platform: "epic"
+    desc: "文字冒险游戏"
+    end_date: "2026-09-28T18:00:00.000Z"
+    original_price: "￥15"
+    thumbnail: "https://cdn1.epicgames.com/spt-assets/5dc62172189a49bc8939814dc8bc0f2b/vanakan-kb7xl.png"
   - link: "https://store.epicgames.com/p/astral-ascent-b33bc2"
     name: "星界战士"
     type: "100_off"
