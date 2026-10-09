@@ -1550,7 +1550,7 @@
       "original_price": "",
       "title_url": "https://store.steampowered.com/app/1386890/Hyper_Dash/",
       "button_url": "",
-      "sort_order": "40",
+      "sort_order": "20",
       "type": "100_off",
       "_is_forced": true
     }
@@ -1780,16 +1780,16 @@
     "details": {
       "steam_id": "5257350",
       "zh_title": "Hex Reverse",
-      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/5257350/0378ca94843620240eda1ad571c6b7d6bb0b0527/header.jpg?t=1791363746",
-      "short_description": "A roguelike deckbuilding card game played on a hexagonal battlefield. Place cards, compare the values on adjacent edges, and flip enemy cards to your side. Build your deck as you progress through each run and adapt your strategy to ever-changing battles.",
-      "end_date": "限免进行中",
+      "thumbnail": "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/5257350/50f8eaeb33ec068e66106662c748be1e06df0434/capsule_616x353.jpg?t=1791363746",
+      "short_description": "在六边形战场上进行的Roguelike卡牌构筑游戏，即将转付费",
+      "end_date": "2026-11-07T15:00:00.000Z",
       "platform": "Steam",
       "original_price": "",
       "title_url": "",
       "button_url": "",
-      "sort_order": "",
+      "sort_order": "30",
       "type": "to_paid",
-      "_is_forced": false
+      "_is_forced": true
     }
   },
   "2017940": {
