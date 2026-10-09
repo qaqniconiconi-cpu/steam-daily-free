@@ -3,8 +3,9 @@ add:
     name: "Hex Reverse"
     type: "to_paid"
     platform: "steam"
+    sort_order: 30
     desc: "在六边形战场上进行的Roguelike卡牌构筑游戏，即将转付费"
-    end_date: "2026-11-06T16:00:00.000Z"
+    end_date: "2026-11-07T15:00:00.000Z"
     thumbnail: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/5257350/50f8eaeb33ec068e66106662c748be1e06df0434/capsule_616x353.jpg?t=1791363746"
   - link: "https://store.epicgames.com/p/vanakan-0ec386"
     name: "Vanakan | Download and Buy Today - Epic Games Store"
@@ -18,7 +19,7 @@ add:
     name: "Hyper Dash"
     type: "100_off"
     platform: "steam"
-    sort_order: 40
+    sort_order: 20
     desc: "VR多人射击，该游戏即将下线"
     end_date: "2026-10-31T16:00:00.000Z"
     thumbnail: "https://clan.akamai.steamstatic.com/images//39374358/e0c7d74a0b1c2ca80ee10df7feb0eb3e70963862.png"
@@ -45,3 +46,6 @@ disable:
   - "p/cat-named-mojave-7e06ad"
   - "app/3472040"
   - "app/214340"
+sort:
+  - link: "app/405640"
+    sort_order: 10
