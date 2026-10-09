@@ -433,7 +433,7 @@ jobs:
 
                       if res.status_code != 200 or 'data-ds-appid' not in res.text:
                           try:
-                              res = requests.get(f"https://api.allorigins.win/raw?url={urllib.parse.quote(search_url)}", headers=HEADERS, timeout=15)
+                              res = requests.get("https://api.allorigins.win/raw", params={"url": search_url}, headers=HEADERS, timeout=15)
                           except Exception as e:
                               print(f"⚠️ Steam specials proxy failed source={source_label} start={start}: {repr(e)}")
                               continue
@@ -447,7 +447,7 @@ jobs:
                               raw_html = res.text if '<a' in res.text and 'search_result_row' in res.text else ''
                           if not raw_html:
                               continue
-                          blocks = re.findall(r'<a[^>]*?search_result_row.*?</a>', raw_html, re.DOTALL)
+                          blocks = re.findall(r'<a\b[^>]*class="[^"]*\bsearch_result_row\b[^"]*"[^>]*>.*?</a>', raw_html, re.DOTALL | re.IGNORECASE)
 
                           for b in blocks:
                               try:
@@ -464,10 +464,10 @@ jobs:
                                   img_m = re.search(r'<div class="search_capsule">.*?src="([^"]+)"', b, re.DOTALL)
                                   img = img_m.group(1).split('?')[0] if img_m else f"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{app_id}/header.jpg"
 
-                                  m_pct = re.search(r'<div class="discount_pct">[^0-9]*-(\d+)%[^<]*</div>', b)
+                                  m_pct = re.search(r'<div[^>]*class="[^"]*\bdiscount_pct\b[^"]*"[^>]*>\s*-(\d+)%', b)
                                   discount = int(m_pct.group(1)) if m_pct else 0
-                                  m_orig = re.search(r'<div class="discount_original_price">[^0-9]*([\d\.,]+)', b)
-                                  m_final = re.search(r'<div class="discount_final_price">[^0-9]*([\d\.,]+)', b)
+                                  m_orig = re.search(r'<div[^>]*class="[^"]*\bdiscount_original_price\b[^"]*"[^>]*>[^0-9]*([\d\.,]+)', b)
+                                  m_final = re.search(r'<div[^>]*class="[^"]*\bdiscount_final_price\b[^"]*"[^>]*>[^0-9]*([\d\.,]+)', b)
 
                                   # 2. 评价信息提取
                                   review_tier, review_percent, review_count = "", 0, 0
@@ -511,6 +511,34 @@ jobs:
                                       })
                                       seen_ids.add(app_id)
                               except: continue
+
+                  if not deals_list:
+                      print("⚠️ Steam 搜索结果无有效折扣，尝试官方特惠接口")
+                      try:
+                          featured = requests.get(
+                              "https://store.steampowered.com/api/featuredcategories/",
+                              params={"cc": "cn", "l": "schinese"}, headers=HEADERS,
+                              cookies=COOKIES, timeout=15
+                          )
+                          featured.raise_for_status()
+                          for item in featured.json().get("specials", {}).get("items", []):
+                              app_id = item.get("id")
+                              discount = int(item.get("discount_percent") or 0)
+                              original = int(item.get("original_price") or 0)
+                              final = int(item.get("final_price") or 0)
+                              if not app_id or discount <= 0 or original <= final or str(app_id) in seen_ids:
+                                  continue
+                              deals_list.append({
+                                  "id": str(app_id), "name": item.get("name") or str(app_id),
+                                  "img": item.get("large_capsule_image") or item.get("header_image") or f"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{app_id}/header.jpg",
+                                  "discount": discount, "originalPrice": f"{original / 100:.2f}",
+                                  "finalPrice": f"{final / 100:.2f}", "reviewPercent": 0,
+                                  "reviewTier": "", "reviewCount": 0, "globalRank": len(deals_list) + 1,
+                                  "releaseDate": "", "tags": [], "peakOnline": "-"
+                              })
+                              seen_ids.add(str(app_id))
+                      except Exception as e:
+                          print(f"⚠️ Steam 官方特惠接口失败: {repr(e)}")
 
                   # 💡 核心洗牌算法：无视 Steam 官方的实时排名，强制按“历史总评价数”降序！
                   # 这样十万、百万评价的传世神作只要打折，必定霸榜
@@ -1096,6 +1124,8 @@ jobs:
 
               # F. 获取史低特惠数据
               steam_deals = fetch_steam_deals()
+              if not steam_deals:
+                  raise RuntimeError("Steam 特惠抓取结果为空，停止上传以保留线上 deals.json")
 
               try:
                   seo_old_games = normalize_api_payload(fetch_old_data("games.json"))
