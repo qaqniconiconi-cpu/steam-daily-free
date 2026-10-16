@@ -1550,7 +1550,7 @@
       "original_price": "",
       "title_url": "https://store.steampowered.com/app/1386890/Hyper_Dash/",
       "button_url": "",
-      "sort_order": "20",
+      "sort_order": "10",
       "type": "100_off",
       "_is_forced": true
     }
@@ -1787,7 +1787,7 @@
       "original_price": "",
       "title_url": "",
       "button_url": "",
-      "sort_order": "30",
+      "sort_order": "20",
       "type": "to_paid",
       "_is_forced": true
     }
@@ -1832,6 +1832,24 @@
       "sort_order": "",
       "type": "100_off",
       "_is_forced": false
+    }
+  },
+  "3943750": {
+    "status": "valid",
+    "type": "100_off",
+    "details": {
+      "steam_id": "3943750",
+      "zh_title": "Fly Over! 100KM! Mountains!",
+      "thumbnail": "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/3943750/ad785509dac2ce8225b35cb66ca71dea6d63c0b9/capsule_616x353.jpg?t=1785578816",
+      "short_description": "即将转付费",
+      "end_date": "2026-11-16T15:59:00.000Z",
+      "platform": "Steam",
+      "original_price": "",
+      "title_url": "https://store.steampowered.com/app/3943750/Fly_Over_100KM_Mountains/",
+      "button_url": "",
+      "sort_order": "30",
+      "type": "100_off",
+      "_is_forced": true
     }
   }
 }
