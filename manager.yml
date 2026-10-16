@@ -1,25 +1,25 @@
 add:
+  - link: "https://store.steampowered.com/app/3943750/Fly_Over_100KM_Mountains/"
+    name: "Fly Over! 100KM! Mountains!"
+    type: "100_off"
+    platform: "steam"
+    sort_order: 30
+    desc: "即将转付费"
+    end_date: "2026-11-16T15:59:00.000Z"
+    thumbnail: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/3943750/ad785509dac2ce8225b35cb66ca71dea6d63c0b9/capsule_616x353.jpg?t=1785578816"
   - link: "app/5257350"
     name: "Hex Reverse"
     type: "to_paid"
     platform: "steam"
-    sort_order: 30
+    sort_order: 20
     desc: "在六边形战场上进行的Roguelike卡牌构筑游戏，即将转付费"
     end_date: "2026-11-07T15:00:00.000Z"
     thumbnail: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/5257350/50f8eaeb33ec068e66106662c748be1e06df0434/capsule_616x353.jpg?t=1791363746"
-  - link: "https://store.epicgames.com/p/vanakan-0ec386"
-    name: "Vanakan | Download and Buy Today - Epic Games Store"
-    type: "100_off"
-    platform: "epic"
-    desc: "文字冒险游戏"
-    end_date: "2026-09-28T18:00:00.000Z"
-    original_price: "￥15"
-    thumbnail: "https://cdn1.epicgames.com/spt-assets/5dc62172189a49bc8939814dc8bc0f2b/vanakan-kb7xl.png"
   - link: "https://store.steampowered.com/app/1386890/Hyper_Dash/"
     name: "Hyper Dash"
     type: "100_off"
     platform: "steam"
-    sort_order: 20
+    sort_order: 10
     desc: "VR多人射击，该游戏即将下线"
     end_date: "2026-10-31T16:00:00.000Z"
     thumbnail: "https://clan.akamai.steamstatic.com/images//39374358/e0c7d74a0b1c2ca80ee10df7feb0eb3e70963862.png"
