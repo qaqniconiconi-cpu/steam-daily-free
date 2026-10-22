@@ -3,6 +3,7 @@ add:
     name: "GetHigh.EXE"
     type: "100_off"
     platform: "epic"
+    sort_order: 40
     desc: "Get high in this familiar parkour game where you run and jump through an obstacle course to reach the top — now a little bit more extreme. Enjoy simple, arcade-style gameplay with precise movement and challenging jumps."
     end_date: "2026-11-02T16:00:00.000Z"
     original_price: "￥6"
@@ -11,6 +12,7 @@ add:
     name: "Terraspace"
     type: "100_off"
     platform: "epic"
+    sort_order: 30
     desc: "Strategy and survival where you have to go on an exciting journey through the galaxy and build a spaceship that will help you move to another planet. But this is not just a construction game — it’s a whole universe where you can show your skills as a strategist and engineer."
     end_date: "2026-10-27T20:00:00.000Z"
     original_price: "￥22"
@@ -65,3 +67,11 @@ disable:
 sort:
   - link: "app/405640"
     sort_order: 10
+  - link: "p/agent-a-a-puzzle-in-disguise-42fe5f"
+    sort_order: 10
+  - link: "p/bad-cheese-4256d9"
+    sort_order: 20
+  - link: "p/home-19212a"
+    sort_order: 50
+  - link: "p/sker-ritual-aac702"
+    sort_order: 60
