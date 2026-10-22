@@ -71,7 +71,7 @@ sort:
     sort_order: 10
   - link: "p/bad-cheese-4256d9"
     sort_order: 20
-  - link: "p/home-19212a"
-    sort_order: 50
   - link: "p/sker-ritual-aac702"
-    sort_order: 60
+    sort_order: "90"
+  - link: "p/home-19212a"
+    sort_order: "80"
