@@ -704,7 +704,7 @@
       if (!link && merged.steam_id) link = 'app/' + merged.steam_id;
       if (!link && merged.epic_slug) link = 'p/' + merged.epic_slug;
       var preserved = {};
-      ['desc', 'thumbnail', 'original_price', 'end_date', 'title_url', 'button_url', 'sort_order'].forEach(function (key) {
+      ['desc', 'thumbnail', 'original_price', 'start_date', 'end_date', 'title_url', 'button_url', 'sort_order'].forEach(function (key) {
         if (merged[key] !== undefined && merged[key] !== '') preserved[key] = merged[key];
       });
       return Object.assign({
@@ -826,6 +826,7 @@
             original_price: l.original_price || l.originalPrice || '',
             type: l._liveType || '100_off',
             end_date: l.end_date || l.endDate || '',
+            start_date: l.start_date || '',
             is_upcoming: l.is_upcoming || false,
             _source: 'live',
             _isLive: true
@@ -1063,6 +1064,25 @@
       }
     }
 
+    function handleAutomaticSort() {
+      if (state.isLoading) return;
+      var lists = computeLists();
+      var ordered = Publisher.automaticOrder(lists.freeEpicList.concat(lists.freeSteamList));
+      var ranks = new Map();
+      ordered.forEach(function (item, index) { ranks.set(Publisher.identity(item), (index + 1) * 10); });
+      state.yamlData.sort = state.yamlData.sort.filter(function (rule) { return !ranks.has(Publisher.identity(rule)); });
+      state.yamlData.add = state.yamlData.add.map(function (rule) {
+        var key = Publisher.identity(rule);
+        return ranks.has(key) ? Object.assign({}, rule, { sort_order: ranks.get(key) }) : rule;
+      });
+      ordered.forEach(function (item) {
+        var rank = ranks.get(Publisher.identity(item));
+        if (item._source === 'live') setLiveSortOrder(item, rank);
+        if (state.selectedId === item._uuid) state.editForm = Object.assign({}, state.editForm, { sort_order: rank });
+      });
+      showMsg('已按截止时间排序，即将到来放最后；点击保存并发布后生效', 10000);
+    }
+
     function clearDropIndicators() {
       root.querySelectorAll('.drop-before, .drop-after').forEach(function (item) { item.classList.remove('drop-before', 'drop-after'); });
       root.querySelectorAll('.drop-column-active').forEach(function (item) { item.classList.remove('drop-column-active'); });
@@ -1145,6 +1165,7 @@
         '<div><h1>外星仔 · 游戏管理后台</h1><div class="brand-sub"><span>当前连接: ' + escapeHtml(state.config.owner) + '/' + escapeHtml(state.config.repo) + '</span><button id="switch-config" class="link-btn" type="button">切换</button></div></div></div>' +
         '<div class="top-actions">' +
         themeToggleTemplate() +
+        '<button id="auto-sort" class="btn-muted" type="button" ' + (state.isLoading ? 'disabled' : '') + '>自动排序</button>' +
         '<button id="refresh-data" class="btn-muted" type="button" ' + (state.isLoading ? 'disabled' : '') + '>刷新数据</button>' +
         '<button id="save-github" class="btn-primary" type="button" ' + (state.isLoading ? 'disabled' : '') + '>' + (state.isLoading ? '同步中...' : (state.pendingPublish ? '重试发布' : '保存并发布')) + '</button>' +
         '</div></div>';
@@ -1282,6 +1303,9 @@
 
       var refreshData = document.getElementById('refresh-data');
       if (refreshData) refreshData.addEventListener('click', fetchData);
+
+      var autoSortButton = document.getElementById('auto-sort');
+      if (autoSortButton) autoSortButton.addEventListener('click', handleAutomaticSort);
 
       var saveButton = document.getElementById('save-github');
       if (saveButton) saveButton.addEventListener('click', saveToGithub);

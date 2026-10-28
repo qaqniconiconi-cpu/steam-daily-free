@@ -95,6 +95,21 @@
     });
   }
 
+  function automaticOrder(items) {
+    function date(value) {
+      var parsed = Date.parse(value || '');
+      return Number.isFinite(parsed) ? parsed : Infinity;
+    }
+    return items.map(function (item, index) { return { item: item, index: index }; }).sort(function (a, b) {
+      var au = Boolean(a.item.is_upcoming || a.item.type === 'upcoming');
+      var bu = Boolean(b.item.is_upcoming || b.item.type === 'upcoming');
+      if (au !== bu) return au ? 1 : -1;
+      var ad = date((au && a.item.start_date) || a.item.end_date || a.item.endDate);
+      var bd = date((bu && b.item.start_date) || b.item.end_date || b.item.endDate);
+      return ad === bd ? a.index - b.index : (ad < bd ? -1 : 1);
+    }).map(function (entry) { return entry.item; });
+  }
+
   function applyManager(live, manager, previousManager, now) {
     validateLive(live);
     now = now == null ? Date.now() : now;
@@ -175,5 +190,5 @@
     }
   }
 
-  global.EtAdminPublish = { identity: identity, blocked: blocked, stable: stable, applyManager: applyManager, publish: publish };
+  global.EtAdminPublish = { identity: identity, blocked: blocked, stable: stable, automaticOrder: automaticOrder, applyManager: applyManager, publish: publish };
 })(typeof window === 'undefined' ? globalThis : window);

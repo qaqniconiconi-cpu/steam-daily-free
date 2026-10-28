@@ -13,6 +13,28 @@ const live = () => ({
   'deals.json': [{ id: '99', name: 'Deal', screenshots: ['one', 'two'], reviewPercent: 90 }],
 });
 
+test('automatic order prioritizes deadlines and always puts upcoming games last', () => {
+  const items = [
+    { name: 'Upcoming', type: 'upcoming', end_date: '2026-10-29T15:00:00Z', sort_order: 1 },
+    { name: 'No deadline', end_date: '限免进行中' },
+    { name: 'Later', end_date: '2026-11-02T16:00:00Z', sort_order: 2 },
+    { name: 'Soon', end_date: '2026-10-30T23:00:00+08:00', sort_order: 999 },
+    { name: 'Same deadline', end_date: '2026-10-30T15:00:00Z' },
+  ];
+  assert.deepEqual(core.automaticOrder(items).map(item => item.name), ['Soon', 'Same deadline', 'Later', 'No deadline', 'Upcoming']);
+  assert.equal(items[0].name, 'Upcoming');
+});
+
+test('automatic order handles flags and malformed or missing dates consistently', () => {
+  const items = [
+    { name: 'Upcoming late', is_upcoming: true, start_date: '2026-11-10T00:00:00Z' },
+    { name: 'Unknown one', end_date: 'bad date' },
+    { name: 'Upcoming soon', type: 'upcoming', start_date: '2026-11-01T00:00:00Z' },
+    { name: 'Unknown two' },
+  ];
+  assert.deepEqual(core.automaticOrder(items).map(item => item.name), ['Unknown one', 'Unknown two', 'Upcoming soon', 'Upcoming late']);
+});
+
 test('editing a title preserves untouched fields and other games', () => {
   const input = live();
   const result = core.applyManager(input, manager([{ link: 'https://store.steampowered.com/app/123/Name', name: 'New name' }]), manager(), now);

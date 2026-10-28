@@ -1109,7 +1109,7 @@ jobs:
                       except Exception:
                           order = 999999
                       upcoming = 1 if item.get('is_upcoming') or item.get('type') == 'upcoming' else 0
-                      return (order, upcoming, str(item.get('zh_title') or item.get('name') or ''))
+                      return (upcoming, order, str(item.get('zh_title') or item.get('name') or ''))
                   return sorted(items, key=key)
 
               final_games = sort_output_items(final_games)
