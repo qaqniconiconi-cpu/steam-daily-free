@@ -1550,7 +1550,7 @@
       "original_price": "",
       "title_url": "https://store.steampowered.com/app/1386890/Hyper_Dash/",
       "button_url": "",
-      "sort_order": "10",
+      "sort_order": "30",
       "type": "100_off",
       "_is_forced": true
     }
@@ -1787,7 +1787,7 @@
       "original_price": "",
       "title_url": "",
       "button_url": "",
-      "sort_order": "20",
+      "sort_order": "60",
       "type": "to_paid",
       "_is_forced": true
     }
@@ -1847,7 +1847,7 @@
       "original_price": "",
       "title_url": "https://store.steampowered.com/app/3943750/Fly_Over_100KM_Mountains/",
       "button_url": "",
-      "sort_order": "30",
+      "sort_order": "70",
       "type": "100_off",
       "_is_forced": true
     }
