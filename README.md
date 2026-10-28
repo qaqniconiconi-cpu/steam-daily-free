@@ -31,3 +31,14 @@ python scripts/build_admin.py /tmp/freegamestaffonly_ordered_fixed.html
 新版不包含默认 GitHub Token，使用管理页连接配置中输入并保存在浏览器的信息。线上写入沿用现有 `POST /v1/update/steam-daily-free` 接口；浏览器需要后端允许管理页来源、POST 及 `Content-Type`、`filename` 请求头。当前执行环境无法连接该接口，真实跨域写入须在部署环境核验。配置先写 GitHub，线上失败不会回滚 GitHub；页面可重试发布。
 
 发布规则测试：`node tests/test_admin_publish.cjs`。这些测试使用模拟接口，不修改生产数据。
+
+## 用户展示页
+
+- `gameguide/freegametest.html`：默认打开“喜加一免费领”。
+- `gameguide/steamdeals.html`：默认打开“Steam 折扣史低”。
+
+两个入口都保留栏目切换，左上角标题随当前栏目显示“游戏情报站 - 喜加一”或“游戏情报站 - Steam折扣”。点击左上角返回该入口的默认栏目。手机端也显示栏目标题。
+
+两份 HTML 可以分别部署或直接替换线上文件，均使用现有数据接口。折扣入口包含独立的页面标题、分享信息和 canonical URL；不需要新增采集任务。
+
+公共样式及交互在 `freegametest.html` 中维护，修改后运行 `python scripts/build_steam_deals.py`，同步生成折扣入口，再将两份 HTML 一起部署。

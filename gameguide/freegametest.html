@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-default-tab="free">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -104,7 +104,7 @@
                                 "Steam免费游戏领取",
                                 "Steam免费试玩周",
                                 "Epic限免游戏",
-                                "Steam史低特惠",
+                                "Steam折扣史低",
                                 "Steam折扣",
                                 "Steam夏促",
                                 "Steam冬促",
@@ -164,7 +164,7 @@
                                 },
                                 {
                                         "@type": "Question",
-                                        "name": "Steam 史低特惠适合什么时候入手？",
+                                        "name": "Steam 折扣史低适合什么时候入手？",
                                         "acceptedAnswer": {
                                                 "@type": "Answer",
                                                 "text": "史低特惠表示当前折扣接近或达到历史低价，适合结合好评率、中文支持、游戏类型、发售时间和个人需求判断是否入手。大型促销期间也建议对比史低记录，不要只看折扣百分比。"
@@ -588,7 +588,7 @@
 <div id="page-loading" class="page-loading" role="status" aria-live="polite" aria-label="正在加载页面">
     <div class="page-loading-inner">
         <svg class="page-loading-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25 19" fill="none" aria-hidden="true"><path fill-rule="evenodd" clip-rule="evenodd" d="M8.66995 10.8369H11.3507L10.0183 16.3609C9.88328 16.9207 10.5285 17.2979 10.8765 16.8626L18.0352 7.90954C18.3185 7.55536 18.0894 6.99979 17.6599 6.99979H14.7401L15.9925 3.85609L23.5304 0.5L23.538 0.517038C26.4309 7.0148 23.5087 14.6275 17.011 17.5205C10.5132 20.4135 2.90056 17.4912 0.00757638 10.9935L0 10.9764L9.24984 6.85812L8.20307 10.0936C8.07852 10.4524 8.31995 10.8369 8.66995 10.8369Z" fill="currentColor"/></svg>
-        <p class="page-loading-name">外星仔游戏情报站</p>
+        <p class="page-loading-name">外星仔游戏情报站 - 喜加一</p>
         <p class="page-loading-status">正在获取今日游戏情报</p>
         <div class="page-loading-track" aria-hidden="true"><span class="page-loading-progress"></span></div>
     </div>
@@ -675,7 +675,7 @@
                         <p class="text-sm text-neutral-400 leading-7">Epic 限免游戏通常在活动期间领取后会保留在账号库中，但免费领取窗口有截止时间，建议在活动结束前完成领取。</p>
                     </article>
                     <article>
-                        <h3 class="text-lg font-bold text-white">Steam 史低特惠适合什么时候入手？</h3>
+                        <h3 class="text-lg font-bold text-white">Steam 折扣史低适合什么时候入手？</h3>
                         <p class="text-sm text-neutral-400 leading-7">史低特惠表示当前折扣接近或达到历史低价，适合结合好评率、中文支持、游戏类型、发售时间和个人需求判断是否入手。大型促销期间也建议对比史低记录，不要只看折扣百分比。</p>
                     </article>
                     <article>
@@ -698,6 +698,8 @@
 </div>
     <script type="text/babel">
     const { useState, useEffect, useMemo, useRef } = React;
+    const DEFAULT_TAB = document.documentElement.dataset.defaultTab === 'deals' ? 'deals' : 'free';
+    const DEFAULT_PAGE_LABEL = DEFAULT_TAB === 'deals' ? 'Steam折扣' : '喜加一';
 
 // --- 背景组件开始 ---
     const hexToRgb = (hex) => {
@@ -1311,7 +1313,7 @@
                                     loading="lazy" 
                                     decoding="async" 
                                     src={src} 
-                                    alt={`${deal.name} - Steam史低特惠折扣 | 外星仔加速器`} 
+                                    alt={`${deal.name} - Steam折扣史低折扣 | 外星仔加速器`} 
                                     width="460"
                                     height="215"
                                     className="w-full h-full object-cover transition-transform duration-700 z-10 group-hover:scale-110" 
@@ -1486,7 +1488,7 @@
     }
 
     function App() {
-      const [activeTab, setActiveTab] = useState('free');
+      const [activeTab, setActiveTab] = useState(DEFAULT_TAB);
       const [colorTheme, setColorTheme] = useState(() => {
         try { return localStorage.getItem('et_freegames_theme') === 'light' ? 'light' : 'dark'; } catch (error) { return 'dark'; }
       });
@@ -1585,7 +1587,7 @@
         scrollingElement.style.scrollBehavior = previousBehavior;
       };
       const goToHome = () => {
-        setActiveTab('free');
+        setActiveTab(DEFAULT_TAB);
         goToTop();
       };
       const openStoreLaunchDialog = () => {
@@ -1614,13 +1616,13 @@
       const loadMoreRef = useRef(null);
 
       useEffect(() => {
-        if (loadingFree) return undefined;
+        if (activeTab === 'deals' ? loadingDeals : loadingFree) return undefined;
         const loading = document.getElementById('page-loading');
         if (!loading) return undefined;
         loading.classList.add('is-ready');
         const timer = window.setTimeout(() => loading.remove(), 250);
         return () => window.clearTimeout(timer);
-      }, [loadingFree]);
+      }, [activeTab, loadingFree, loadingDeals]);
 
       // 切换排序或改变筛选条件时，重置列表长度
       useEffect(() => {
@@ -1829,7 +1831,7 @@
 
           <header className={`header-glass sticky top-0 z-50 w-full ${showMobileHeader ? '' : 'mobile-header-hidden'}`}>
             <div className="max-w-[1560px] mx-auto px-4 sm:px-6 py-2 sm:py-4 flex items-center justify-between gap-2">
-                <button type="button" onClick={goToHome} className="min-w-0 bg-transparent border-0 p-0 text-left text-sm sm:text-lg font-bold text-white flex items-center gap-2 sm:gap-2.5 cursor-pointer" aria-label="返回喜加一首页" title="返回喜加一首页"><AlienLogo className="w-5 h-5 shrink-0" />外星仔加速器 <span className="mx-2 text-gray-500 font-light hidden sm:inline">///</span> <span className="accent-text text-glow hidden sm:inline">游戏情报站</span></button>
+                <button type="button" onClick={goToHome} className="min-w-0 bg-transparent border-0 p-0 text-left text-sm sm:text-lg font-bold text-white flex items-center gap-2 sm:gap-2.5 cursor-pointer" aria-label={`返回${DEFAULT_PAGE_LABEL}首页`} title={`返回${DEFAULT_PAGE_LABEL}首页`}><AlienLogo className="w-5 h-5 shrink-0" /><span className="min-w-0 flex flex-col sm:flex-row sm:items-center"><span>外星仔加速器</span><span className="mx-2 text-gray-500 font-light hidden sm:inline">///</span><span className="accent-text text-glow text-[10px] sm:text-lg">游戏情报站 - {activeTab === 'deals' ? 'Steam折扣' : '喜加一'}</span></span></button>
                 
                 <div className="flex shrink-0 items-center gap-2">
                     <button type="button" onClick={goToTop} className={`theme-toggle back-to-top ${showBackToTop ? 'is-visible' : ''}`} aria-label="回到顶部" title="回到顶部" tabIndex={showBackToTop ? 0 : -1}><span aria-hidden="true">↑</span></button>
@@ -1883,9 +1885,9 @@
                 </div>
 
                 <div className="group mt-3 sm:mt-6 max-w-3xl text-center">
-                    <p className="mb-3 text-xs font-bold tracking-[0.18em] text-[#9F70FA]">最新免费游戏实时更新</p>
+                    <p className="mb-3 text-xs font-bold tracking-[0.18em] text-[#9F70FA]">{activeTab === 'deals' ? 'Steam 折扣情报实时更新' : '最新免费游戏实时更新'}</p>
                     <h1 className="text-2xl sm:text-5xl font-black text-white leading-tight">
-                        今日喜加一 <span className="text-[#9F70FA]">·</span> 免费游戏白嫖
+                        {activeTab === 'deals' ? <>Steam 折扣史低 <span className="text-[#9F70FA]">·</span> 热门游戏特惠</> : <>今日喜加一 <span className="text-[#9F70FA]">·</span> 免费游戏白嫖</>}
                     </h1>
                 </div>
 
@@ -1925,7 +1927,7 @@
                     aria-selected={activeTab === 'deals'}
                     onClick={() => { setActiveTab('deals'); trackEvent('click_tab', { tab_name: 'steam_deals' }); }}
                     className="relative z-10 flex-1 min-h-12 px-1 pb-3 text-sm sm:text-[16px] font-bold text-white transition-opacity duration-300 hover:opacity-80">
-                    Steam 史低特惠
+                    Steam 折扣史低
                 </button>
                 <div className={`absolute bottom-[-1px] h-[3px] w-1/2 rounded-t-md bg-[#9F70FA] shadow-[0_0_12px_rgba(159,112,250,0.8)] transition-all duration-500 ease-[cubic-bezier(0.25,1,0.3,1)] ${activeTab === 'free' ? 'left-0' : 'left-1/2'}`}></div>
             </div>
@@ -2036,7 +2038,7 @@
                             <p className="text-sm leading-7">Epic 限免游戏通常在活动期间领取后会保留在账号库中，但免费领取窗口有截止时间，建议在活动结束前完成领取。</p>
                         </article>
                         <article>
-                            <h3 className="text-lg font-bold text-white mb-2">Steam 史低特惠适合什么时候入手？</h3>
+                            <h3 className="text-lg font-bold text-white mb-2">Steam 折扣史低适合什么时候入手？</h3>
                             <p className="text-sm leading-7">史低特惠表示当前折扣接近或达到历史低价，适合结合好评率、中文支持、游戏类型、发售时间和个人需求判断是否入手。大型促销期间也建议对比史低记录，不要只看折扣百分比。</p>
                         </article>
                         <article>
