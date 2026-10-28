@@ -8,15 +8,6 @@ add:
     end_date: "2026-11-02T16:00:00.000Z"
     original_price: "￥6"
     thumbnail: "https://cdn1.epicgames.com/spt-assets/c98f33cf3ea9491f926ce69fc9835ccf/gethighexe-8lmjv.png?resize=1&w=1280&h=720&quality=medium"
-  - link: "https://store.epicgames.com/p/dimond-hunt-03a766?lang=zh-CN"
-    name: "Terraspace"
-    type: "100_off"
-    platform: "epic"
-    sort_order: 30
-    desc: "Strategy and survival where you have to go on an exciting journey through the galaxy and build a spaceship that will help you move to another planet. But this is not just a construction game — it’s a whole universe where you can show your skills as a strategist and engineer."
-    end_date: "2026-10-27T20:00:00.000Z"
-    original_price: "￥22"
-    thumbnail: "https://cdn1.epicgames.com/spt-assets/43ba8c8ffe2d4bdeb87704c260cce30c/dimond-hunt-1eqr4.png"
   - link: "https://store.steampowered.com/app/3943750/Fly_Over_100KM_Mountains/"
     name: "Fly Over! 100KM! Mountains!"
     type: "100_off"
@@ -64,6 +55,7 @@ disable:
   - "p/cat-named-mojave-7e06ad"
   - "app/3472040"
   - "app/214340"
+  - "https://store.epicgames.com/p/dimond-hunt-03a766?lang=zh-CN"
 sort:
   - link: "app/405640"
     sort_order: 10
