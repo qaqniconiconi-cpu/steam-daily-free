@@ -26,6 +26,9 @@ jobs:
       - name: Test Epic collection rules
         run: python -m unittest discover -s tests -v
 
+      - name: Test manual publishing rules
+        run: node tests/test_admin_publish.cjs
+
       - name: Run ETL Processor
         id: etl
         env:
@@ -173,6 +176,7 @@ jobs:
                                   FORCED_EPIC.append({
                                       "zh_title": name_final or slug, "thumbnail": thumb_final or "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='300'%3E%3Crect width='600' height='300' fill='%23121215'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%239F70FA' font-family='sans-serif' font-size='24'%3EEpic Game%3C/text%3E%3C/svg%3E", 
                                       "end_date": raw_date_str or "限免进行中",
+                                      "original_price": str(item.get("original_price", "")).strip(),
                                       "platform": "Epic Games", "epic_slug": slug,
                                       "title_url": title_url or (link if link.startswith('http') else ''), "button_url": button_url,
                                       "sort_order": sort_order,
@@ -198,6 +202,7 @@ jobs:
                                   item_type = str(item.get('type', '')).strip() or '100_off'
                                   FORCED_ADD[app_id] = {
                                       "type": item_type, "end_date": raw_date_str, "name": name,
+                                      "original_price": str(item.get("original_price", "")).strip(),
                                       "title_url": title_url or (link if link.startswith('http') else ''), "button_url": button_url,
                                       "sort_order": sort_order,
                                       "_custom_desc": custom_desc, "_custom_thumb": custom_thumbnail
@@ -305,7 +310,7 @@ jobs:
                       return {"status": "invalid"}
 
                   price = d.get('price_overview', {})
-                  orig_price = price.get('initial_formatted', '')
+                  orig_price = (forced_info or {}).get('original_price') or price.get('initial_formatted', '')
                   is_100_off = price.get('discount_percent') == 100
                   is_free = d.get('is_free', False)
                   has_free_license = any(sub.get('is_free_license') for group in d.get('package_groups', []) for sub in group.get('subs', []))
@@ -997,7 +1002,7 @@ jobs:
                                   "zh_title": forced_info.get('zh_title') or item.get('title', slug),
                                   "thumbnail": forced_info.get('_custom_thumb') or img,
                                   "short_description": forced_info.get('_custom_desc') or item.get('description') or item.get('shortDescription') or '',
-                                  "original_price": item.get('price', {}).get('totalPrice', {}).get('fmtPrice', {}).get('originalPrice', ''),
+                                  "original_price": forced_info.get('original_price') or item.get('price', {}).get('totalPrice', {}).get('fmtPrice', {}).get('originalPrice', ''),
                                   "start_date": promotion['start_date'],
                                   "end_date": forced_info.get('end_date') or promotion['end_date'],
                                   "platform": "Epic Games", "epic_slug": slug, "type": g_type,
@@ -1026,7 +1031,7 @@ jobs:
               for game_obj in community_games:
                   slug = game_obj['epic_slug']
                   forced_info = next((f for f in FORCED_EPIC if f.get('epic_slug') == slug), None) or {}
-                  for key in ('zh_title', 'title_url', 'button_url', 'sort_order'):
+                  for key in ('zh_title', 'title_url', 'button_url', 'sort_order', 'original_price'):
                       if forced_info.get(key):
                           game_obj[key] = forced_info[key]
                   if forced_info.get('_custom_desc'):
@@ -1099,7 +1104,8 @@ jobs:
               def sort_output_items(items):
                   def key(item):
                       try:
-                          order = float(item.get('sort_order', item.get('order', item.get('rank', 999999)))) or 999999
+                          raw_order = item.get('sort_order', item.get('order', item.get('rank', 999999)))
+                          order = float(raw_order) if raw_order not in ('', None) else 999999
                       except Exception:
                           order = 999999
                       upcoming = 1 if item.get('is_upcoming') or item.get('type') == 'upcoming' else 0
@@ -1114,6 +1120,7 @@ jobs:
               steam_deals = fetch_steam_deals()
               if not steam_deals:
                   raise RuntimeError("Steam 特惠抓取结果为空，停止上传以保留线上 deals.json")
+              steam_deals = [item for item in steam_deals if not item_is_blacklisted(item)]
 
               try:
                   seo_old_games = normalize_api_payload(fetch_old_data("games.json"))
