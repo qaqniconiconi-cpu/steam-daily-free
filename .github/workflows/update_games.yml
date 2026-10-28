@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
@@ -19,9 +19,15 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.9'
+          python-version: '3.12'
       - name: Install dependencies
         run: pip install requests pyyaml
+
+      - name: Test Epic collection rules
+        run: python -m unittest discover -s tests -v
+
+      - name: Test manual publishing rules
+        run: node tests/test_admin_publish.cjs
 
       - name: Run ETL Processor
         id: etl
@@ -41,6 +47,8 @@ jobs:
           import urllib.parse
           import html
           from datetime import datetime, timedelta
+          from scripts.epic_sources import (discover_candidates, free_promotion, product_slug,
+                                           read_queue, utc_date, verify_candidates, write_queue)
 
           HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Accept-Language': 'zh-CN,zh;q=0.9'}
           COOKIES = {'birthtime': '283993201', 'wants_mature_content': '1'}
@@ -168,6 +176,7 @@ jobs:
                                   FORCED_EPIC.append({
                                       "zh_title": name_final or slug, "thumbnail": thumb_final or "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='300'%3E%3Crect width='600' height='300' fill='%23121215'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%239F70FA' font-family='sans-serif' font-size='24'%3EEpic Game%3C/text%3E%3C/svg%3E", 
                                       "end_date": raw_date_str or "限免进行中",
+                                      "original_price": str(item.get("original_price", "")).strip(),
                                       "platform": "Epic Games", "epic_slug": slug,
                                       "title_url": title_url or (link if link.startswith('http') else ''), "button_url": button_url,
                                       "sort_order": sort_order,
@@ -193,6 +202,7 @@ jobs:
                                   item_type = str(item.get('type', '')).strip() or '100_off'
                                   FORCED_ADD[app_id] = {
                                       "type": item_type, "end_date": raw_date_str, "name": name,
+                                      "original_price": str(item.get("original_price", "")).strip(),
                                       "title_url": title_url or (link if link.startswith('http') else ''), "button_url": button_url,
                                       "sort_order": sort_order,
                                       "_custom_desc": custom_desc, "_custom_thumb": custom_thumbnail
@@ -300,7 +310,7 @@ jobs:
                       return {"status": "invalid"}
 
                   price = d.get('price_overview', {})
-                  orig_price = price.get('initial_formatted', '')
+                  orig_price = (forced_info or {}).get('original_price') or price.get('initial_formatted', '')
                   is_100_off = price.get('discount_percent') == 100
                   is_free = d.get('is_free', False)
                   has_free_license = any(sub.get('is_free_license') for group in d.get('package_groups', []) for sub in group.get('subs', []))
@@ -715,18 +725,8 @@ jobs:
               return payload or []
 
           def parse_iso_dt(value):
-              if not value or value in ("N/A", "限免进行中", "近期即将转付费"):
-                  return None
-              if isinstance(value, datetime):
-                  return value
-              s = str(value).strip().replace('.000Z', 'Z')
-              s = s.replace('Z', '')
-              for fmt in ('%Y-%m-%dT%H:%M:%S', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d'):
-                  try:
-                      return datetime.strptime(s, fmt)
-                  except Exception:
-                      pass
-              return None
+              dt = utc_date(value)
+              return dt.replace(tzinfo=None) if dt else None
 
           def item_is_expired(item):
               dt = parse_iso_dt(item.get('end_date') or item.get('endDate'))
@@ -988,70 +988,63 @@ jobs:
                       elements = res.get('data', {}).get('Catalog', {}).get('searchStore', {}).get('elements', [])
                       print(f"🔎 Epic 官方接口返回 {len(elements)} 条：{e_url}")
                       for item in elements:
-                          promos = item.get('promotions')
-                          if not promos:
-                              continue
-                          slug = (item.get('catalogNs', {}).get('mappings', [{}])[0].get('pageSlug') or item.get('productSlug') or "free").lower()
-                          if slug in BLACKLIST or slug in processed_slugs:
-                              continue
-
-                          img = next((i.get('url') for i in item.get('keyImages', []) if i.get('type') in ['OfferImageWide', 'Thumbnail']), "")
-                          desc = str(item.get('description') or item.get('shortDescription') or '').strip()
-                          title = item.get('title', slug)
-                          price_obj = item.get('price', {}).get('totalPrice', {}).get('fmtPrice', {})
-                          orig_price = price_obj.get('originalPrice', '')
-
-                          forced_info = next((f for f in FORCED_EPIC if f.get('epic_slug') == slug), None)
-                          g_type = "100_off"
-                          if forced_info:
-                              if forced_info.get('zh_title'): title = forced_info['zh_title']
-                              if forced_info.get('_custom_desc'): desc = forced_info['_custom_desc']
-                              if forced_info.get('_custom_thumb'): img = forced_info['_custom_thumb']
+                          try:
+                              promotion = free_promotion(item)
+                              slug = product_slug(item)
+                              if not promotion or not slug or slug in BLACKLIST or slug in processed_slugs:
+                                  continue
+                              if item.get('offerType') != 'BASE_GAME':
+                                  continue
+                              img = next((i.get('url') for i in item.get('keyImages', []) if i.get('type') in ['OfferImageWide', 'Thumbnail']), "")
+                              forced_info = next((f for f in FORCED_EPIC if f.get('epic_slug') == slug), None) or {}
                               g_type = forced_info.get('type', '100_off')
-
-                          is_up = False
-                          e_date = "N/A"
-
-                          if promos.get('promotionalOffers'):
-                              try:
-                                  offs = promos['promotionalOffers'][0]['promotionalOffers']
-                                  if offs and offs[0].get('discountSetting', {}).get('discountPercentage') == 0:
-                                      e_date = offs[0]['endDate']
-                              except Exception as e:
-                                  print(f"⚠️ Epic 当前优惠解析失败 {slug}: {repr(e)}")
-                          elif promos.get('upcomingPromotionalOffers'):
-                              try:
-                                  offs = promos['upcomingPromotionalOffers'][0]['promotionalOffers']
-                                  if offs and offs[0].get('discountSetting', {}).get('discountPercentage') == 0:
-                                      e_date = offs[0]['endDate']
-                                      is_up = True
-                              except Exception as e:
-                                  print(f"⚠️ Epic 预告优惠解析失败 {slug}: {repr(e)}")
-
-                          if e_date != "N/A":
                               game_obj = {
-                                  "zh_title": title, "thumbnail": img, "short_description": desc,
-                                  "original_price": orig_price,
-                                  "end_date": (forced_info.get('end_date') if forced_info and forced_info.get('end_date') else e_date),
-                                  "platform": "Epic Games", "epic_slug": slug, "type": g_type, "is_upcoming": is_up,
-                                  "title_url": forced_info.get('title_url', '') if forced_info else '',
-                                  "button_url": forced_info.get('button_url', '') if forced_info else '',
-                                  "sort_order": forced_info.get('sort_order', '') if forced_info else ''
+                                  "zh_title": forced_info.get('zh_title') or item.get('title', slug),
+                                  "thumbnail": forced_info.get('_custom_thumb') or img,
+                                  "short_description": forced_info.get('_custom_desc') or item.get('description') or item.get('shortDescription') or '',
+                                  "original_price": forced_info.get('original_price') or item.get('price', {}).get('totalPrice', {}).get('fmtPrice', {}).get('originalPrice', ''),
+                                  "start_date": promotion['start_date'],
+                                  "end_date": forced_info.get('end_date') or promotion['end_date'],
+                                  "platform": "Epic Games", "epic_slug": slug, "type": g_type,
+                                  "is_upcoming": promotion['is_upcoming'],
+                                  "title_url": forced_info.get('title_url', ''),
+                                  "button_url": forced_info.get('button_url', ''),
+                                  "sort_order": forced_info.get('sort_order', '')
                               }
                               before = len(final_games) + len(final_intel['to_paid']) + len(final_intel['freeplay'])
-                              route_game_item(game_obj, 'upcoming' if is_up else g_type, final_games, final_intel, seen_games, seen_intel)
+                              route_game_item(game_obj, 'upcoming' if promotion['is_upcoming'] else g_type, final_games, final_intel, seen_games, seen_intel)
                               after = len(final_games) + len(final_intel['to_paid']) + len(final_intel['freeplay'])
                               if after > before:
                                   epic_added += 1
                               processed_slugs.add(slug)
+                          except Exception as e:
+                              print(f"⚠️ Epic 单条活动解析失败 {item.get('title', '')}: {repr(e)}")
                   except Exception as e:
                       print(f"⚠️ Epic 官方接口抓取异常：{repr(e)}")
               print(f"✅ Epic 官方入库：{epic_added} 款")
 
+              # Community feeds discover products outside Epic's weekly catalog.
+              epic_queue = discover_candidates(requests.get, HEADERS, read_queue())
+              community_games, inactive_epic_slugs = verify_candidates(
+                  requests.get, HEADERS, epic_queue, skip_slugs=processed_slugs | BLACKLIST
+              )
+              for game_obj in community_games:
+                  slug = game_obj['epic_slug']
+                  forced_info = next((f for f in FORCED_EPIC if f.get('epic_slug') == slug), None) or {}
+                  for key in ('zh_title', 'title_url', 'button_url', 'sort_order', 'original_price'):
+                      if forced_info.get(key):
+                          game_obj[key] = forced_info[key]
+                  if forced_info.get('_custom_desc'):
+                      game_obj['short_description'] = forced_info['_custom_desc']
+                  if forced_info.get('_custom_thumb'):
+                      game_obj['thumbnail'] = forced_info['_custom_thumb']
+                  route_game_item(game_obj, '100_off', final_games, final_intel, seen_games, seen_intel)
+                  processed_slugs.add(slug)
+
               # C. Epic 手动兜底
               forced_epic_added = 0
               for fe in FORCED_EPIC:
-                  if fe.get('epic_slug') in processed_slugs or fe.get('epic_slug') in BLACKLIST:
+                  if fe.get('epic_slug') in processed_slugs or fe.get('epic_slug') in BLACKLIST or fe.get('epic_slug') in inactive_epic_slugs:
                       continue
                   if item_is_expired(fe):
                       continue
@@ -1085,7 +1078,7 @@ jobs:
                   if isinstance(old_games, list):
                       restored = 0
                       for old in old_games:
-                          if isinstance(old, dict) and not item_is_expired(old) and not item_is_blacklisted(old):
+                          if isinstance(old, dict) and not item_is_expired(old) and not item_is_blacklisted(old) and old.get('epic_slug') not in inactive_epic_slugs:
                               if append_unique(final_games, old, seen_games):
                                   restored += 1
                       if restored:
@@ -1111,11 +1104,12 @@ jobs:
               def sort_output_items(items):
                   def key(item):
                       try:
-                          order = float(item.get('sort_order', item.get('order', item.get('rank', 999999)))) or 999999
+                          raw_order = item.get('sort_order', item.get('order', item.get('rank', 999999)))
+                          order = float(raw_order) if raw_order not in ('', None) else 999999
                       except Exception:
                           order = 999999
                       upcoming = 1 if item.get('is_upcoming') or item.get('type') == 'upcoming' else 0
-                      return (order, upcoming, str(item.get('zh_title') or item.get('name') or ''))
+                      return (upcoming, order, str(item.get('zh_title') or item.get('name') or ''))
                   return sorted(items, key=key)
 
               final_games = sort_output_items(final_games)
@@ -1126,6 +1120,7 @@ jobs:
               steam_deals = fetch_steam_deals()
               if not steam_deals:
                   raise RuntimeError("Steam 特惠抓取结果为空，停止上传以保留线上 deals.json")
+              steam_deals = [item for item in steam_deals if not item_is_blacklisted(item)]
 
               try:
                   seo_old_games = normalize_api_payload(fetch_old_data("games.json"))
@@ -1171,6 +1166,8 @@ jobs:
               post_update("deals.json", steam_deals)
 
               post_update("upcoming.json", [])
+
+              write_queue(epic_queue)
 
               with open(DB_FILE, 'w', encoding='utf-8') as f:
                   json.dump(db, f, ensure_ascii=False, indent=2)
