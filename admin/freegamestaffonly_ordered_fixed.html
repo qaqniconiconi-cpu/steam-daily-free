@@ -108,7 +108,9 @@
     .layout { display: grid; grid-template-columns: 1fr; gap: 1.5rem; min-height: calc(100vh - 160px); }
     .sidebar { min-width: 0; padding: 1rem; display: flex; flex-direction: column; min-height: 420px; overflow: hidden; }
     .panel-main { padding: 1.25rem; overflow: auto; min-height: 420px; }
-    .sidebar-head { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
+    .sidebar-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
+    .sidebar-actions { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
+    .sidebar-actions .btn-muted { padding: 0.38rem 0.55rem; font-size: 0.78rem; white-space: nowrap; }
     .sidebar-head h2 { font-size: 1rem; margin: 0; }
     .btn-add { background: rgba(159,112,250,0.18); color: #9F70FA; border-radius: 0.45rem; padding: 0.38rem 0.55rem; font-weight: 800; font-size: 0.78rem; cursor: pointer; white-space: nowrap; }
     .tabs { display: flex; gap: 0.25rem; padding: 0.25rem; margin-bottom: 1rem; background: rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.05); border-radius: 0.75rem; flex-shrink: 0; }
@@ -1165,7 +1167,6 @@
         '<div><h1>外星仔 · 游戏管理后台</h1><div class="brand-sub"><span>当前连接: ' + escapeHtml(state.config.owner) + '/' + escapeHtml(state.config.repo) + '</span><button id="switch-config" class="link-btn" type="button">切换</button></div></div></div>' +
         '<div class="top-actions">' +
         themeToggleTemplate() +
-        '<button id="auto-sort" class="btn-muted" type="button" ' + (state.isLoading ? 'disabled' : '') + '>自动排序</button>' +
         '<button id="refresh-data" class="btn-muted" type="button" ' + (state.isLoading ? 'disabled' : '') + '>刷新数据</button>' +
         '<button id="save-github" class="btn-primary" type="button" ' + (state.isLoading ? 'disabled' : '') + '>' + (state.isLoading ? '同步中...' : (state.pendingPublish ? '重试发布' : '保存并发布')) + '</button>' +
         '</div></div>';
@@ -1213,7 +1214,9 @@
       }).join('') || '<div class="hint">暂无黑名单条目</div>';
 
       return '<div class="sidebar glass-panel">' +
-        '<div class="sidebar-head"><h2>资源库 (' + count + ')</h2><button id="add-item" class="btn-add" type="button">+ 手动添加</button></div>' +
+        '<div class="sidebar-head"><h2>资源库 (' + count + ')</h2><div class="sidebar-actions">' +
+        '<button id="auto-sort" class="btn-muted" type="button" ' + (state.isLoading ? 'disabled' : '') + '>自动排序</button>' +
+        '<button id="add-item" class="btn-add" type="button">+ 手动添加</button></div></div>' +
         '<div class="tabs"><button type="button" class="tab-btn ' + (state.listTab === 'free' ? 'active' : '') + '" data-tab="free">喜加一 / 试玩</button><button type="button" class="tab-btn ' + (state.listTab === 'deals' ? 'active' : '') + '" data-tab="deals">史低特惠</button></div>' +
         '<div class="scroll-list">' +
         (state.listTab === 'free'
