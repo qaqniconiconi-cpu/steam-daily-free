@@ -3,6 +3,7 @@ add:
     name: "黑手党狼人杀（MAFIA HOTEL）"
     type: "100_off"
     platform: "epic"
+    sort_order: 40
     desc: "最多16人的多人狼人杀，白天推理投票，夜晚躲避黑手党追杀。"
     end_date: "2026-11-01T17:02:00Z"
     thumbnail: "https://cdn1.epicgames.com/spt-assets/f050bad3cfcd406f94bad85c0aa10177/mafia-hotel-8s83c.png"
@@ -12,19 +13,19 @@ add:
     name: "抱歉已打烊（Sorry We’re Closed）"
     type: "upcoming"
     platform: "epic"
-    sort_order: 1000000
+    sort_order: 80
     desc: "复古风格的生存恐怖冒险，开启第三只眼探索异界、解谜并战斗。"
-    start_date: "2026-10-29T15:00:00Z"
     end_date: "2026-11-05T16:00:00Z"
     original_price: "¥78.00"
     thumbnail: "https://cdn1.epicgames.com/spt-assets/9ab7eaaeb2f041969b350955b789f0f7/sorry-were-closed-1orqh.png"
     title_url: "https://store.epicgames.com/p/sorry-were-closed-724c86"
     button_url: "https://store.epicgames.com/p/sorry-were-closed-724c86"
+    start_date: "2026-10-29T15:00:00Z"
   - link: "https://store.epicgames.com/p/gethighexe-c83d1f"
     name: "GetHigh.EXE"
     type: "100_off"
     platform: "epic"
-    sort_order: 40
+    sort_order: 50
     desc: "Get high in this familiar parkour game where you run and jump through an obstacle course to reach the top — now a little bit more extreme. Enjoy simple, arcade-style gameplay with precise movement and challenging jumps."
     end_date: "2026-11-02T16:00:00.000Z"
     original_price: "￥6"
@@ -33,7 +34,7 @@ add:
     name: "Fly Over! 100KM! Mountains!"
     type: "100_off"
     platform: "steam"
-    sort_order: 30
+    sort_order: 70
     desc: "即将转付费"
     end_date: "2026-11-16T15:59:00.000Z"
     thumbnail: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/3943750/ad785509dac2ce8225b35cb66ca71dea6d63c0b9/capsule_616x353.jpg?t=1785578816"
@@ -41,7 +42,7 @@ add:
     name: "Hex Reverse"
     type: "to_paid"
     platform: "steam"
-    sort_order: 20
+    sort_order: 60
     desc: "在六边形战场上进行的Roguelike卡牌构筑游戏，即将转付费"
     end_date: "2026-11-07T15:00:00.000Z"
     thumbnail: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/5257350/50f8eaeb33ec068e66106662c748be1e06df0434/capsule_616x353.jpg?t=1791363746"
@@ -49,7 +50,7 @@ add:
     name: "Hyper Dash"
     type: "100_off"
     platform: "steam"
-    sort_order: 10
+    sort_order: 30
     desc: "VR多人射击，该游戏即将下线"
     end_date: "2026-10-31T16:00:00.000Z"
     thumbnail: "https://clan.akamai.steamstatic.com/images//39374358/e0c7d74a0b1c2ca80ee10df7feb0eb3e70963862.png"
@@ -84,7 +85,7 @@ sort:
     sort_order: 10
   - link: "p/bad-cheese-4256d9"
     sort_order: 20
-  - link: "p/sker-ritual-aac702"
-    sort_order: "90"
   - link: "p/home-19212a"
-    sort_order: "80"
+    sort_order: 10
+  - link: "p/sker-ritual-aac702"
+    sort_order: 20
