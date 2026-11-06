@@ -1904,6 +1904,21 @@
     }
   },
   "4983490": {
-    "status": "invalid"
+    "status": "valid",
+    "type": "to_paid",
+    "details": {
+      "steam_id": "4983490",
+      "zh_title": "Last Gambit",
+      "thumbnail": "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/4983490/2171750b5ae85c27e16f9939e4fc8fc68e25e5be/header.jpg",
+      "short_description": "国际象棋 Roguelite；11月13日转付费，具体时刻未公布，建议提前入库永久保留。",
+      "end_date": "2026-11-12T16:00:00Z",
+      "platform": "Steam",
+      "original_price": "",
+      "title_url": "https://store.steampowered.com/app/4983490/Last_Gambit/",
+      "button_url": "",
+      "sort_order": "",
+      "type": "to_paid",
+      "_is_forced": true
+    }
   }
 }
