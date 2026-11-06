@@ -1,0 +1,25 @@
+name: Submit game page to Bing IndexNow
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - name: Submit published game page
+        env:
+          INDEXNOW_KEY: ${{ secrets.INDEXNOW_KEY }}
+          PAGE_URL: https://www.et001.com/gameguide/freegametest.html
+          INDEXNOW_ENDPOINT: https://www.bing.com/indexnow
+        run: |
+          python -c "import os; assert os.environ.get('INDEXNOW_KEY'), 'INDEXNOW_KEY must be configured'"
+          python scripts/submit_indexnow.py

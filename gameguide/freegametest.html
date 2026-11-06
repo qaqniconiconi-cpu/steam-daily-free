@@ -1004,9 +1004,9 @@
       const isToPaid = status === 'to_paid';
       const diffMs = new Date(dateStr).getTime() - now;
       if (diffMs <= 0) return isToPaid ? '即将转付费' : '限免即将结束';
-      const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
       const hours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
-      if (days > 0) return isToPaid ? ` ${days} 天后转付费` : ` ${days} 天后结束`;
+      if (diffMs >= 1000 * 60 * 60 * 24) return isToPaid ? ` ${days} 天后转付费` : ` ${days} 天后结束`;
       return isToPaid ? ` ${hours} 小时后转付费` : ` ${hours} 小时后结束`;
     };
 
