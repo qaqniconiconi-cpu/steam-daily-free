@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import urllib.parse
 
@@ -14,6 +15,12 @@ def main():
     if not INDEXNOW_KEY:
         print("INDEXNOW_KEY is empty; skipped IndexNow submit.")
         return
+
+    if not re.fullmatch(r"[A-Za-z0-9-]{8,128}", INDEXNOW_KEY):
+        raise ValueError(
+            f"INDEXNOW_KEY has invalid format (length={len(INDEXNOW_KEY)}); "
+            "expected 8-128 letters, digits or dashes. Key value is not logged."
+        )
 
     parsed = urllib.parse.urlparse(PAGE_URL)
     if not parsed.scheme or not parsed.netloc:
