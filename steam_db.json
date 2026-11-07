@@ -1775,7 +1775,7 @@
     "status": "invalid"
   },
   "5257350": {
-    "status": "valid",
+    "status": "expired",
     "type": "to_paid",
     "details": {
       "steam_id": "5257350",
