@@ -1926,5 +1926,41 @@
   },
   "4452300": {
     "status": "invalid"
+  },
+  "5360160": {
+    "status": "valid",
+    "type": "100_off",
+    "details": {
+      "steam_id": "5360160",
+      "zh_title": "巴士模拟器 27：比亚迪包（免费 DLC）",
+      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/5360160/c3478b0410a76eda10256dcea9990dac03b0ff1e/header.jpg?t=1794487465",
+      "short_description": "免费 DLC，需要《巴士模拟器 27》本体，包含两款比亚迪电动巴士。官方未公布领取截止时间。",
+      "end_date": "限免进行中",
+      "platform": "Steam",
+      "original_price": "",
+      "title_url": "https://store.steampowered.com/app/5360160/",
+      "button_url": "",
+      "sort_order": "",
+      "type": "100_off",
+      "_is_forced": true
+    }
+  },
+  "866020": {
+    "status": "valid",
+    "type": "100_off",
+    "details": {
+      "steam_id": "866020",
+      "zh_title": "建造乌托邦（Growtopia，免费游玩）",
+      "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/866020/header.jpg?t=1720679342",
+      "short_description": "免费游玩的多人沙盒。官方公告 12 月 1 日起停止在 Steam 下载和游玩，具体时刻未公布。",
+      "end_date": "2026-11-30T16:00:00Z",
+      "platform": "Steam",
+      "original_price": "",
+      "title_url": "https://store.steampowered.com/app/866020/",
+      "button_url": "",
+      "sort_order": "",
+      "type": "100_off",
+      "_is_forced": true
+    }
   }
 }
