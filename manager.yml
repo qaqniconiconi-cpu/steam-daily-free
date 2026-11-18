@@ -101,6 +101,14 @@ add:
     desc: "国际象棋 Roguelite；11月13日转付费，具体时刻未公布，建议提前入库永久保留。"
     end_date: "2026-11-12T16:00:00Z"
     thumbnail: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/4983490/2171750b5ae85c27e16f9939e4fc8fc68e25e5be/header.jpg"
+  - link: "https://store.epicgames.com/p/contractor-the-clean-up-part-ii-1b1b57"
+    name: "拆迁承包商（Contractor: The Clean Up Part II）"
+    type: "100_off"
+    platform: "epic"
+    desc: "驾驶重型装载机清理拆迁工地，搬运混凝土和建筑废料。"
+    end_date: "2026-12-02T10:00:00Z"
+    thumbnail: "https://cdn1.epicgames.com/spt-assets/45a0995f31e348739b814de2cb32674b/contractor-the-clean-up-part-ii-io7r5.png"
+
 disable:
   - "640700"
   - "3144950"
