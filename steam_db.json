@@ -1962,5 +1962,11 @@
       "type": "100_off",
       "_is_forced": true
     }
+  },
+  "4901850": {
+    "status": "invalid"
+  },
+  "3056550": {
+    "status": "invalid"
   }
 }
